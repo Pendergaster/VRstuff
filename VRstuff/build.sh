@@ -1,4 +1,5 @@
 #!/bin/bash
-g++ main.cpp -Iinclude -g -Wall -fexceptions -lm -lpthread -lglfw -lrt -lm -ldl -o Motor
+clear
+g++ ./src/main.cpp -Iinclude -I../../PakkiUtils -g -Wall -fexceptions -lm -lpthread -lglfw -lrt -lm -ldl -o testENGINE
 echo hello
 

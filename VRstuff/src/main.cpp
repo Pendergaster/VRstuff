@@ -7,8 +7,8 @@
 #define SCREENWIDHT 800
 #define SCREENHEIGHT 1000
 #include<Utils.h>
-#include<shader_utils.h>
 #include<Containers.h>
+#include<shader_utils.h>
 
 typedef int TextureID;
 
@@ -98,7 +98,7 @@ int main()
 	ASSERT_MESSAGE((gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)),"FAILED TO INIT GLAD");
 
 	CONTAINER::StaticAllocator StaticMemory;
-	CONTAINER::init_static_memory;
+	//CONTAINER::init_static_memory;
 
 	while (!glfwWindowShouldClose(window)){
 		glfwPollEvents(); 
