@@ -1,0 +1,58 @@
+@echo off
+
+REM ox- nopee optimointi, 0t nopeutta , oB2 inlineany, Oi instribdsdsds
+REM Od ei optimisaatioita
+REM CLAGS= -Ox -Ot -OB2 -Oi
+REM nologo ei turhaa printtiä / /MD common runtime multithreaded   /   /link alottaa linkkaamisen / 
+REM -LD -> buildaa .dll -MD jälkee
+
+if not defined DEV_ENV (
+		CALL "%VS140COMNTOOLS%/../../VC/vcvarsall.bat" x64
+		)
+set DEV_ENV=???
+
+set includes=-I"../include" -I"../Shared" -I"C:\Users\Pate\Desktop\PakkiUtils"
+set game_includes=-I"../Shared"
+set lib_path="../libraries/"
+set libs=glfw3.lib opengl32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib  Shell32.lib
+SETLOCAL
+
+
+IF /I "%1"=="build_engine" (
+		SET BUILD_DIR=DebugBin
+		pushd DebugBin
+		set CLAGS= -Od
+		REM -LD -> buildaa .dll -MD jälkee
+		cl %CLAGS% -Z7 /EHsc /DEBUG ..\src\main.cpp  %includes% /MD /link %libs% -LIBPATH:../libraries 
+		popd
+		)
+
+IF /I "%1"=="build_test" (
+		pushd TestBin
+		set CLAGS= -Od
+		cl %CLAGS% -Z7 /EHsc /DEBUG ..\src\test.cpp  %includes% /MD /link %libs% -LIBPATH:../libraries 
+		popd
+		)
+
+
+
+IF /I "%1"=="build_game" (
+		pushd DebugBin
+		cl %CLAGS% -nologo %game_includes% ..\game\game.c  /MD /LD /link  %libs% -LIBPATH:../libraries  
+		popd
+		)
+
+
+IF /I "%1"=="run" (
+		chdir %~dp0
+		DebugBin\main.exe
+		popd
+		)
+
+IF /I "%1"=="run_test" (
+		chdir %~dp0
+		TestBin\test.exe
+		popd
+		)
+
+ENDLOCAL

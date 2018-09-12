@@ -26,6 +26,10 @@ bld/
 [Ll]og/
 
 DebugBin/
+glad/
+KHR/
+TestBin/
+glad.c
 *.out
 
 # Visual Studio 2015/2017 cache/options directory
