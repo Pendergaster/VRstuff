@@ -49,9 +49,11 @@ IF /I "%1"=="run" (
 		popd
 		)
 
+		REM chdir %~dp0
+		REM TestBin\test.exe
 IF /I "%1"=="run_test" (
-		chdir %~dp0
-		TestBin\test.exe
+		pushd TestBin
+		test.exe
 		popd
 		)
 

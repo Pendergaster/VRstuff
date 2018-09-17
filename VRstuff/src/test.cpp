@@ -5,6 +5,11 @@
 int main()
 {
 	printf("hello world \n");
-	SHADER::parse_frag_and_vert("test.glsl");
+	char* f,*v;
+	SHADER::load_frag_and_vert("test.glsl",&f ,&v);
+
+	printf("%s \n",f);
+	printf("%s \n",v);
+
 	return 0;
 }
