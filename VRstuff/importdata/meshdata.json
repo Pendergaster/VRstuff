@@ -1,11 +1,6 @@
 {
-	"Pallo" : {
-		"metaDataPath" : "metadata/pallo.bin",
-		"rawPath" : "modelfiles/pallo.obj"
-	},
-	"Kuutio" : {
-		"metaDataPath" : "metadata/kuutio.bin",
-		"rawPath" : "modelfiles/kuutio.obj"
+	"Planet" : {
+		"metaDataPath" : "metadata/Planet1.bin",
+		"rawPath" : "models/Planet1.obj"
 	}
-
 }

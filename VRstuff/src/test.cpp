@@ -1,11 +1,10 @@
-#include <ree.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <Containers.h>
+#include <string.h>
 #include <ModelData.h>
 #include <JsonToken.h>
-#include <string.h>
 #include <file_system.h>
+#include <Containers.h>
 #define MAX_VERT_AMOUNT 30000
 
 struct objIndex
@@ -33,6 +32,7 @@ int main()
 	printf("%d %d %d %d \n",*((int*)ptr + 4),*((int*)ptr + 5),*((int*)ptr + 6),*((int*)ptr + 7));
 #endif
 	//verts - normals - inds
+#if 1
 	void* rawMem = malloc(MAX_VERT_AMOUNT * (sizeof(MATH::vec3) * 2 * sizeof(objIndex) * sizeof(MATH::vec2)));
 	defer {free(rawMem);};
 	MATH::vec3* vertexBuffer = (MATH::vec3*)rawMem;
@@ -42,10 +42,10 @@ int main()
 
 	void* outputMem = malloc(MAX_VERT_AMOUNT * (sizeof(MATH::vec3) * 2 * sizeof(int) * sizeof(MATH::vec2)));
 	defer {free(outputMem);};
-	MATH::vec3* vertexBufferOutput = (MATH::vec3*)rawMem;
-	MATH::vec3* normalBufferOutput = (MATH::vec3*)rawMem + MAX_VERT_AMOUNT;
-	MATH::vec2* textureCoordBufferOutput = (MATH::vec2*)((MATH::vec3*)rawMem + MAX_VERT_AMOUNT * 2);
-	int* indexBufferOutput = (int*)((MATH::vec2*)((MATH::vec3*)rawMem + MAX_VERT_AMOUNT * 2)+ MAX_VERT_AMOUNT);
+	MATH::vec3* vertexBufferOutput = (MATH::vec3*)outputMem;
+	MATH::vec3* normalBufferOutput = (MATH::vec3*)outputMem + MAX_VERT_AMOUNT;
+	MATH::vec2* textureCoordBufferOutput = (MATH::vec2*)(normalBufferOutput + MAX_VERT_AMOUNT);
+	int* indexBufferOutput = (int*)(textureCoordBufferOutput + MAX_VERT_AMOUNT);
 
 
 
@@ -79,34 +79,42 @@ int main()
 			{
 				ASSERT_MESSAGE(numVerts + 1 < MAX_VERT_AMOUNT,"VERTEX AMOUNT EXCEEDED \n");
 				int matches = fscanf(fp, "%f %f %f\n", &currentVertex->x, &currentVertex->y, &currentVertex->z);
-				ASSERT_MESSAGE(matches != 3,"NUMBERS OF VERTS IS NOT CORRECT \n");
+				ASSERT_MESSAGE(matches == 3,"NUMBERS OF VERTS IS NOT CORRECT \n");
 				numVerts++;currentVertex++;
 			}
 			else if(!strcmp("vt",buff))	
 			{
 				ASSERT_MESSAGE(numTextureCoords + 1 < MAX_VERT_AMOUNT,"TEXTURECOORD AMOUNT EXCEEDED \n");
-				int matches = fscanf(fp, "%f %f \n", &currentTextureCoord->x, &currentTextureCoord->y);
-				ASSERT_MESSAGE(matches != 2,"NUMBERS OF TEXTURE COORDS IS NOT CORRECT \n");
+				int matches = fscanf(fp, "%f %f\n", &currentTextureCoord->x, &currentTextureCoord->y);
+				ASSERT_MESSAGE(matches == 2,"NUMBERS OF TEXTURE COORDS IS NOT CORRECT \n");
 				numTextureCoords++;currentTextureCoord++;
 			}
 			else if(!strcmp("vn",buff))	
 			{
 				ASSERT_MESSAGE(numNormals + 1 < MAX_VERT_AMOUNT,"NORMAL AMOUNT EXCEEDED \n");
 				int matches = fscanf(fp, "%f %f %f\n", &currentNormal->x, &currentNormal->y, &currentNormal->z);
-				ASSERT_MESSAGE(matches != 3,"NUMBERS OF NORMALS IS NOT CORRECT \n");
+				ASSERT_MESSAGE(matches == 3,"NUMBERS OF NORMALS IS NOT CORRECT \n");
 				numNormals++;currentNormal++;
 
 			}
 			else if(!strcmp("f",buff))	
 			{
-				ASSERT_MESSAGE(numIndexes + 1 < MAX_VERT_AMOUNT,"INDEX AMOUNT EXCEEDED \n");
-				int matches = fscanf(fp, "%d %d %d \n", &currentIndex->vertIndex,&currentIndex->texIndex,&currentIndex->normIndex);
-				ASSERT_MESSAGE(matches != 3,"NUMBERS OF NORMALS IS NOT CORRECT \n");
+				ASSERT_MESSAGE(numIndexes + 3 < MAX_VERT_AMOUNT,"INDEX AMOUNT EXCEEDED \n");
+				int matches = fscanf(fp, "%d/%d/%d", &currentIndex->vertIndex,&currentIndex->texIndex,&currentIndex->normIndex);
+				ASSERT_MESSAGE(matches == 3,"NUMBERS OF NORMALS IS NOT CORRECT \n");
+				numIndexes++;currentIndex++;
+
+				matches = fscanf(fp, "%d/%d/%d", &currentIndex->vertIndex,&currentIndex->texIndex,&currentIndex->normIndex);
+				ASSERT_MESSAGE(matches == 3,"NUMBERS OF NORMALS IS NOT CORRECT \n");
+				numIndexes++;currentIndex++;
+
+				matches = fscanf(fp, "%d/%d/%d\n", &currentIndex->vertIndex,&currentIndex->texIndex,&currentIndex->normIndex);
+				ASSERT_MESSAGE(matches == 3,"NUMBERS OF NORMALS IS NOT CORRECT \n");
 				numIndexes++;currentIndex++;
 			}
 			end = fscanf(fp, "%s", buff);
 		}
-		int* realIndexArray = (int*)calloc(MAX_VERT_AMOUNT,sizeof(int));
+		//int* realIndexArray = (int*)calloc(MAX_VERT_AMOUNT,sizeof(int));
 
 		int numRealIndexes = 0;
 		int currentMaxIndex = 0;
@@ -118,11 +126,11 @@ int main()
 		for(objIndex* i = indexBuffer; i < (indexBuffer + numIndexes); i++)
 		{
 			bool indexExists = false;
-			int* i2 = realIndexArray;
-			for(;i2 < (realIndexArray + numRealIndexes);i2++ )
+			int* i2 = indexBufferOutput; //1 1 1 , 2 ,  1 , 1 3
+			for(;i2 < (indexBufferOutput + numRealIndexes);i2++ ) // katso onko vastaavaa indeksiä kirjotettu out puttiin
 			{
 				objIndex* comp = &indexBuffer[*i2];
-				if(comp->vertIndex == i->vertIndex && comp->texIndex == i->texIndex &&  comp->normIndex == i->normIndex )
+				if(comp->vertIndex == i->vertIndex && comp->texIndex == i->texIndex &&  comp->normIndex == i->normIndex ) // vertaa outout index buff arvoa
 				{
 					indexExists = true;
 					break;
@@ -130,11 +138,12 @@ int main()
 			}
 			if(indexExists)
 			{
-				realIndexArray[numRealIndexes++] = *i2;
+
+				indexBufferOutput[numRealIndexes++] = *i2;
 			}
 			else
 			{
-				realIndexArray[numRealIndexes++] = currentMaxIndex;
+				indexBufferOutput[numRealIndexes++] = currentMaxIndex;
 				++currentMaxIndex;
 				*vertexIterator = vertexBuffer[i->vertIndex];
 				vertexIterator++;
@@ -151,6 +160,12 @@ int main()
 		aligment.numNormals = currentMaxIndex;
 		aligment.numTextureCoords = currentMaxIndex;
 		aligment.numIndexes = numRealIndexes;
+		for(int i2 = 0; i2 < currentMaxIndex;i2++)
+		{
+			printf("verts %f , %f , %f \n",vertexBufferOutput[i2].x,vertexBufferOutput[i2].y,vertexBufferOutput[i2].z);
+			printf("norms %f , %f , %f \n",normalBufferOutput[i2].x,normalBufferOutput[i2].y,normalBufferOutput[i2].z);
+			printf("texs %f , %f \n",textureCoordBufferOutput[i2].x,textureCoordBufferOutput[i2].y);
+		}
 		FILE* metaFile = fopen(metaDataPath,"wb");
 		defer {fclose(metaFile);};
 		fwrite(&aligment,sizeof(ModelAligment),1,metaFile);
@@ -159,5 +174,11 @@ int main()
 		fwrite(&textureCoordBufferOutput,sizeof(MATH::vec2),currentMaxIndex,metaFile);
 		fwrite(&indexBufferOutput,sizeof(int),numRealIndexes,metaFile);
 	}
+	//for(uint i = 0; i < modelNames.numobj; i++)
+	//{
+
+	//}
+#endif
+	printf("finished parsing models! \n");
 	return 0;
 }
