@@ -1,0 +1,11 @@
+{
+	"Pallo" : {
+		"metaDataPath" : "metadata/pallo.bin",
+		"rawPath" : "modelfiles/pallo.obj"
+	},
+	"Kuutio" : {
+		"metaDataPath" : "metadata/kuutio.bin",
+		"rawPath" : "modelfiles/kuutio.obj"
+	}
+
+}
