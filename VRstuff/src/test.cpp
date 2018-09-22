@@ -22,6 +22,8 @@ int main()
 	int foo[] = {10,11,12,13};
 	fwrite(foo,sizeof(int),4,fp);
 	fwrite(foo,sizeof(int),4,fp);
+	fwrite(foo,sizeof(int),4,fp);
+	fwrite(foo,sizeof(int),4,fp);
 	fclose(fp);
 	CONTAINER::MemoryBlock block;
 	CONTAINER::init_memory_block(&block,10000);
@@ -33,14 +35,14 @@ int main()
 #endif
 	//verts - normals - inds
 #if 1
-	void* rawMem = malloc(MAX_VERT_AMOUNT * (sizeof(MATH::vec3) * 2 * sizeof(objIndex) * sizeof(MATH::vec2)));
+	void* rawMem = malloc(MAX_VERT_AMOUNT * (sizeof(MATH::vec3) * 2 + sizeof(objIndex) + sizeof(MATH::vec2)));
 	defer {free(rawMem);};
 	MATH::vec3* vertexBuffer = (MATH::vec3*)rawMem;
 	MATH::vec3* normalBuffer = (MATH::vec3*)rawMem + MAX_VERT_AMOUNT;
 	MATH::vec2* textureCoordBuffer = (MATH::vec2*)((MATH::vec3*)rawMem + MAX_VERT_AMOUNT * 2);
 	objIndex* indexBuffer = (objIndex*)((MATH::vec2*)((MATH::vec3*)rawMem + MAX_VERT_AMOUNT * 2)+ MAX_VERT_AMOUNT);
 
-	void* outputMem = malloc(MAX_VERT_AMOUNT * (sizeof(MATH::vec3) * 2 * sizeof(int) * sizeof(MATH::vec2)));
+	void* outputMem = malloc(MAX_VERT_AMOUNT * (sizeof(MATH::vec3) * 2 + sizeof(int) + sizeof(MATH::vec2)));
 	defer {free(outputMem);};
 	MATH::vec3* vertexBufferOutput = (MATH::vec3*)outputMem;
 	MATH::vec3* normalBufferOutput = (MATH::vec3*)outputMem + MAX_VERT_AMOUNT;
