@@ -1,3 +1,15 @@
 {
-	"Name" : "kiitos"
+	"MainProg" : 
+	{
+		"VertexPath" : "shaders/skybox_vert.txt",
+		"FragmentPath" : "shaders/skybox_frag.txt.",
+		"VertFragPath" : "combinedShader",
+		"Uniforms" : 
+		{
+			"projection" : "MAT4" , 
+			"view" : "VEC4",
+			"skybox" : "SAMPLERCUBE"
+		}
+	}
 }
+

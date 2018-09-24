@@ -6,8 +6,8 @@ struct ModelData
 {
 	MATH::vec3*		vertexes = 0;
 	MATH::vec3*		normals = 0;
-	MATH::vec2*		normalCoords = 0;
-	int*			index = 0;
+	MATH::vec2*		texCoords = 0;
+	int*			indexes = 0;
 };
 
 struct ModelAligment
@@ -17,11 +17,6 @@ struct ModelAligment
 	int numNormals = 0;
 	int numIndexes = 0;
 };
-
-
-
-
-
 
 
 

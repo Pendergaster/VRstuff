@@ -1,3 +1,10 @@
 {
-	"textuuri" : "textuuri"
+	"MoonTexture" : 
+		{
+				"Path" : "assets/MoonTexture.png",
+				"Mipmap" : false,
+				"SRGB" : false,
+				"Wrap" : "Repeat"
+		}
+
 }

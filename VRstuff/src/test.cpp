@@ -171,10 +171,10 @@ int main()
 		FILE* metaFile = fopen(metaDataPath,"wb");
 		defer {fclose(metaFile);};
 		fwrite(&aligment,sizeof(ModelAligment),1,metaFile);
-		fwrite(&vertexBufferOutput,sizeof(MATH::vec3),currentMaxIndex,metaFile);
-		fwrite(&normalBufferOutput,sizeof(MATH::vec3),currentMaxIndex,metaFile);
-		fwrite(&textureCoordBufferOutput,sizeof(MATH::vec2),currentMaxIndex,metaFile);
-		fwrite(&indexBufferOutput,sizeof(int),numRealIndexes,metaFile);
+		fwrite(vertexBufferOutput,sizeof(MATH::vec3),currentMaxIndex,metaFile);
+		fwrite(normalBufferOutput,sizeof(MATH::vec3),currentMaxIndex,metaFile);
+		fwrite(textureCoordBufferOutput,sizeof(MATH::vec2),currentMaxIndex,metaFile);
+		fwrite(indexBufferOutput,sizeof(int),numRealIndexes,metaFile);
 	}
 	//for(uint i = 0; i < modelNames.numobj; i++)
 	//{

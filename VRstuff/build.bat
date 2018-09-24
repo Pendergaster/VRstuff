@@ -19,11 +19,12 @@ SETLOCAL
 
 
 IF /I "%1"=="build_engine" (
+		clear
 		SET BUILD_DIR=DebugBin
 		pushd DebugBin
 		set CLAGS= -Od
 		REM -LD -> buildaa .dll -MD jälkee
-		cl %CLAGS% -Z7 /EHsc /DEBUG ..\src\main.cpp  %includes% /MD /link %libs% -LIBPATH:../libraries 
+		cl %CLAGS% -nologo -Z7 -W4 -wd4201 /EHsc /DEBUG ..\src\main.cpp  %includes% /MD /link %libs% -LIBPATH:../libraries 
 		popd
 		)
 
@@ -44,6 +45,7 @@ IF /I "%1"=="build_game" (
 
 
 IF /I "%1"=="run" (
+		clear
 		chdir %~dp0
 		DebugBin\main.exe
 		popd
