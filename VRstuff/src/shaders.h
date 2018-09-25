@@ -89,6 +89,7 @@ static inline bool setup_uniform(UniformInfo* uniform,uint id)
 	int location = glGetUniformLocation(id,uniform->name);
 	if(location == -1) return false;
 	uniform->location = location;
+	return true;
 }
 static bool compile_program(ShaderProgram* prog,uint* shaderID, char* vertSource, char* fragSource)
 {
@@ -207,7 +208,7 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 					break;
 				}
 			}
-			ASSERT_MESSAGE(uniform.type != UniformType::INVALID,"UNIFORM %s NOT VALID TYPE IN %s",uniformName,currentName);
+			ASSERT_MESSAGE(uniformInfo.type != UniformType::INVALID,"UNIFORM %s NOT VALID TYPE IN %s",uniformName,currentName);
 			if(!setup_uniform(&uniformInfo,manager->shaderProgramIds[i])){
 				ABORT_MESSAGE("FAILED TO SET UP UNIFORM \n");
 			}

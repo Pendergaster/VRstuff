@@ -22,6 +22,7 @@
 // data for reloading and opengl state
 #include "textures.h"
 #include "meshes.h"
+#include "shaders.h"
 /*
    {
    "Name" :
@@ -35,6 +36,7 @@ metapath : "path",
 }
 */
 //TODO inlinaa tämä
+#if 0
 static void init_meshes()
 {
 
@@ -86,7 +88,7 @@ static void init_rendering_data(RenderingData* rend,
 	int numTextures = 0;
 	load_textures(&textureToken,rend->textureIds,rend->textureInfos,&numTextures,&rend->textureCache,textureNames,staticMem);
 }
-
+#endif
 #define STATIC_MEM_SIZE 10000
 #define WORKING_MEM_SIZE 100000
 int main()
@@ -107,9 +109,12 @@ int main()
 	CONTAINER::MemoryBlock workingMemory;
 	CONTAINER::init_memory_block(&workingMemory,WORKING_MEM_SIZE);
 
-
-	RenderingData rendData;
-	init_rendering_data(&rendData,&staticMemory,&workingMemory);
+	ShaderManager shaders;
+	MeshData meshes;
+	TextureData textures;
+	init_textures_from_metadata(&textures,&staticMemory);
+	fill_mesh_cache(&meshes,&workingMemory,&staticMemory);
+	load_shader_programs(&shaders,&workingMemory,&staticMemory);
 
 	while (!glfwWindowShouldClose(window)){
 		glfwPollEvents(); 
