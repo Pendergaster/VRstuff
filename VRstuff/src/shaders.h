@@ -100,7 +100,7 @@ static bool compile_program(ShaderProgram* prog,uint* shaderID, char* vertSource
 		return false;
 	}
 	uint fragSha = 0;
-	if(!SHADER::compile_shader(GL_VERTEX_SHADER,fragSource,&fragSha))
+	if(!SHADER::compile_shader(GL_FRAGMENT_SHADER,fragSource,&fragSha))
 	{
 		printf("Failed to create shader %s \n",prog->fragmentPath);
 		return false;
@@ -133,8 +133,8 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 	CONTAINER::init_table_with_block(&manager->shaderProgramCache,staticMem,names.numobj);
 	manager->shaderProgramIds = (uint*)CONTAINER::get_next_memory_block(*staticMem);
 	CONTAINER::increase_memory_block(staticMem,names.numobj + sizeof(uint));
-	manager->uniforms = (Uniform*)CONTAINER::get_next_memory_block(*staticMem);
-	CONTAINER::increase_memory_block(staticMem,MAX_UNIFORMS * sizeof(Uniform));
+	manager->shaderPrograms = (ShaderProgram*)CONTAINER::get_next_memory_block(*staticMem);
+	CONTAINER::increase_memory_block(staticMem,MAX_SYSTEM_UNIFORMS * sizeof(ShaderProgram));
 
 	manager->uniforms = (Uniform*)CONTAINER::get_next_memory_block(*staticMem);
 	CONTAINER::increase_memory_block(staticMem,MAX_UNIFORMS * sizeof(Uniform));
@@ -155,16 +155,16 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 		{
 			ASSERT_MESSAGE(vertPath && fragPath,"PATHS NOT DEFINED FOR SHADER :: %s \n",currentName);
 			vertFile = SHADER::load_shader(vertPath,workingMem);
-			vertFile = SHADER::load_shader(fragPath,workingMem);
+			fragFile = SHADER::load_shader(fragPath,workingMem);
 			currentShaderProg.type = ShaderType::Normal;
 
 			currentShaderProg.vertexPath = (char*)CONTAINER::get_next_memory_block(*staticMem);
-			strcpy(currentShaderProg.vertexPath , vertFile);
-			CONTAINER::increase_memory_block_aligned(workingMem,strlen(currentShaderProg.vertexPath) + 1);
+			strcpy(currentShaderProg.vertexPath , vertPath);
+			CONTAINER::increase_memory_block_aligned(staticMem,(int)strlen(currentShaderProg.vertexPath) + 1);
 
 			currentShaderProg.fragmentPath = (char*)CONTAINER::get_next_memory_block(*staticMem);
-			strcpy(currentShaderProg.fragmentPath , fragFile);
-			CONTAINER::increase_memory_block_aligned(workingMem,strlen(currentShaderProg.fragmentPath) + 1);
+			strcpy(currentShaderProg.fragmentPath , fragPath);
+			CONTAINER::increase_memory_block_aligned(staticMem,(int)strlen(currentShaderProg.fragmentPath) + 1);
 		}
 		else
 		{
@@ -175,7 +175,7 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 
 			currentShaderProg.combiedPath = (char*)CONTAINER::get_next_memory_block(*staticMem);
 			strcpy(currentShaderProg.combiedPath , combinedPath);
-			CONTAINER::increase_memory_block_aligned(workingMem,strlen(currentShaderProg.combiedPath) + 1);
+			CONTAINER::increase_memory_block_aligned(workingMem,(int)strlen(currentShaderProg.combiedPath) + 1);
 		}
 		if(!compile_program(&currentShaderProg,&manager->shaderProgramIds[i],vertFile,fragFile)){
 			ABORT_MESSAGE("FAILED TO COMPILE SHADER");
@@ -188,7 +188,7 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 		currentShaderProg.numUniforms = uniformNames.numobj;
 		currentShaderProg.uniforms = &manager->uniformInfos[manager->numSystemUniforms];
 		ASSERT_MESSAGE(manager->numSystemUniforms + currentShaderProg.numUniforms < MAX_SYSTEM_UNIFORMS,"SYSTEM UNIFORMS IS EXEEDED");
-		manager->numSystemUniforms += currentShaderProg.numTextures;
+		manager->numSystemUniforms += currentShaderProg.numUniforms;
 		for(uint i2 = 0; i2 < uniformNames.numobj;i2++)
 		{
 			char* uniformName = uniformNames.buffer[i2];
@@ -196,7 +196,7 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 			ASSERT_MESSAGE(uniformName,"UNIFORM IS NOT STRING TYPE %s in %s \n",uniformName,currentName);
 			UniformInfo uniformInfo;
 			uniformInfo.name = (char*)CONTAINER::get_next_memory_block(*staticMem);
-			CONTAINER::increase_memory_block_aligned(staticMem,strlen(uniformName) + 1);
+			CONTAINER::increase_memory_block_aligned(staticMem,(int)strlen(uniformName) + 1);
 			strcpy(uniformInfo.name,uniformName);
 			uniformInfo.hashedID = CONTAINER::hash(uniformInfo.name);
 			//TODO kipase location

@@ -1,4 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
+#define STB_IMAGE_IMPLEMENTATION
+#include<stb_image.h>
+#undef STB_IMAGE_IMPLEMENTATION
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,13 +19,11 @@
 #include<shader_utils.h>
 #include<Utils.h>
 #include<Containers.h>
-#define STB_IMAGE_IMPLEMENTATION
-#include<stb_image.h>
-#undef STB_IMAGE_IMPLEMENTATION
 // data for reloading and opengl state
 #include "textures.h"
 #include "meshes.h"
 #include "shaders.h"
+#include "glerrorcheck.h"
 /*
    {
    "Name" :
@@ -89,7 +90,7 @@ static void init_rendering_data(RenderingData* rend,
 	load_textures(&textureToken,rend->textureIds,rend->textureInfos,&numTextures,&rend->textureCache,textureNames,staticMem);
 }
 #endif
-#define STATIC_MEM_SIZE 10000
+#define STATIC_MEM_SIZE 100000
 #define WORKING_MEM_SIZE 100000
 int main()
 {

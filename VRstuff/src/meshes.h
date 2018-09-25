@@ -7,6 +7,7 @@
 #include <glad/glad.h>
 #include <ModelData.h>
 #include <file_system.h>
+#include "glerrorcheck.h"
 struct Mesh
 {
 	uint vertBuffer = 0;
@@ -41,7 +42,7 @@ static inline bool load_mesh(MeshInfo* info,Mesh* data,CONTAINER::MemoryBlock* w
 	modelData.vertexes = (MATH::vec3*)(aligment +1);
 	modelData.normals = modelData.vertexes + aligment->numVerts;
 	modelData.texCoords =(MATH::vec2*)(modelData.normals + aligment->numNormals);
-	modelData.indexes = (int*)(modelData.indexes + aligment->numIndexes);
+	modelData.indexes = (int*)(modelData.texCoords + aligment->numTextureCoords);
 	info->numIndexes = aligment->numIndexes;
 	info->numVerts = aligment->numVerts;
 
@@ -76,7 +77,7 @@ static inline bool load_mesh(MeshInfo* info,Mesh* data,CONTAINER::MemoryBlock* w
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data->indexBuffer);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, aligment->numIndexes * sizeof(uint), nullptr, GL_DYNAMIC_DRAW);
 	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, aligment->numIndexes * sizeof(uint), modelData.indexes);
-
+    glCheckError();
 	return true;
 }
 
@@ -86,6 +87,7 @@ static void fill_mesh_cache(MeshData* meshData,CONTAINER::MemoryBlock* workingMe
 	JsonToken token;
 	CONTAINER::DynamicArray<char*> names;
 	CONTAINER::init_dynamic_array(&names);
+    token.ParseFile("importdata/meshdata.json");
 	defer{CONTAINER::dispose_dynamic_array(&names);};
 	token.GetKeys(&names);
 	//int num = 0;
@@ -103,13 +105,13 @@ static void fill_mesh_cache(MeshData* meshData,CONTAINER::MemoryBlock* workingMe
 		char* currentName = names.buffer[i];
 		char* tempName = (char*)CONTAINER::get_next_memory_block(*staticAllocator);
 		strcpy(tempName,currentName);
-		CONTAINER::increase_memory_block_aligned(staticAllocator,strlen(tempName)+1);
+		CONTAINER::increase_memory_block_aligned(staticAllocator,(int)strlen(tempName)+1);
 		JsonToken* meshToken = token[currentName].GetToken();
 		ASSERT_MESSAGE(meshToken,"MESH TOKEN NOT VALID %s \n",currentName);
 		char* metaDataPath = (*meshToken)["metaDataPath"].GetString();
 		printf("metaDataPath path for %s is %s \n",currentName,metaDataPath);
 		MeshInfo info;
-		info.name = currentName;
+		info.name = tempName;
 		info.path = metaDataPath;
 
 		Mesh data;

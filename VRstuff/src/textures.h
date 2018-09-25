@@ -6,6 +6,7 @@ typedef int TextureID;
 #include <Utils.h>
 #include<stb_image.h>
 #include <glad/glad.h>
+#include "glerrorcheck.h"
 #define WRAP_MODES(MODE)\
 	MODE(Repeat)\
 MODE(MirroredRepeat)\
@@ -48,11 +49,11 @@ static inline bool load_texture(TextureInfo* info,uint id)
 	TextureInfo temp = *info;
 	unsigned char* data = stbi_load(temp.path, &temp.widht, &temp.height, &temp.channels,0);
 	//ASSERT_MESSAGE(data,"FAILED TO LOAD TEXTURE :: %s \n",temp.name);
-	if (!data) return true;
+	if (!data) return false;
 	defer {stbi_image_free(data);};
 
 	glBindTexture(GL_TEXTURE_2D,id);
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,temp.wrapMode);
+	//glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,temp.wrapMode);
 	GLenum mode = 0;
 	if(temp.wrapMode == WrapMode::ClampToBorder){
 		mode = GL_CLAMP_TO_BORDER;
@@ -82,7 +83,7 @@ static inline bool load_texture(TextureInfo* info,uint id)
 		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	*info = temp;
-	return false;
+	return true;
 }
 //TODO define stb malloc ja realloc ja free
 //TODO testaa json true ja false
@@ -114,23 +115,26 @@ static void init_textures_from_metadata(TextureData* textureData,
 		char* currentName = names.buffer[i];
 		JsonToken* currentToken = token[currentName].GetToken();
 		ASSERT_MESSAGE(currentToken,"TEXTURE DATA IS NOT VALID :: %s \n",currentName);
-		char* path = (*currentToken)["path"].GetString();
+		char* path = (*currentToken)["Path"].GetString();
 		ASSERT_MESSAGE(path,"TEXTURE PATH IS NOT VALID :: %s \n",currentName);
 		TextureInfo info;
+        info.path = (char*)CONTAINER::get_next_memory_block(*staticMem);
+		strcpy(info.path,path);
+		CONTAINER::increase_memory_block_aligned(staticMem,(int)strlen(info.path)+1);
 		//info.channels = channels;
 		//info.height = height;
 		//info.widht = widht;
 		info.name = (char*)CONTAINER::get_next_memory_block(*staticMem);
 		strcpy(info.name,currentName);
-		CONTAINER::increase_memory_block_aligned(staticMem,strlen(info.name)+1);
+		CONTAINER::increase_memory_block_aligned(staticMem,(int)strlen(info.name)+1);
 		JValueHandle val = (*currentToken)["Mipmap"];
 		ASSERT_MESSAGE(val.IsValid(),"MIPMAP IS NOT DEFINED :: %s \n",currentName);
 		info.mipmap = val.GetBool();
-		val = (*currentToken)["SRGP"];
+		val = (*currentToken)["SRGB"];
 		ASSERT_MESSAGE(val.IsValid(),"MIPMAP IS NOT DEFINED :: %s \n",currentName);
 		info.srgb = val.GetBool();
 
-		char* wrapMode = token["Wrap"].GetString();
+		char* wrapMode = (*currentToken)["Wrap"].GetString();
 		ASSERT_MESSAGE(wrapMode,"WRAP MODE NOT DEFINED FOR %s",info.name);
 		int i2 = 0;
 		for(; i2 < WrapMode::MaxModes; i2++)

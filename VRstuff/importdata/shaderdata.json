@@ -1,14 +1,11 @@
 {
 	"MainProg" : 
 	{
-		"VertexPath" : "shaders/skybox_vert.txt",
-		"FragmentPath" : "shaders/skybox_frag.txt.",
-		"VertFragPath" : "combinedShader",
+		"VertexPath" : "shaders/vert.glsl",
+		"FragmentPath" : "shaders/frag.glsl",
 		"Uniforms" : 
 		{
-			"projection" : "MAT4" , 
-			"view" : "VEC4",
-			"skybox" : "SAMPLERCUBE"
+			"model" : "MAT4" , 
 		}
 	}
 }
