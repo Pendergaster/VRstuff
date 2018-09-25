@@ -5,8 +5,7 @@
 		"FragmentPath" : "shaders/frag.glsl",
 		"Uniforms" : 
 		{
-			"model" : "MAT4" , 
+			"model" : "MAT4" 
 		}
 	}
 }
-

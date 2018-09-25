@@ -1,6 +1,4 @@
 #version 330 core
-
-
 in DATA
 {
 	vec2 uv;
