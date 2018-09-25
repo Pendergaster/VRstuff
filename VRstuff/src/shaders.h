@@ -83,6 +83,36 @@ struct ShaderManager
 };
 #define MAX_UNIFORMS 1000
 #define MAX_SYSTEM_UNIFORMS 100
+
+static inline bool setup_uniform(UniformInfo* uniform,uint id)
+{
+	int location = glGetUniformLocation(id,uniform->name);
+	if(location == -1) return false;
+	uniform->location = location;
+}
+static bool compile_program(ShaderProgram* prog,uint* shaderID, char* vertSource, char* fragSource)
+{
+	uint vertSha = 0;
+	if(!SHADER::compile_shader(GL_VERTEX_SHADER,vertSource,&vertSha))
+	{
+		printf("Failed to create shader %s \n",prog->vertexPath);
+		return false;
+	}
+	uint fragSha = 0;
+	if(!SHADER::compile_shader(GL_VERTEX_SHADER,fragSource,&fragSha))
+	{
+		printf("Failed to create shader %s \n",prog->fragmentPath);
+		return false;
+	}
+	*shaderID = glCreateProgram();;
+	glAttachShader(*shaderID,vertSha);
+	glAttachShader(*shaderID,fragSha);
+	if(!SHADER::link_shader(*shaderID,vertSha,fragSha)){
+		return false;
+	}
+	return true;
+
+}
 static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* workingMem,CONTAINER::MemoryBlock* staticMem)
 	//	ShaderProgram* programs,uint* shaderIds,int* numIds,
 	//	CONTAINER::DynamicArray<char*> names,CONTAINER::StringTable<int> shaderTable,
@@ -146,6 +176,9 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 			strcpy(currentShaderProg.combiedPath , combinedPath);
 			CONTAINER::increase_memory_block_aligned(workingMem,strlen(currentShaderProg.combiedPath) + 1);
 		}
+		if(!compile_program(&currentShaderProg,&manager->shaderProgramIds[i],vertFile,fragFile)){
+			ABORT_MESSAGE("FAILED TO COMPILE SHADER");
+		}
 		//currentShaderProg
 		JsonToken* uniformToken = (*currentToken)["Uniforms"].GetToken();
 		ASSERT_MESSAGE(uniformToken,"SHADER HAS NOT DEFINED UNIFORMS :: %s \n",currentName);
@@ -175,6 +208,9 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 				}
 			}
 			ASSERT_MESSAGE(uniform.type != UniformType::INVALID,"UNIFORM %s NOT VALID TYPE IN %s",uniformName,currentName);
+			if(!setup_uniform(&uniformInfo,manager->shaderProgramIds[i])){
+				ABORT_MESSAGE("FAILED TO SET UP UNIFORM \n");
+			}
 			currentShaderProg.uniforms[i2] = uniformInfo;
 		}
 		manager->shaderPrograms[i] = currentShaderProg;
