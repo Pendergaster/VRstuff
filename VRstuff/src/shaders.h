@@ -69,13 +69,15 @@ const char* RENDERGORUP_NAMES[] =
 struct ShaderProgram
 {
 	// used for setting up material
-	uint 			numTextures = 0;
+	//uint 			numTextures = 0;
 	// set before rendering
 	uint 			numUniforms = 0;
 	//uniforms info for setting material for rendering
 	UniformInfo* 	uniforms;
 	ShaderType      type = ShaderType::Normal;
 	RenderGroup     group = RenderGroup::INVALID;
+	//TODO set this elsewhere?
+	uint			modelUniformPosition;
 	union{
 		struct{
 			char* 			vertexPath;
@@ -209,7 +211,13 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 		}
 		ASSERT_MESSAGE(currentShaderProg.group != RenderGroup::INVALID,
 				"SHADER RENDER GROUP NOT DEFINED CORRECTLY :: %s \n",currentName);
-
+		if(currentShaderProg.group == RenderGroup::Model)
+		{
+			int location = glGetUniformLocation(manager->shaderProgramIds[i],"model");
+			ASSERT_MESSAGE(location != -1,
+					"MODEL MATRIX COULD NOT BE FOUND IN :: %s \n",currentName);
+			currentShaderProg.modelUniformPosition = location;
+		}
 
 		//currentShaderProg
 		JsonToken* uniformToken = (*currentToken)["Uniforms"].GetToken();

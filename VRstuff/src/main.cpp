@@ -32,11 +32,11 @@
    renderings 
 
    for render target 
-   for pass   // depth, blending?
-   for shader prog
-   for material 
-   for mesh
-   for object
+		for pass   // depth, blending?
+			for shader prog
+				for material 
+					for mesh
+						for object
    */
 
 int main()
@@ -80,13 +80,19 @@ int main()
 	glfwTerminate();
 	return 0;
 }
-struct Renderer
+struct SystemUniforms
 {
 	uint matrixUniformBufferObject;
-	uint matrixUniformIndex;
+	//uint matrixUniformIndex;
+};
+
+struct Camera 
+{
+	MATH::mat4 view;
+	MATH::mat4 projection;
 };
 #define MATRIXES_UNIFORM_LOC 0
-void init_renderer(Renderer* rend,ShaderProgram* programs,
+void init_systemuniforms(SystemUniforms* rend,ShaderProgram* programs,
 		uint* renderIds,uint numPrograms)
 {
 	uint* idIter = renderIds;
@@ -103,12 +109,82 @@ void init_renderer(Renderer* rend,ShaderProgram* programs,
 			NULL, GL_STATIC_DRAW); 
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-	glBindBufferRange(GL_UNIFORM_BUFFER, MATRIXES_UNIFORM_LOC, rend->matrixUniformBufferObject
-			, 0, 2 * sizeof(MATH::mat4)); // bind to spot 0
+	glBindBufferRange(GL_UNIFORM_BUFFER, MATRIXES_UNIFORM_LOC, 
+			rend->matrixUniformBufferObject, 0, 2 * sizeof(MATH::mat4)); 
 
 	//glUniformBlockBinding(defaultRendererID, matrixIndex, 2);
 }
-void render()
-{
 
+struct Material
+{
+	uint shaderProgram;
+	uint materialIndex;
+	uint numMaterials;
+};
+Material create_new_material(ShaderManager* manager,const char* name)
+{
+	int* shaderIndex = CONTAINER::access_table(manager->shaderProgramCache,name);
+	ASSERT_MESSAGE(shaderIndex,"SHADERPROGRAM DOES NOT EXIST :: %s \n",name);
+	ShaderProgram* program = &manager->shaderPrograms[*shaderIndex];
+	Material ret;
+	ret.materialIndex =  manager->numUniforms;
+	manager->numUniforms += program->numUniforms;
+	ret.numMaterials = program->numUniforms;
+	ret.shaderProgram = *shaderIndex;
+	return ret;
 }
+static inline Uniform* get_uniform(ShaderManager* manager,
+		Material* mat,int index)
+{
+	Uniform* m = &manager->uniforms[mat->materialIndex + index];
+	return m;
+}
+static inline void set_material_vec4(ShaderManager* manager,
+		Material* mat,int index, const MATH::vec4& vec)
+{
+	Uniform* uni = get_uniform(manager,mat,index);
+	ASSERT_MESSAGE(uni->type == UniformType::VEC4,"UNIFORM IS NOT CORRECT TYPE\n");
+	uni->_vec4 = vec;
+}
+static inline void set_material_float(ShaderManager* manager,
+		Material* mat,int index, const float val)
+{
+	Uniform* uni = get_uniform(manager,mat,index);
+	ASSERT_MESSAGE(uni->type == UniformType::FLOATTYPE,"UNIFORM IS NOT CORRECT TYPE\n");
+	uni->_float = val;
+}
+static inline void set_material_int(ShaderManager* manager,
+		Material* mat,int index, const int val)
+{
+	Uniform* uni = get_uniform(manager,mat,index);
+	ASSERT_MESSAGE(uni->type == UniformType::INTTYPE,"UNIFORM IS NOT CORRECT TYPE\n");
+	uni->_int = val;
+}
+//TODO textuuri set BOE BOE 
+//TODO camera 
+struct RenderData
+{
+	Material			material;
+	uint				meshID = 0;
+	MATH::vec3			pos;
+	MATH::quaternion	orientation;
+};
+void render(RenderData* renderables,int numRenderables,
+		MeshData* meshes,ShaderManager* shaders ,
+		const SystemUniforms* uniforms,const Camera* camera)
+{
+	glBindBuffer(GL_UNIFORM_BUFFER,uniforms->matrixUniformBufferObject);
+	glBufferSubData(GL_UNIFORM_BUFFER,0,sizeof(MATH::mat4) * 2, (void*)camera);
+	glBindBuffer(GL_UNIFORM_BUFFER,0);
+
+	for(RenderData* i = renderables; i < renderables + numRenderables; i++)
+	{
+		ShaderProgram* prog = &shaders->shaderPrograms[i->material.shaderProgram];
+		uint glID = shaders->shaderProgramIds[i->material.shaderProgram];
+		glUseProgram(glID);
+		MATH::mat4 model; // TODO SET THIS 
+		//SHADER::set_mat4_name();
+	
+	}
+}
+

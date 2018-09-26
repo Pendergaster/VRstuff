@@ -20,3 +20,7 @@ void main()
 	vs_out.normal = normal;
 	vs_out.WorldSpacePos = vec3(model * vec4(vertexPosition, 1.0));
 }
+
+
+
+
