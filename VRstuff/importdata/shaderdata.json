@@ -3,6 +3,7 @@
 	{
 		"VertexPath" : "shaders/vert.glsl",
 		"FragmentPath" : "shaders/frag.glsl",
+		"RenderGroup" : "Model",
 		"Uniforms" : 
 		{
 			"model" : "MAT4" 

@@ -16,6 +16,10 @@
 	MODE(SAMPLER2D)\
 	MODE(SAMPLERCUBE)\
 
+#define RENDERGROUPS(MODE)\
+	MODE(INVALID)\
+	MODE(Model)\
+
 enum UniformType : int
 {
 	UNIFORMTYPES(GENERATE_ENUM)
@@ -51,6 +55,17 @@ enum class ShaderType : int
 	Normal, // vert and frag in different files
 	Combined, // vert and frag in same file
 };
+enum class RenderGroup : int
+{
+	RENDERGROUPS(GENERATE_ENUM)
+		MaxTypes
+};
+
+const char* RENDERGORUP_NAMES[] = 
+{
+	RENDERGROUPS(GENERATE_STRING)
+};
+
 struct ShaderProgram
 {
 	// used for setting up material
@@ -60,6 +75,7 @@ struct ShaderProgram
 	//uniforms info for setting material for rendering
 	UniformInfo* 	uniforms;
 	ShaderType      type = ShaderType::Normal;
+	RenderGroup     group = RenderGroup::INVALID;
 	union{
 		struct{
 			char* 			vertexPath;
@@ -180,6 +196,21 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 		if(!compile_program(&currentShaderProg,&manager->shaderProgramIds[i],vertFile,fragFile)){
 			ABORT_MESSAGE("FAILED TO COMPILE SHADER");
 		}
+		char* renderGroup = (*currentToken)["RenderGroup"].GetString();
+		ASSERT_MESSAGE(renderGroup,"CURRENT SHADER HAS NOT DEFINED RENDERGROUP :: %s \n",
+				currentName);
+		for(int i3 = 0; i3 < (int)RenderGroup::MaxTypes; i3++)
+		{
+			if(!strcmp(renderGroup,RENDERGORUP_NAMES[i3]))		
+			{
+				currentShaderProg.group = (RenderGroup)i3;
+				break;
+			}
+		}
+		ASSERT_MESSAGE(currentShaderProg.group != RenderGroup::INVALID,
+				"SHADER RENDER GROUP NOT DEFINED CORRECTLY :: %s \n",currentName);
+
+
 		//currentShaderProg
 		JsonToken* uniformToken = (*currentToken)["Uniforms"].GetToken();
 		ASSERT_MESSAGE(uniformToken,"SHADER HAS NOT DEFINED UNIFORMS :: %s \n",currentName);

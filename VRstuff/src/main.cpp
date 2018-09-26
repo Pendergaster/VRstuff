@@ -24,77 +24,27 @@
 #include "meshes.h"
 #include "shaders.h"
 #include "glerrorcheck.h"
-/*
-   {
-   "Name" :
-   { 
-rawpath : "path",
-metapath : "path",
-},
-"Name" : "path",
-"Name" : "path",
-"Name" : "path",
-}
-*/
-//TODO inlinaa tämä
-#if 0
-static void init_meshes()
-{
-
-
-
-}
-static void init_rendering_data(RenderingData* rend,
-		CONTAINER::MemoryBlock* staticMem,CONTAINER::MemoryBlock* workingMem)
-{
-	JsonToken meshToken;
-	JsonToken shaderToken;
-	JsonToken textureToken;
-	CONTAINER::DynamicArray<char*> meshNames;
-	CONTAINER::init_dynamic_array(&meshNames);
-	defer {CONTAINER::dispose_dynamic_array(&meshNames);};
-	CONTAINER::DynamicArray<char*> shaderNames;
-	CONTAINER::init_dynamic_array(&shaderNames);
-	defer {CONTAINER::dispose_dynamic_array(&shaderNames);};
-	CONTAINER::DynamicArray<char*> textureNames;
-	CONTAINER::init_dynamic_array(&textureNames);
-	defer {CONTAINER::dispose_dynamic_array(&textureNames);};
-
-	meshToken.ParseFile("importdata/meshdata.json");
-	shaderToken.ParseFile("importdata/shaderdata.json");
-	textureToken.ParseFile("importdata/textureToken.json");
-
-	meshToken.GetKeys(&meshNames);
-	shaderToken.GetKeys(&shaderNames);
-	textureToken.GetKeys(&textureNames);
-
-	CONTAINER::init_table_with_block<int>(&rend->meshCache,
-			staticMem,meshNames.numobj);
-	CONTAINER::init_table_with_block<int>(&rend->shaderProgramCache,
-			staticMem,shaderNames.numobj);
-	CONTAINER::init_table_with_block<int>(&rend->textureCache,
-			staticMem,textureNames.numobj);
-	rend->meshArray = (Mesh*)CONTAINER::get_next_memory_block(*staticMem);
-	CONTAINER::increase_memory_block(staticMem,sizeof(Mesh) * meshNames.numobj);
-	rend->textureIds = (uint*)CONTAINER::get_next_memory_block(*staticMem);
-	CONTAINER::increase_memory_block(staticMem,sizeof(uint) * textureNames.numobj);
-	rend->textureInfos = (TextureInfo*)CONTAINER::get_next_memory_block(*staticMem);
-	CONTAINER::increase_memory_block(staticMem,sizeof(TextureInfo) * textureNames.numobj);
-
-
-	int numMeshes = 0;
-	fill_mesh_cache(
-			rend->meshArray,&numMeshes, &rend->meshCache,
-			&meshToken,&meshNames,workingMem,staticMem);
-	int numTextures = 0;
-	load_textures(&textureToken,rend->textureIds,rend->textureInfos,&numTextures,&rend->textureCache,textureNames,staticMem);
-}
-#endif
+#include "timer.h"
 #define STATIC_MEM_SIZE 100000
 #define WORKING_MEM_SIZE 100000
+
+/*
+   renderings 
+
+   for render target 
+   for pass   // depth, blending?
+   for shader prog
+   for material 
+   for mesh
+   for object
+   */
+
 int main()
 {
 	printf("hello! \n");
+	PROFILER::TimerCache timers;
+	PROFILER::init_timers(&timers);
+	PROFILER::start_timer(PROFILER::TimerID::Start,&timers);
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -117,12 +67,48 @@ int main()
 	fill_mesh_cache(&meshes,&workingMemory,&staticMemory);
 	load_shader_programs(&shaders,&workingMemory,&staticMemory);
 
+	PROFILER::end_timer(PROFILER::TimerID::Start,&timers);
 	while (!glfwWindowShouldClose(window)){
+		PROFILER::start_timer(PROFILER::TimerID::Iteration,&timers);
 		glfwPollEvents(); 
 		glClearColor(1.f, 0.f, 0.f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 		glfwSwapBuffers(window);
+		PROFILER::end_timer(PROFILER::TimerID::Iteration,&timers);
 	}
+	PROFILER::show_timers(&timers);
 	glfwTerminate();
 	return 0;
+}
+struct Renderer
+{
+	uint matrixUniformBufferObject;
+	uint matrixUniformIndex;
+};
+#define MATRIXES_UNIFORM_LOC 0
+void init_renderer(Renderer* rend,ShaderProgram* programs,
+		uint* renderIds,uint numPrograms)
+{
+	uint* idIter = renderIds;
+	for(ShaderProgram* i = programs; i < programs + numPrograms; i++,idIter++)
+	{
+		if(i->group != RenderGroup::Model) continue;
+		uint matrixIndex = glGetUniformBlockIndex(*idIter, "MatrixBlock");   
+		glUniformBlockBinding(*idIter, matrixIndex, MATRIXES_UNIFORM_LOC);
+	}
+		
+	glGenBuffers(1, &rend->matrixUniformBufferObject);
+	glBindBuffer(GL_UNIFORM_BUFFER, rend->matrixUniformBufferObject);
+	glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(MATH::mat4),
+			NULL, GL_STATIC_DRAW); 
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+	glBindBufferRange(GL_UNIFORM_BUFFER, MATRIXES_UNIFORM_LOC, rend->matrixUniformBufferObject
+			, 0, 2 * sizeof(MATH::mat4)); // bind to spot 0
+
+	//glUniformBlockBinding(defaultRendererID, matrixIndex, 2);
+}
+void render()
+{
+
 }
