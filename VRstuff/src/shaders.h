@@ -44,7 +44,11 @@ struct Uniform
 	union 
 	{
 		int 				_int;	
-		uint				_texId;	
+		struct
+		{
+			uint				_textureCacheId;	
+			uint				_textureGLloc;	
+		};
 		float 				_float;
 		MATH::vec4			_vec4;
 		MATH::mat4 			_mat4;
@@ -247,7 +251,8 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 					break;
 				}
 			}
-			ASSERT_MESSAGE(uniformInfo.type != UniformType::INVALID,"UNIFORM %s NOT VALID TYPE IN %s",uniformName,currentName);
+			ASSERT_MESSAGE(uniformInfo.type != UniformType::INVALID,
+					"UNIFORM %s NOT VALID TYPE IN %s",uniformName,currentName);
 			if(!setup_uniform(&uniformInfo,manager->shaderProgramIds[i])){
 				ABORT_MESSAGE("FAILED TO SET UP UNIFORM \n");
 			}
