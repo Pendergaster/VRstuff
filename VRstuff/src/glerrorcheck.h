@@ -1,5 +1,7 @@
 #ifndef PAKKI_GLERROR
 #define PAKKI_GLERROR
+#include <Utils.h>
+#include <glad/glad.h>
 GLenum glCheckError_(const char *file, int line)
 {
 	GLenum errorCode;

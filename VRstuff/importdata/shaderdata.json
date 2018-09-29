@@ -6,7 +6,7 @@
 		"RenderGroup" : "Model",
 		"Uniforms" : 
 		{
-			"model" : "MAT4" 
+			"tex" : "SAMPLER2D" 
 		}
 	}
 }

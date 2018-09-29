@@ -7,6 +7,7 @@
 #include <glad/glad.h>
 #include <ModelData.h>
 #include <shader_utils.h>
+#include "glerrorcheck.h"
 #define UNIFORMTYPES(MODE)\
 	MODE(INVALID)\
 	MODE(INTTYPE)\
@@ -34,7 +35,10 @@ const char* UNIFORM_TYPE_NAMES[] =
 struct UniformInfo
 {
 	int 	type = UniformType::INVALID;
-	int 	location = 0;
+	union{
+		int 	location;
+		int		glTexLocation;
+	};
 	char* 	name = NULL;
 	int 	hashedID = 0;	
 };
@@ -44,11 +48,7 @@ struct Uniform
 	union 
 	{
 		int 				_int;	
-		struct
-		{
-			uint				_textureCacheId;	
-			uint				_textureGLloc;	
-		};
+		uint				_textureCacheId;	
 		float 				_float;
 		MATH::vec4			_vec4;
 		MATH::mat4 			_mat4;
@@ -73,7 +73,7 @@ const char* RENDERGORUP_NAMES[] =
 struct ShaderProgram
 {
 	// used for setting up material
-	//uint 			numTextures = 0;
+	uint 			numTextures = 0;
 	// set before rendering
 	uint 			numUniforms = 0;
 	//uniforms info for setting material for rendering
@@ -113,8 +113,19 @@ static inline bool setup_uniform(UniformInfo* uniform,uint id)
 	uniform->location = location;
 	return true;
 }
+static inline bool setup_uniform_sampler2D(UniformInfo* uniform,uint id,int numTex)
+{
+	//printf("%s\n",uniform->name);
+	int location = glGetUniformLocation(id,uniform->name);
+	if(location == -1) return false;
+	uniform->glTexLocation = numTex;
+	glUniform1i(location, numTex); 
+	return true;
+}
 static bool compile_program(ShaderProgram* prog,uint* shaderID, char* vertSource, char* fragSource)
 {
+
+	glCheckError();
 	uint vertSha = 0;
 	if(!SHADER::compile_shader(GL_VERTEX_SHADER,vertSource,&vertSha))
 	{
@@ -128,11 +139,12 @@ static bool compile_program(ShaderProgram* prog,uint* shaderID, char* vertSource
 		return false;
 	}
 	*shaderID = glCreateProgram();;
-	glAttachShader(*shaderID,vertSha);
-	glAttachShader(*shaderID,fragSha);
+	//glAttachShader(*shaderID,vertSha);
+	//glAttachShader(*shaderID,fragSha);
 	if(!SHADER::link_shader(*shaderID,vertSha,fragSha)){
 		return false;
 	}
+	glCheckError();
 	return true;
 
 }
@@ -168,6 +180,8 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 	for(uint i = 0 ; i < names.numobj; i++)
 	{
 		char* currentName = names.buffer[i];
+		CONTAINER::insert_to_table<int>(
+				&manager->shaderProgramCache,currentName,i);
 		ShaderProgram currentShaderProg;
 		JsonToken* currentToken = token[currentName].GetToken();
 		char* vertPath = (*currentToken)["VertexPath"].GetString();
@@ -187,6 +201,7 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 			currentShaderProg.fragmentPath = (char*)CONTAINER::get_next_memory_block(*staticMem);
 			strcpy(currentShaderProg.fragmentPath , fragPath);
 			CONTAINER::increase_memory_block_aligned(staticMem,(int)strlen(currentShaderProg.fragmentPath) + 1);
+			printf("--- \n %s ----- \n %s \n ----- \n",vertFile,fragFile);
 		}
 		else
 		{
@@ -202,6 +217,7 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 		if(!compile_program(&currentShaderProg,&manager->shaderProgramIds[i],vertFile,fragFile)){
 			ABORT_MESSAGE("FAILED TO COMPILE SHADER");
 		}
+		glUseProgram(manager->shaderProgramIds[i]);
 		char* renderGroup = (*currentToken)["RenderGroup"].GetString();
 		ASSERT_MESSAGE(renderGroup,"CURRENT SHADER HAS NOT DEFINED RENDERGROUP :: %s \n",
 				currentName);
@@ -218,7 +234,7 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 		if(currentShaderProg.group == RenderGroup::Model)
 		{
 			int location = glGetUniformLocation(manager->shaderProgramIds[i],"model");
-			ASSERT_MESSAGE(location != -1,
+			ASSERT_MESSAGE(location != GL_INVALID_VALUE,
 					"MODEL MATRIX COULD NOT BE FOUND IN :: %s \n",currentName);
 			currentShaderProg.modelUniformPosition = location;
 		}
@@ -253,13 +269,23 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 			}
 			ASSERT_MESSAGE(uniformInfo.type != UniformType::INVALID,
 					"UNIFORM %s NOT VALID TYPE IN %s",uniformName,currentName);
-			if(!setup_uniform(&uniformInfo,manager->shaderProgramIds[i])){
+			if (uniformInfo.type == UniformType::SAMPLER2D)
+			{
+				if(!setup_uniform_sampler2D(&uniformInfo,
+							manager->shaderProgramIds[i],currentShaderProg.numTextures++))
+				{
+					ABORT_MESSAGE("FAILED TO SET UP UNIFORM \n");
+				}
+			}
+			else if(!setup_uniform(&uniformInfo,manager->shaderProgramIds[i]))
+			{
 				ABORT_MESSAGE("FAILED TO SET UP UNIFORM \n");
 			}
 			currentShaderProg.uniforms[i2] = uniformInfo;
 		}
 		manager->shaderPrograms[i] = currentShaderProg;
 		*workingMem = prevMemState;
+		glUseProgram(0);
 	}
 }
 

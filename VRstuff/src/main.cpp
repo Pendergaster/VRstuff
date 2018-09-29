@@ -15,6 +15,7 @@
 #define SCREENWIDHT 800
 #define SCREENHEIGHT 1000
 #include<JsonToken.h>
+#include <MathUtil.h>
 #include<ModelData.h>
 #include<shader_utils.h>
 #include<Utils.h>
@@ -38,58 +39,85 @@
    for mesh
    for object
    */
-
-int main()
+static MATH::vec2 mousePos(0,0);
+void cursor_position_callback(GLFWwindow*, double xpos, double ypos)
 {
-	printf("hello! \n");
-	PROFILER::TimerCache timers;
-	PROFILER::init_timers(&timers);
-	PROFILER::start_timer(PROFILER::TimerID::Start,&timers);
-	glfwInit();
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	glfwWindowHint(GLFW_SAMPLES, 4);
-	GLFWwindow* window = glfwCreateWindow(SCREENWIDHT,SCREENHEIGHT, "Tabula Rasa", NULL, NULL);
-	ASSERT_MESSAGE(window,"FAILED TO INIT WINDOW \n"); // failed to create window
-	glfwMakeContextCurrent(window);
-	ASSERT_MESSAGE((gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)),"FAILED TO INIT GLAD");
+	mousePos.x = (float)xpos;
+	mousePos.y = (float)ypos;
+}
 
-	CONTAINER::MemoryBlock staticMemory;
-	CONTAINER::init_memory_block(&staticMemory,STATIC_MEM_SIZE);
-	CONTAINER::MemoryBlock workingMemory;
-	CONTAINER::init_memory_block(&workingMemory,WORKING_MEM_SIZE);
+static void error_callback(int e, const char *d)
+{
+	printf("Error %d: %s\n", e, d);
+}
 
-	ShaderManager shaders;
-	MeshData meshes;
-	TextureData textures;
-	init_textures_from_metadata(&textures,&staticMemory);
-	fill_mesh_cache(&meshes,&workingMemory,&staticMemory);
-	load_shader_programs(&shaders,&workingMemory,&staticMemory);
+struct Camera 
+{
+	MATH::mat4	view;
+	MATH::mat4	projection;
+	MATH::vec3	position;
+	MATH::vec3	direction;
+	MATH::vec3	up;
+	float		yaw;
+	float		pitch;
+};
+static const MATH::vec3 worldUp(0.f,1.f,0.f);
+static void init_camera(Camera* cam)
+{
+	MATH::identify(&cam->view);
+	MATH::vec3 temp;
+	cam->position = MATH::vec3(0.f,0.f,3.f);
+	MATH::vec3 target(0.f,0.f,0.f);
+	cam->direction = MATH::vec3(0.f,0.f,-1.f);
 
-	PROFILER::end_timer(PROFILER::TimerID::Start,&timers);
-	while (!glfwWindowShouldClose(window)){
-		PROFILER::start_timer(PROFILER::TimerID::Iteration,&timers);
-		glfwPollEvents(); 
-		glClearColor(1.f, 0.f, 0.f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
-		glfwSwapBuffers(window);
-		PROFILER::end_timer(PROFILER::TimerID::Iteration,&timers);
+	//MATH::mat4 
+	MATH::create_lookat_mat4(&cam->view,&cam->position,&cam->direction,&worldUp);
+	cam->up = worldUp;
+	cam->yaw = -90.0f;
+	cam->pitch = 0;
+}
+static inline void update_camera(Camera* cam,MATH::vec2 newMousePos)
+{
+	static MATH::vec2 oldMousePos = newMousePos;
+	const float sensitivity = 0.05f;
+
+	MATH::vec2 OffVals = newMousePos - oldMousePos;
+	oldMousePos = newMousePos;
+	MATH::scale(&OffVals,sensitivity);
+	cam->yaw += OffVals.x;
+	cam->pitch -= OffVals.y;
+
+	if(cam->pitch > 85.0f){
+		cam->pitch = 85.0f;
 	}
-	PROFILER::show_timers(&timers);
-	glfwTerminate();
-	return 0;
+	if(cam->pitch < -85.0f){
+		cam->pitch = -85.0f;
+	}
+
+	float radPitch = MATH::deg_to_rad * cam->pitch;
+	float radYaw = MATH::deg_to_rad * cam->yaw;
+	cam->direction.x = cosf(radPitch)	* cosf(radYaw);
+	//cosf(deg_to_rad(c->pitch))*cosf(deg_to_rad(c->yaw));
+	cam->direction.y = sinf(radPitch);
+	//sinf(deg_to_rad(c->pitch));
+	cam->direction.z = sinf(radYaw) * cosf(radPitch);
+	//sinf(deg_to_rad(c->yaw))*cosf(deg_to_rad(c->pitch));
+	MATH::normalize(&cam->direction);
+	MATH::vec3 front = cam->position + cam->direction;
+	cam->up = MATH::cross_product(cam->direction,worldUp);
+
+	MATH::normalize(&cam->up);
+
+	cam->up = MATH::cross_product(cam->up,cam->direction);
+	MATH::normalize(&cam->up);
+	MATH::create_lookat_mat4(&cam->view,&cam->position,&front,&cam->up);
+	//create_lookat_mat4(&c->view, &c->cameraPos, &front, &c->camUp);
+
 }
 struct SystemUniforms
 {
 	uint matrixUniformBufferObject;
 	//uint matrixUniformIndex;
-};
-
-struct Camera 
-{
-	MATH::mat4 view;
-	MATH::mat4 projection;
 };
 #define MATRIXES_UNIFORM_LOC 0
 void init_systemuniforms(SystemUniforms* rend,ShaderProgram* programs,
@@ -101,19 +129,29 @@ void init_systemuniforms(SystemUniforms* rend,ShaderProgram* programs,
 		if(i->group != RenderGroup::Model) continue;
 		uint matrixIndex = glGetUniformBlockIndex(*idIter, "MatrixBlock");   
 		glUniformBlockBinding(*idIter, matrixIndex, MATRIXES_UNIFORM_LOC);
+		glCheckError();
 	}
 
+	glCheckError();
 	glGenBuffers(1, &rend->matrixUniformBufferObject);
+
+	glCheckError();
 	glBindBuffer(GL_UNIFORM_BUFFER, rend->matrixUniformBufferObject);
+
+	glCheckError();
 	glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(MATH::mat4),
 			NULL, GL_STATIC_DRAW); 
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
+	glCheckError();
 	glBindBufferRange(GL_UNIFORM_BUFFER, MATRIXES_UNIFORM_LOC, 
 			rend->matrixUniformBufferObject, 0, 2 * sizeof(MATH::mat4)); 
 
+	glCheckError();
 	//glUniformBlockBinding(defaultRendererID, matrixIndex, 2);
 }
+
+
 
 struct Material
 {
@@ -160,6 +198,13 @@ static inline void set_material_int(ShaderManager* manager,
 	ASSERT_MESSAGE(uni->type == UniformType::INTTYPE,"UNIFORM IS NOT CORRECT TYPE\n");
 	uni->_int = val;
 }
+static inline void set_material_texture(ShaderManager* manager,
+		Material* mat,int index, const int shaderCacheID)
+{
+	Uniform* uni = get_uniform(manager,mat,index);
+	ASSERT_MESSAGE(uni->type == UniformType::SAMPLER2D,"UNIFORM IS NOT CORRECT TYPE\n");
+	uni->_textureCacheId = shaderCacheID;
+}
 //TODO textuuri set BOE BOE 
 //TODO camera 
 struct RenderData
@@ -170,6 +215,86 @@ struct RenderData
 	MATH::vec3			oriTemp;
 	MATH::quaternion	orientation;
 };
+
+
+int main()
+{
+	printf("hello! \n");
+	PROFILER::TimerCache timers;
+	PROFILER::init_timers(&timers);
+	PROFILER::start_timer(PROFILER::TimerID::Start,&timers);
+	glfwInit();
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_SAMPLES, 4);
+	GLFWwindow* window = glfwCreateWindow(SCREENWIDHT,SCREENHEIGHT, "Tabula Rasa", NULL, NULL);
+	ASSERT_MESSAGE(window,"FAILED TO INIT WINDOW \n"); // failed to create window
+	glfwMakeContextCurrent(window);
+	ASSERT_MESSAGE((gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)),"FAILED TO INIT GLAD");
+	glViewport(0, 0, SCREENWIDHT, SCREENHEIGHT);
+	glfwSetErrorCallback(error_callback);
+	glfwSetCursorPosCallback(window, cursor_position_callback);
+
+	CONTAINER::MemoryBlock staticMemory;
+	CONTAINER::init_memory_block(&staticMemory,STATIC_MEM_SIZE);
+	CONTAINER::MemoryBlock workingMemory;
+	CONTAINER::init_memory_block(&workingMemory,WORKING_MEM_SIZE);
+
+	ShaderManager shaders;
+	MeshData meshes;
+	TextureData textures;
+	init_textures_from_metadata(&textures,&staticMemory);
+	fill_mesh_cache(&meshes,&workingMemory,&staticMemory);
+
+	glCheckError();
+	load_shader_programs(&shaders,&workingMemory,&staticMemory);
+
+	glCheckError();
+	Camera camera;
+	init_camera(&camera);
+
+	SystemUniforms sysUniforms;
+	glCheckError();
+	init_systemuniforms(&sysUniforms,shaders.shaderPrograms,
+			shaders.shaderProgramIds,shaders.numShaderPrograms);
+	PROFILER::end_timer(PROFILER::TimerID::Start,&timers);
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	const double dt = 1.0 / 60.0;
+	double currentTime = glfwGetTime();
+	double accumulator = 0.0;
+
+	Material material = create_new_material(&shaders,"MainProg");
+	int moonTex = get_texture(textures,"MoonTexture");
+	set_material_texture(&shaders,&material,0,moonTex);
+
+	while (!glfwWindowShouldClose(window))
+	{
+		PROFILER::start_timer(PROFILER::TimerID::Iteration,&timers);
+		double newTime = glfwGetTime();
+		double frameTime = newTime - currentTime;
+		currentTime = newTime;
+		accumulator += frameTime;
+		if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+		{
+			break;
+		}
+		glfwPollEvents(); 
+		while(accumulator >= dt)
+		{
+			update_camera(&camera,mousePos);
+			printf("pitch %f : yaw %f \n",camera.pitch,camera.yaw);
+			accumulator -= dt;
+		}
+		glClearColor(1.f, 0.f, 0.f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+		glfwSwapBuffers(window);
+		PROFILER::end_timer(PROFILER::TimerID::Iteration,&timers);
+	}
+	PROFILER::show_timers(&timers);
+	glfwTerminate();
+	return 0;
+}
 void render(RenderData* renderables,int numRenderables,
 		MeshData* meshes,ShaderManager* shaders ,
 		const SystemUniforms* uniforms,const Camera* camera,uint* textureIds)
@@ -188,7 +313,8 @@ void render(RenderData* renderables,int numRenderables,
 		{
 			Uniform* uniToSet = &shaders->uniforms[i->material.uniformIndex + i2];
 			UniformInfo* info = &prog->uniforms[i2];
-			for(int texPlace = 0; texPlace < prog->)
+
+			//for(int texPlace = 0; texPlace < prog->)
 			//	prog->uniforms[i2].type
 			switch(info->type)
 			{
@@ -212,18 +338,21 @@ void render(RenderData* renderables,int numRenderables,
 					}break;
 				case UniformType::SAMPLER2D:
 					{
-						
+						glActiveTexture(GL_TEXTURE0 + info->glTexLocation);
+						glBindTexture(GL_TEXTURE_2D, textureIds[uniToSet->_textureCacheId]);
 					}break;
 				case UniformType::INVALID: default:
 					{
 						ABORT_MESSAGE("INVALID UNIFORM TYPE");
 					}break;
-
-
 			}
 		}
-		//SHADER::set_mat4_name();
 
+		//SHADER::set_mat4_name();
+		Mesh* currentMesh = &meshes->meshArray[i->meshID];
+		MeshInfo* currentMeshInfo = &meshes->meshInfos[i->meshID];
+		glBindVertexArray(currentMesh->vao);
+		glDrawElements(GL_TRIANGLES,currentMeshInfo->numIndexes, GL_UNSIGNED_INT,0);
 	}
 }
 

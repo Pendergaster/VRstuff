@@ -85,6 +85,12 @@ static inline bool load_texture(TextureInfo* info,uint id)
 	*info = temp;
 	return true;
 }
+static int get_texture(const TextureData& textures,const char* name)
+{
+	int* ret = CONTAINER::access_table<int>(textures.textureCache,name);
+	ASSERT_MESSAGE(ret,"TEXTURE NOT FOUND :: %s \n",name);
+	return *ret;
+}
 //TODO define stb malloc ja realloc ja free
 //TODO testaa json true ja false
 //TODO siivoo kommentit
