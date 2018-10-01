@@ -4,6 +4,7 @@
 		"VertexPath" : "shaders/vert.glsl",
 		"FragmentPath" : "shaders/frag.glsl",
 		"RenderGroup" : "Model",
+		"GlobalUnifroms" : ["MVP","GlobalLight"],
 		"Uniforms" : 
 		{
 			"tex" : "SAMPLER2D" 

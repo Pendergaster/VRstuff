@@ -20,6 +20,7 @@
 #define RENDERGROUPS(MODE)\
 	MODE(INVALID)\
 	MODE(Model)\
+	
 
 enum UniformType : int
 {
@@ -42,6 +43,14 @@ struct UniformInfo
 	char* 	name = NULL;
 	int 	hashedID = 0;	
 };
+
+enum GlobalUniforms
+{
+	Invalid = 0x0,
+	MVP = 0x1,
+	GlobalLight = 0x2,
+};
+
 struct Uniform
 {
 	int 	type = UniformType::INVALID;
@@ -80,6 +89,7 @@ struct ShaderProgram
 	UniformInfo* 	uniforms;
 	ShaderType      type = ShaderType::Normal;
 	RenderGroup     group = RenderGroup::INVALID;
+	int				globalUniformFlags = 0;
 	//TODO set this elsewhere?
 	uint			modelUniformPosition;
 	union{
@@ -218,6 +228,29 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 			ABORT_MESSAGE("FAILED TO COMPILE SHADER");
 		}
 		glUseProgram(manager->shaderProgramIds[i]);
+		ValueType t = (*currentToken)["GlobalUnifomrs"].GetType();
+		if(t == ValueType::Jarray)
+		{
+			int numGlobalUniforms = (*currentToken)["GlobalUnifomrs"].GetArraySize();
+			for(int uniIter = 0; uniIter < numGlobalUniforms;uniIter++)
+			{
+				char* glUniName = (*currentToken)["GlobalUnifomrs"][uniIter].GetString();
+				ASSERT_MESSAGE(glUniName,"GLOBAL UNIFORM NAME NOT STRING :: %s \n",currentName);
+				if(!strcmp(glUniName,"MVP")){
+					LOG("DETECTED MVP \n");
+					//currentShaderProg.globalUniformFlags = 
+						BIT_SET(currentShaderProg.globalUniformFlags,GlobalUniforms::MVP);
+				}
+				else if(!strcmp(glUniName,"GlobalLight")){
+					LOG("DETECTED GLOBALIGHT \n");
+					//currentShaderProg.globalUniformFlags = 
+						BIT_SET(currentShaderProg.globalUniformFlags,GlobalUniforms::GlobalLight);
+				}
+				else{
+					ABORT_MESSAGE("GLOBALUNIFORM NOT DEFINED %s \n",currentName);
+				}
+			}
+		}
 		char* renderGroup = (*currentToken)["RenderGroup"].GetString();
 		ASSERT_MESSAGE(renderGroup,"CURRENT SHADER HAS NOT DEFINED RENDERGROUP :: %s \n",
 				currentName);
@@ -231,8 +264,10 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 		}
 		ASSERT_MESSAGE(currentShaderProg.group != RenderGroup::INVALID,
 				"SHADER RENDER GROUP NOT DEFINED CORRECTLY :: %s \n",currentName);
-		if(currentShaderProg.group == RenderGroup::Model)
+		//if(currentShaderProg.group == RenderGroup::Model)
+		if(BIT_CHECK(currentShaderProg.globalUniformFlags,GlobalUniforms::MVP))
 		{
+			LOG("SETTING MVP LOCATION");
 			int location = glGetUniformLocation(manager->shaderProgramIds[i],"model");
 			ASSERT_MESSAGE(location != GL_INVALID_VALUE,
 					"MODEL MATRIX COULD NOT BE FOUND IN :: %s \n",currentName);

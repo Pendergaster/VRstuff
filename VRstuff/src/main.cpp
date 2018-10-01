@@ -76,8 +76,8 @@ static void init_camera(Camera* cam)
 	cam->yaw = -90.0f;
 	cam->pitch = 0;
 
-//perspective(&projection, 
-//deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 10000.f);
+	//perspective(&projection, 
+	//deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 10000.f);
 
 	const float fov = 45.f;
 	MATH::perspective(&cam->projection,MATH::deg_to_rad * fov, 
@@ -121,40 +121,72 @@ static inline void update_camera(Camera* cam,MATH::vec2 newMousePos)
 	//create_lookat_mat4(&c->view, &c->cameraPos, &front, &c->camUp);
 
 }
+//TODO samaan bufferiin pojat
 struct SystemUniforms
 {
-	uint matrixUniformBufferObject;
-	//uint matrixUniformIndex;
+	uint matrixUniformBufferObject = 0;
+	uint globalLightBufferObject = 0;
 };
 #define MATRIXES_UNIFORM_LOC 0
+#define GLOBALLIGHT_UNIFORM_LOC 1
 void init_systemuniforms(SystemUniforms* rend,ShaderProgram* programs,
 		uint* renderIds,uint numPrograms)
 {
 	uint* idIter = renderIds;
 	for(ShaderProgram* i = programs; i < programs + numPrograms; i++,idIter++)
 	{
-		if(i->group != RenderGroup::Model) continue;
-		uint matrixIndex = glGetUniformBlockIndex(*idIter, "MatrixBlock");   
-		glUniformBlockBinding(*idIter, matrixIndex, MATRIXES_UNIFORM_LOC);
+		//if(i->group != RenderGroup::Model) continue;
+		{
+			if(!BIT_CHECK(i->globalUniformFlags,GlobalUniforms::MVP)) continue;
+			uint matrixIndex = glGetUniformBlockIndex(*idIter, "MatrixBlock");   
+			glUniformBlockBinding(*idIter, matrixIndex, MATRIXES_UNIFORM_LOC);
+			glCheckError();
+		}
+		{
+			if(!BIT_CHECK(i->globalUniformFlags,GlobalUniforms::GlobalLight)) continue;
+			uint lightIndex = glGetUniformBlockIndex(*idIter, "GlobalLight");   
+			glUniformBlockBinding(*idIter, lightIndex, GLOBALLIGHT_UNIFORM_LOC);
+			glCheckError();
+		}
+	}
+
+	{
+		glCheckError();
+		glGenBuffers(1, &rend->globalLightBufferObject);
+
+		glCheckError();
+		glBindBuffer(GL_UNIFORM_BUFFER, rend->globalLightBufferObject);
+
+		glCheckError();
+		glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(MATH::mat4),
+				NULL, GL_STATIC_DRAW); 
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+		glCheckError();
+		glBindBufferRange(GL_UNIFORM_BUFFER, MATRIXES_UNIFORM_LOC, 
+				rend->matrixUniformBufferObject, 0, 2 * sizeof(MATH::mat4)); 
+
+		glCheckError();
+	}
+	{
+		glCheckError();
+		glGenBuffers(1, &rend->matrixUniformBufferObject);
+
+		glCheckError();
+		glBindBuffer(GL_UNIFORM_BUFFER, rend->matrixUniformBufferObject);
+
+		glCheckError();
+		glBufferData(GL_UNIFORM_BUFFER, 4 * sizeof(MATH::vec4),
+				NULL, GL_STATIC_DRAW); 
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+		glCheckError();
+		glBindBufferRange(GL_UNIFORM_BUFFER, GLOBALLIGHT_UNIFORM_LOC, 
+				rend->globalLightBufferObject, 0,4 * sizeof(MATH::vec4)); 
+
 		glCheckError();
 	}
 
-	glCheckError();
-	glGenBuffers(1, &rend->matrixUniformBufferObject);
-
-	glCheckError();
-	glBindBuffer(GL_UNIFORM_BUFFER, rend->matrixUniformBufferObject);
-
-	glCheckError();
-	glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(MATH::mat4),
-			NULL, GL_STATIC_DRAW); 
-	glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-	glCheckError();
-	glBindBufferRange(GL_UNIFORM_BUFFER, MATRIXES_UNIFORM_LOC, 
-			rend->matrixUniformBufferObject, 0, 2 * sizeof(MATH::mat4)); 
-
-	glCheckError();
 	//glUniformBlockBinding(defaultRendererID, matrixIndex, 2);
 }
 
@@ -229,7 +261,7 @@ struct RenderData
 };
 
 void render(RenderData* renderables,int numRenderables,
-	MeshData* meshes,ShaderManager* shaders ,
+		MeshData* meshes,ShaderManager* shaders ,
 		const SystemUniforms* uniforms,const Camera* camera,uint* textureIds);
 
 int main()
@@ -315,9 +347,9 @@ int main()
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_MULTISAMPLE);
 		glEnable(GL_CULL_FACE);  
-//void render(RenderData* renderables,int numRenderables,
-//	MeshData* meshes,ShaderManager* shaders ,
-//		const SystemUniforms* uniforms,const Camera* camera,uint* textureIds);
+		//void render(RenderData* renderables,int numRenderables,
+		//	MeshData* meshes,ShaderManager* shaders ,
+		//		const SystemUniforms* uniforms,const Camera* camera,uint* textureIds);
 		render(&renderData,1,&meshes,&shaders,&sysUniforms,&camera,textures.textureIds);
 		glCheckError();
 
@@ -336,6 +368,20 @@ void render(RenderData* renderables,int numRenderables,
 	glBufferSubData(GL_UNIFORM_BUFFER,0,sizeof(MATH::mat4) * 2, (void*)camera);
 	glBindBuffer(GL_UNIFORM_BUFFER,0);
 
+	struct lightutil{
+		MATH::vec4 dir;
+		MATH::vec4 ambient;
+		MATH::vec4 diffuse;
+		MATH::vec4 specular;
+	} light;
+	light.dir = MATH::vec4(-0.2f, -1.0f, -0.3f,1.f);
+	light.ambient = MATH::vec4(0.05f, 0.05f, 0.05f,1.f);
+	light.diffuse = MATH::vec4(0.4f, 0.4f, 0.4f,1.f);
+	light.specular = MATH::vec4( 0.5f, 0.5f, 0.5f,1.f);
+	glBindBuffer(GL_UNIFORM_BUFFER,uniforms->globalLightBufferObject);
+	glBufferSubData(GL_UNIFORM_BUFFER,0,sizeof(MATH::vec4) * 2, (void*)camera);
+	glBindBuffer(GL_UNIFORM_BUFFER,0);
+
 	glCheckError();
 	for(RenderData* i = renderables; i < renderables + numRenderables; i++)
 	{
@@ -348,7 +394,7 @@ void render(RenderData* renderables,int numRenderables,
 		MATH::rotateY(&model,i->oriTemp.y);
 		MATH::rotateZ(&model,i->oriTemp.z);
 		MATH::rotateX(&model,i->oriTemp.x);
-		
+
 		MATH::scale_mat4(&model,i->scale);
 		glUniformMatrix4fv(prog->modelUniformPosition, 1, GL_FALSE, (GLfloat*)model.mat);
 		glCheckError();
