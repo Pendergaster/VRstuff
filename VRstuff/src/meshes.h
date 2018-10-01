@@ -127,5 +127,11 @@ static void fill_mesh_cache(MeshData* meshData,CONTAINER::MemoryBlock* workingMe
 		glBindVertexArray(0);
 	}
 }
-
+typedef int MeshId;
+static MeshId get_mesh(MeshData* meshes,const char* name)
+{
+	int* index = CONTAINER::access_table(meshes->meshCache,name);
+	ASSERT_MESSAGE(index,"MESH NOT FOUND :: %s \n",name);
+	return *index;
+}
 #endif //PAKKI_MESHES

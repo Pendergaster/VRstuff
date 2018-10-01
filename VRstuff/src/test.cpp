@@ -147,11 +147,11 @@ int main()
 			{
 				indexBufferOutput[numRealIndexes++] = currentMaxIndex;
 				++currentMaxIndex;
-				*vertexIterator = vertexBuffer[i->vertIndex];
+				*vertexIterator = vertexBuffer[i->vertIndex - 1];
 				vertexIterator++;
-				*normalIterator = normalBuffer[i->normIndex];
+				*normalIterator = normalBuffer[i->normIndex - 1];
 				normalIterator++;
-				*texIterator = textureCoordBuffer[i->texIndex];
+				*texIterator = textureCoordBuffer[i->texIndex - 1];
 				texIterator++;
 			}
 		}

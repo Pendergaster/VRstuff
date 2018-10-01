@@ -53,6 +53,7 @@ static inline bool load_texture(TextureInfo* info,uint id)
 	defer {stbi_image_free(data);};
 
 	glBindTexture(GL_TEXTURE_2D,id);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	//glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,temp.wrapMode);
 	GLenum mode = 0;
 	if(temp.wrapMode == WrapMode::ClampToBorder){

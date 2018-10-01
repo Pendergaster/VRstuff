@@ -66,7 +66,7 @@ static void init_camera(Camera* cam)
 {
 	MATH::identify(&cam->view);
 	MATH::vec3 temp;
-	cam->position = MATH::vec3(0.f,0.f,3.f);
+	cam->position = MATH::vec3(0.f,0.f,6.f);
 	MATH::vec3 target(0.f,0.f,0.f);
 	cam->direction = MATH::vec3(0.f,0.f,-1.f);
 
@@ -75,6 +75,13 @@ static void init_camera(Camera* cam)
 	cam->up = worldUp;
 	cam->yaw = -90.0f;
 	cam->pitch = 0;
+
+//perspective(&projection, 
+//deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 10000.f);
+
+	const float fov = 45.f;
+	MATH::perspective(&cam->projection,MATH::deg_to_rad * fov, 
+			(float)SCREENWIDHT / (float) SCREENHEIGHT,0.1f, 10000.f);
 }
 static inline void update_camera(Camera* cam,MATH::vec2 newMousePos)
 {
@@ -169,7 +176,11 @@ Material create_new_material(ShaderManager* manager,const char* name)
 	manager->numUniforms += program->numUniforms;
 	ret.numUniforms = program->numUniforms;
 	ret.shaderProgram = *shaderIndex;
-	return ret;
+	for(uint i = 0 ; i < ret.numUniforms;i++)
+	{
+		manager->uniforms[ret.uniformIndex + i].type = manager->uniformInfos[*shaderIndex].type;
+	}
+	return ret; 
 }
 static inline Uniform* get_uniform(ShaderManager* manager,
 		Material* mat,int index)
@@ -210,12 +221,16 @@ static inline void set_material_texture(ShaderManager* manager,
 struct RenderData
 {
 	Material			material;
-	uint				meshID = 0;
-	MATH::vec3			pos;
+	MeshId				meshID = 0;
+	MATH::vec3			position;
 	MATH::vec3			oriTemp;
 	MATH::quaternion	orientation;
+	float				scale = 0;
 };
 
+void render(RenderData* renderables,int numRenderables,
+	MeshData* meshes,ShaderManager* shaders ,
+		const SystemUniforms* uniforms,const Camera* camera,uint* textureIds);
 
 int main()
 {
@@ -254,6 +269,7 @@ int main()
 	Camera camera;
 	init_camera(&camera);
 
+
 	SystemUniforms sysUniforms;
 	glCheckError();
 	init_systemuniforms(&sysUniforms,shaders.shaderPrograms,
@@ -267,7 +283,15 @@ int main()
 	Material material = create_new_material(&shaders,"MainProg");
 	int moonTex = get_texture(textures,"MoonTexture");
 	set_material_texture(&shaders,&material,0,moonTex);
+	MeshId meshId = get_mesh(&meshes,"Planet");
+	RenderData renderData;
 
+	renderData.material = material;
+	renderData.meshID = meshId;
+	renderData.oriTemp = MATH::vec3(0,0,0);
+	renderData.position = MATH::vec3(0,0,0);
+	renderData.scale = 1;
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	while (!glfwWindowShouldClose(window))
 	{
 		PROFILER::start_timer(PROFILER::TimerID::Iteration,&timers);
@@ -275,7 +299,7 @@ int main()
 		double frameTime = newTime - currentTime;
 		currentTime = newTime;
 		accumulator += frameTime;
-		if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+		if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS)
 		{
 			break;
 		}
@@ -287,7 +311,16 @@ int main()
 			accumulator -= dt;
 		}
 		glClearColor(1.f, 0.f, 0.f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_MULTISAMPLE);
+		glEnable(GL_CULL_FACE);  
+//void render(RenderData* renderables,int numRenderables,
+//	MeshData* meshes,ShaderManager* shaders ,
+//		const SystemUniforms* uniforms,const Camera* camera,uint* textureIds);
+		render(&renderData,1,&meshes,&shaders,&sysUniforms,&camera,textures.textureIds);
+		glCheckError();
+
 		glfwSwapBuffers(window);
 		PROFILER::end_timer(PROFILER::TimerID::Iteration,&timers);
 	}
@@ -303,12 +336,22 @@ void render(RenderData* renderables,int numRenderables,
 	glBufferSubData(GL_UNIFORM_BUFFER,0,sizeof(MATH::mat4) * 2, (void*)camera);
 	glBindBuffer(GL_UNIFORM_BUFFER,0);
 
+	glCheckError();
 	for(RenderData* i = renderables; i < renderables + numRenderables; i++)
 	{
 		ShaderProgram* prog = &shaders->shaderPrograms[i->material.shaderProgram];
 		uint glID = shaders->shaderProgramIds[i->material.shaderProgram];
 		glUseProgram(glID);
 		MATH::mat4 model; // TODO SET THIS 
+		MATH::identify(&model);
+		MATH::translate(&model,i->position);
+		MATH::rotateY(&model,i->oriTemp.y);
+		MATH::rotateZ(&model,i->oriTemp.z);
+		MATH::rotateX(&model,i->oriTemp.x);
+		
+		MATH::scale_mat4(&model,i->scale);
+		glUniformMatrix4fv(prog->modelUniformPosition, 1, GL_FALSE, (GLfloat*)model.mat);
+		glCheckError();
 		for(uint i2 = 0; i2 < i->material.numUniforms;i2++)
 		{
 			Uniform* uniToSet = &shaders->uniforms[i->material.uniformIndex + i2];
@@ -348,11 +391,13 @@ void render(RenderData* renderables,int numRenderables,
 			}
 		}
 
+		glCheckError();
 		//SHADER::set_mat4_name();
 		Mesh* currentMesh = &meshes->meshArray[i->meshID];
 		MeshInfo* currentMeshInfo = &meshes->meshInfos[i->meshID];
 		glBindVertexArray(currentMesh->vao);
 		glDrawElements(GL_TRIANGLES,currentMeshInfo->numIndexes, GL_UNSIGNED_INT,0);
+		glCheckError();
 	}
 }
 
