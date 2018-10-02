@@ -6,4 +6,11 @@
 				"SRGB" : false,
 				"Wrap" : "Repeat"
 		}
+		"SpaceShip" : 
+		{
+				"Path" : "assets/SpaceshipTexture.png",
+				"Mipmap" : false,
+				"SRGB" : false,
+				"Wrap" : "Repeat"
+		}
 }

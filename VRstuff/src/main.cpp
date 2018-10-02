@@ -346,9 +346,9 @@ int main()
 	double accumulator = 0.0;
 
 	Material material = create_new_material(&shaders,"MainProg");
-	int moonTex = get_texture(textures,"MoonTexture");
+	int moonTex = get_texture(textures,"SpaceShip");
 	set_material_texture(&shaders,&material,0,moonTex);
-	MeshId meshId = get_mesh(&meshes,"Planet");
+	MeshId meshId = get_mesh(&meshes,"SpaceShip");
 	RenderData renderData;
 
 	renderData.material = material;
@@ -356,7 +356,8 @@ int main()
 	renderData.oriTemp = MATH::vec3(0,0,0);
 	renderData.orientation = MATH::quaternion(0,0,0,0);
 	renderData.position = MATH::vec3(0,0,0);
-	renderData.scale = 1;
+	renderData.scale = 0.7;
+
 
 
 
@@ -463,7 +464,7 @@ void render(RenderData* renderables,int numRenderables,
 
 	light.dir = MATH::vec4(1.f, -1.0f, 0.f,1.f);
 	light.ambient = MATH::vec4(0.3f, 0.3f, 0.3f,1.f);
-	light.diffuse = MATH::vec4(0.2f, 0.2f, 0.2f,1.f);
+	light.diffuse = MATH::vec4(0.8f, 0.8f, 0.8f,1.f);
 	light.specular = MATH::vec4( 0.5f, 0.5f, 0.5f,1.f);
 	glBindBuffer(GL_UNIFORM_BUFFER,uniforms->globalLightBufferObject);
 	glCheckError();
