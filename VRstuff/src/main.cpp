@@ -12,8 +12,21 @@
 #include <glad/glad.h>
 #include "glad.c"
 #include <glwf3/glfw3.h>
-#define SCREENWIDHT 800
-#define SCREENHEIGHT 1000
+
+#if 1
+#include <imgui/imgui.h>
+#include <imgui/imgui.cpp>
+#include <imgui/imgui_draw.cpp>
+#include <imgui/imgui_widgets.cpp>
+#define IMGUI_IMPL_OPENGL_LOADER_GLAD
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_glfw.cpp"
+#include "imgui_impl_opengl3.h"
+#include "imgui_impl_opengl3.cpp"
+#endif
+
+#define SCREENWIDHT 1000
+#define SCREENHEIGHT 800
 #include<JsonToken.h>
 #include <MathUtil.h>
 #include<ModelData.h>
@@ -28,7 +41,6 @@
 #include "timer.h"
 #define STATIC_MEM_SIZE 100000
 #define WORKING_MEM_SIZE 100000
-
 /*
    renderings 
 
@@ -86,7 +98,7 @@ static void init_camera(Camera* cam)
 static inline void update_camera(Camera* cam,MATH::vec2 newMousePos)
 {
 	static MATH::vec2 oldMousePos = newMousePos;
-	const float sensitivity = 0.05f;
+	const float sensitivity = 0.00005f;
 
 	MATH::vec2 OffVals = newMousePos - oldMousePos;
 	oldMousePos = newMousePos;
@@ -136,14 +148,18 @@ void init_systemuniforms(SystemUniforms* rend,ShaderProgram* programs,
 	for(ShaderProgram* i = programs; i < programs + numPrograms; i++,idIter++)
 	{
 		//if(i->group != RenderGroup::Model) continue;
+
+		if(BIT_CHECK(i->globalUniformFlags,GlobalUniforms::MVP)) 
 		{
-			if(!BIT_CHECK(i->globalUniformFlags,GlobalUniforms::MVP)) continue;
+			printf("SET MVP");
 			uint matrixIndex = glGetUniformBlockIndex(*idIter, "MatrixBlock");   
 			glUniformBlockBinding(*idIter, matrixIndex, MATRIXES_UNIFORM_LOC);
 			glCheckError();
 		}
+
+		if(BIT_CHECK(i->globalUniformFlags,GlobalUniforms::GlobalLight))
 		{
-			if(!BIT_CHECK(i->globalUniformFlags,GlobalUniforms::GlobalLight)) continue;
+			printf("SET LIGHTS");
 			uint lightIndex = glGetUniformBlockIndex(*idIter, "GlobalLight");   
 			glUniformBlockBinding(*idIter, lightIndex, GLOBALLIGHT_UNIFORM_LOC);
 			glCheckError();
@@ -152,10 +168,10 @@ void init_systemuniforms(SystemUniforms* rend,ShaderProgram* programs,
 
 	{
 		glCheckError();
-		glGenBuffers(1, &rend->globalLightBufferObject);
+		glGenBuffers(1, &rend->matrixUniformBufferObject);
 
 		glCheckError();
-		glBindBuffer(GL_UNIFORM_BUFFER, rend->globalLightBufferObject);
+		glBindBuffer(GL_UNIFORM_BUFFER, rend->matrixUniformBufferObject);
 
 		glCheckError();
 		glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(MATH::mat4),
@@ -170,10 +186,10 @@ void init_systemuniforms(SystemUniforms* rend,ShaderProgram* programs,
 	}
 	{
 		glCheckError();
-		glGenBuffers(1, &rend->matrixUniformBufferObject);
+		glGenBuffers(1, &rend->globalLightBufferObject);
 
 		glCheckError();
-		glBindBuffer(GL_UNIFORM_BUFFER, rend->matrixUniformBufferObject);
+		glBindBuffer(GL_UNIFORM_BUFFER, rend->globalLightBufferObject);
 
 		glCheckError();
 		glBufferData(GL_UNIFORM_BUFFER, 4 * sizeof(MATH::vec4),
@@ -306,8 +322,25 @@ int main()
 	glCheckError();
 	init_systemuniforms(&sysUniforms,shaders.shaderPrograms,
 			shaders.shaderProgramIds,shaders.numShaderPrograms);
+
+
+
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Enable Keyboard Controls
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;   // Enable Gamepad Controls
+
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	const char* glsl_version = "#version 130";
+	ImGui_ImplOpenGL3_Init(glsl_version);
+
+	// Setup style
+	ImGui::StyleColorsDark();
+
+
 	PROFILER::end_timer(PROFILER::TimerID::Start,&timers);
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	const double dt = 1.0 / 60.0;
 	double currentTime = glfwGetTime();
 	double accumulator = 0.0;
@@ -321,8 +354,12 @@ int main()
 	renderData.material = material;
 	renderData.meshID = meshId;
 	renderData.oriTemp = MATH::vec3(0,0,0);
+	renderData.orientation = MATH::quaternion(0,0,0,0);
 	renderData.position = MATH::vec3(0,0,0);
 	renderData.scale = 1;
+
+
+
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	while (!glfwWindowShouldClose(window))
 	{
@@ -331,6 +368,44 @@ int main()
 		double frameTime = newTime - currentTime;
 		currentTime = newTime;
 		accumulator += frameTime;
+
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+		{
+			static float f = 0.0f;
+			static int counter = 0;
+
+			ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
+
+			ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
+			static bool show = false;
+			static bool show2 = false;
+			ImGui::Checkbox("Demo Window", &show);      // Edit bools storing our window open/close state
+			ImGui::Checkbox("Another Window", &show2);
+
+			ImGui::SliderFloat("qx", &renderData.oriTemp.x, 0.0f, 360.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+			ImGui::SliderFloat("qy", &renderData.oriTemp.y, 0.0f, 360.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+			ImGui::SliderFloat("qz", &renderData.oriTemp.z, 0.0f, 360.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+			//ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
+			
+			if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
+				counter++;
+			ImGui::SameLine();
+			ImGui::Text("counter = %d", counter);
+
+			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+			ImGui::End();
+			if (show)
+			{
+				ImGui::Begin("Another Window", &show);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+				ImGui::Text("Hello from another window!");
+				if (ImGui::Button("Close Me"))
+					show = false;
+				ImGui::End();
+			}
+		}
+
 		if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS)
 		{
 			break;
@@ -351,6 +426,17 @@ int main()
 		//	MeshData* meshes,ShaderManager* shaders ,
 		//		const SystemUniforms* uniforms,const Camera* camera,uint* textureIds);
 		render(&renderData,1,&meshes,&shaders,&sysUniforms,&camera,textures.textureIds);
+		ImGui::Render();
+        int display_w, display_h;
+        glfwMakeContextCurrent(window);
+        glfwGetFramebufferSize(window, &display_w, &display_h);
+        glViewport(0, 0, display_w, display_h);
+        //glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+		//glClearColor(1.f, 0.f, 0.f, 1.0f);
+        //glClear(GL_COLOR_BUFFER_BIT);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        glfwMakeContextCurrent(window);
 		glCheckError();
 
 		glfwSwapBuffers(window);
@@ -374,12 +460,15 @@ void render(RenderData* renderables,int numRenderables,
 		MATH::vec4 diffuse;
 		MATH::vec4 specular;
 	} light;
-	light.dir = MATH::vec4(-0.2f, -1.0f, -0.3f,1.f);
-	light.ambient = MATH::vec4(0.05f, 0.05f, 0.05f,1.f);
-	light.diffuse = MATH::vec4(0.4f, 0.4f, 0.4f,1.f);
+
+	light.dir = MATH::vec4(1.f, -1.0f, 0.f,1.f);
+	light.ambient = MATH::vec4(0.3f, 0.3f, 0.3f,1.f);
+	light.diffuse = MATH::vec4(0.2f, 0.2f, 0.2f,1.f);
 	light.specular = MATH::vec4( 0.5f, 0.5f, 0.5f,1.f);
 	glBindBuffer(GL_UNIFORM_BUFFER,uniforms->globalLightBufferObject);
-	glBufferSubData(GL_UNIFORM_BUFFER,0,sizeof(MATH::vec4) * 2, (void*)camera);
+	glCheckError();
+	glBufferSubData(GL_UNIFORM_BUFFER,0,sizeof(MATH::vec4) * 4, &light);
+	glCheckError();
 	glBindBuffer(GL_UNIFORM_BUFFER,0);
 
 	glCheckError();
@@ -388,13 +477,19 @@ void render(RenderData* renderables,int numRenderables,
 		ShaderProgram* prog = &shaders->shaderPrograms[i->material.shaderProgram];
 		uint glID = shaders->shaderProgramIds[i->material.shaderProgram];
 		glUseProgram(glID);
-		MATH::mat4 model; // TODO SET THIS 
-		MATH::identify(&model);
+#if 0
+		MATH::mat4 model; // TODO SET THIS MATH::identify(&model);
 		MATH::translate(&model,i->position);
 		MATH::rotateY(&model,i->oriTemp.y);
 		MATH::rotateZ(&model,i->oriTemp.z);
 		MATH::rotateX(&model,i->oriTemp.x);
-
+#endif
+		MATH::quaternion q(MATH::vec3(
+					i->oriTemp.x * MATH::deg_to_rad,
+					i->oriTemp.y * MATH::deg_to_rad,
+					i->oriTemp.z * MATH::deg_to_rad
+					));
+		MATH::mat4 model(q);
 		MATH::scale_mat4(&model,i->scale);
 		glUniformMatrix4fv(prog->modelUniformPosition, 1, GL_FALSE, (GLfloat*)model.mat);
 		glCheckError();

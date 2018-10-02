@@ -24,7 +24,7 @@ IF /I "%1"=="build_engine" (
 		pushd DebugBin
 		set CLAGS= -Od
 		REM -LD -> buildaa .dll -MD jälkee
-		cl %CLAGS% -nologo -Z7 -W4 -wd4201 /EHsc /DEBUG ..\src\main.cpp  %includes% /MD /link %libs% -LIBPATH:../libraries 
+		cl %CLAGS% -nologo -Z7 -W4 -wd4201 /EHsc /DEBUG ..\src\main.cpp   %includes% /MD /link %libs% -LIBPATH:../libraries 
 		popd
 		)
 

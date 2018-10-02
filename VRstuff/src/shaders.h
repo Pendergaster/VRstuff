@@ -187,6 +187,7 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 	CONTAINER::increase_memory_block(staticMem,MAX_SYSTEM_UNIFORMS * sizeof(UniformInfo));
 
 	CONTAINER::MemoryBlock prevMemState = *workingMem;
+	manager->numShaderPrograms = names.numobj;
 	for(uint i = 0 ; i < names.numobj; i++)
 	{
 		char* currentName = names.buffer[i];
@@ -228,13 +229,13 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 			ABORT_MESSAGE("FAILED TO COMPILE SHADER");
 		}
 		glUseProgram(manager->shaderProgramIds[i]);
-		ValueType t = (*currentToken)["GlobalUnifomrs"].GetType();
+		ValueType t = (*currentToken)["GlobalUniforms"].GetType();
 		if(t == ValueType::Jarray)
 		{
-			int numGlobalUniforms = (*currentToken)["GlobalUnifomrs"].GetArraySize();
+			int numGlobalUniforms = (*currentToken)["GlobalUniforms"].GetArraySize();
 			for(int uniIter = 0; uniIter < numGlobalUniforms;uniIter++)
 			{
-				char* glUniName = (*currentToken)["GlobalUnifomrs"][uniIter].GetString();
+				char* glUniName = (*currentToken)["GlobalUniforms"][uniIter].GetString();
 				ASSERT_MESSAGE(glUniName,"GLOBAL UNIFORM NAME NOT STRING :: %s \n",currentName);
 				if(!strcmp(glUniName,"MVP")){
 					LOG("DETECTED MVP \n");
