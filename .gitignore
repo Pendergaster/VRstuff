@@ -26,8 +26,8 @@ bld/
 [Ll]og/
 
 DebugBin/
-glad/
-KHR/
+#glad/
+#KHR/
 TestBin/
 glad.c
 *.out
