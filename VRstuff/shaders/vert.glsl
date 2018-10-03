@@ -16,7 +16,7 @@ void main()
 	vec4 pos = projection * view * model * vec4(vertexPosition, 1.0);
     gl_Position = pos;
 	vs_out.uv = vec2(uv.x , 1 - uv.y);
-	vs_out.normal = normal; //TODO transpose inverse juttu pojalle
+	vs_out.normal = normalize(normal); //TODO transpose inverse juttu pojalle
 }
 
 

@@ -20,7 +20,8 @@ void main()
 		frag_in.normal,
 		viewDir,
 		vec3(texture(tex,frag_in.uv)),
-		vec3(0.7f,0.7f,0.7f),
+		vec3(0.0007f,0.7f,0.00007f),
 		32.f);
-	_color = vec4(lightColor.x,lightColor.y,lightColor.z,1);
+
+	_color = vec4(lightColor.x ,lightColor.y     ,lightColor.z  ,1);
 }
