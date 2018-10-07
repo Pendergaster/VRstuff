@@ -19,6 +19,7 @@
 #define RENDERGROUPS(MODE)\
 	MODE(INVALID)\
 	MODE(Model)\
+	MODE(PostProcess)\
 
 
 enum UniformType : int

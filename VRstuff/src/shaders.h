@@ -10,6 +10,7 @@
 #include "ShaderDefs.h"
 #include "SystemUniforms.h"
 #include "glerrorcheck.h"
+
 static inline bool setup_uniform(UniformInfo* uniform,uint id)
 {
 	int location = glGetUniformLocation(id,uniform->name);
@@ -117,7 +118,7 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 		}
 		else
 		{
-			char* combinedPath = (*currentToken)["VertFragPath"].GetString();
+			char* combinedPath = (*currentToken)["CombinedPath"].GetString();
 			ASSERT_MESSAGE(combinedPath,"PATHS NOT DEFINED FOR SHADER :: %s \n",currentName);
 			if(!SHADER::load_frag_and_vert(combinedPath,&vertFile,&fragFile,workingMem)){
 				ABORT_MESSAGE("ERROR LOADING SHADER :: %s \n",currentName);
@@ -126,9 +127,10 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 
 			currentShaderProg.combiedPath = (char*)CONTAINER::get_next_memory_block(*staticMem);
 			strcpy(currentShaderProg.combiedPath , combinedPath);
-			CONTAINER::increase_memory_block_aligned(workingMem,(int)strlen(currentShaderProg.combiedPath) + 1);
+			CONTAINER::increase_memory_block_aligned(staticMem,(int)strlen(currentShaderProg.combiedPath) + 1);
 			FILESYS::get_filehandle(combinedPath,
 					&currentShaderProg.combinedFileWriteTime);
+			//printf("----------- \n %s \n-----------\n %s \n  ---------- \n",vertFile,fragFile);
 		}
 		if(!compile_program(currentShaderProg,&manager->shaderProgramIds[i],vertFile,fragFile)){
 			ABORT_MESSAGE("FAILED TO COMPILE SHADER");
@@ -249,6 +251,13 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 	}
 }
 
+static uint get_shader_program_id(const ShaderManager& manager,const char* name)
+{
+	int* temp = CONTAINER::access_table<int>(manager.shaderProgramCache,name);
+	ASSERT_MESSAGE(temp,"FAILED TO FIND SHADERPROGRAM :: %s \n",name);
+	return (uint)*temp;
+}
+
 void hotload_shaders(ShaderManager* manager,CONTAINER::MemoryBlock* workingMem)
 {
 	CONTAINER::MemoryBlock prevState = *workingMem;
@@ -260,6 +269,8 @@ void hotload_shaders(ShaderManager* manager,CONTAINER::MemoryBlock* workingMem)
 		char* vertFile = NULL,* fragFile = NULL;
 		if(i->type == ShaderType::Combined)
 		{
+			continue;
+#if 0
 			FILESYS::FileHandle handle;
 			//printf("GETTING HANDLE FOR %s \n",i->combiedPath);fflush(stdout);
 			if(!FILESYS::get_filehandle(i->combiedPath,&handle)){
@@ -286,6 +297,7 @@ void hotload_shaders(ShaderManager* manager,CONTAINER::MemoryBlock* workingMem)
 				//char* vertSource, char* fragSource)
 
 			}
+#endif
 		}
 		else
 		{

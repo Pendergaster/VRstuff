@@ -9,5 +9,15 @@
 		{
 			"tex" : "SAMPLER2D" 
 		}
+	},
+	"EyeProg" : 
+	{
+		"CombinedPath" : "shaders/eyeShader.glsl",
+		"RenderGroup" : "PostProcess",
+		"Uniforms" : 
+		{
+			"tex" : "SAMPLER2D" 
+		}
+
 	}
 }

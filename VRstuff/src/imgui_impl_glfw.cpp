@@ -159,8 +159,8 @@ static bool ImGui_ImplGlfw_Init(GLFWwindow* window, bool install_callbacks, Glfw
     g_MouseCursors[ImGuiMouseCursor_ResizeNWSE] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);  // FIXME: GLFW doesn't have this.
     g_MouseCursors[ImGuiMouseCursor_Hand] = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
     
-    if (install_callbacks)
-        ImGui_ImplGlfw_InstallCallbacks(window);
+    //if (install_callbacks)
+        //ImGui_ImplGlfw_InstallCallbacks(window);
 
     g_ClientApi = client_api;
     return true;
