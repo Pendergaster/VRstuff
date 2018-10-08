@@ -45,7 +45,7 @@ IF /I "%1"=="build_game" (
 
 
 IF /I "%1"=="run" (
-		clear
+		cls
 		chdir %~dp0
 		DebugBin\main.exe
 		popd

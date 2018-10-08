@@ -1,6 +1,9 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define STB_IMAGE_IMPLEMENTATION
 #define VR 1
+#if VR
+#include <dxgi.h>
+#endif
 #include<stb_image.h>
 #undef STB_IMAGE_IMPLEMENTATION
 #include <stdio.h>
