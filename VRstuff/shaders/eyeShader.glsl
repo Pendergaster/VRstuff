@@ -20,7 +20,7 @@ out vec4 color;
 void main()
 {
 	color = vec4(texture2D(tex,_uv));
-	color.w = 1.f;
+	color.z = 1.f;
 }
 
 #FragmentEnd

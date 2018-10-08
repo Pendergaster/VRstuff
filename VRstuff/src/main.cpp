@@ -1,6 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define STB_IMAGE_IMPLEMENTATION
-#define VR 1
+#define VR 0
 #if VR
 #include <dxgi.h>
 
@@ -710,7 +710,7 @@ int main()
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_MULTISAMPLE);
 		glEnable(GL_CULL_FACE);  
-		printf("REEE\n");
+		//printf("REEE\n");
 #endif
 		//void render(RenderData* renderables,int numRenderables,
 		//	MeshData* meshes,ShaderManager* shaders ,

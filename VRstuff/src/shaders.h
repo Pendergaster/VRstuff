@@ -269,13 +269,102 @@ void hotload_shaders(ShaderManager* manager,CONTAINER::MemoryBlock* workingMem)
 		char* vertFile = NULL,* fragFile = NULL;
 		if(i->type == ShaderType::Combined)
 		{
-			continue;
-#if 0
 			FILESYS::FileHandle handle;
 			//printf("GETTING HANDLE FOR %s \n",i->combiedPath);fflush(stdout);
 			if(!FILESYS::get_filehandle(i->combiedPath,&handle)){
-				ABORT_MESSAGE("SHADER MISSING %s /n",i->combiedPath);
+				continue;
 			}
+			if(!compare_file_times(i->combinedFileWriteTime,handle))
+			{
+				printf("HOT RELOADING %s \n",i->combiedPath);
+				fflush(stdout);
+				FILESYS::get_filehandle(i->combiedPath,
+						&i->combinedFileWriteTime);
+
+				if(!SHADER::load_frag_and_vert(i->combiedPath,&vertFile,&fragFile,workingMem))
+				{
+					LOG("Failed to hotload shader :: %s \n",i->combiedPath);
+					continue;
+				}
+
+				uint tempShaderID = 0;
+				if(compile_program(*i,&tempShaderID,vertFile,fragFile))
+				{
+					int numTex = 0;
+					bool success = true;
+					UniformInfo* tempArray = (UniformInfo*)CONTAINER::get_next_memory_block(*workingMem);
+					CONTAINER::increase_memory_block(workingMem,sizeof(UniformInfo) * i->numUniforms);
+					memcpy(tempArray,i->uniforms,sizeof(UniformInfo) * i->numUniforms);
+					//for(UniformInfo* uni = i->uniforms;uni < i->uniforms + i->numUniforms;uni++)
+					for(UniformInfo* uni = tempArray;uni < tempArray + i->numUniforms;uni++)
+					{
+						if(uni->type == UniformType::SAMPLER2D)
+						{
+							if(!setup_uniform_sampler2D(uni,tempShaderID,numTex++)){
+								success = false;
+								continue;
+							}
+							printf("Sampler set\n");
+						}
+						else if(uni->type == UniformType::MODEL)
+						{
+							int location = glGetUniformLocation(tempShaderID,"model");
+							if(location == -1 )
+							{
+								success = false;
+								continue;
+
+							}
+							printf("Model set\n");
+							//glGetUniformLocation()
+						}
+						else
+						{
+							if(!setup_uniform(uni,tempShaderID)){
+								success = false;
+								continue;
+							}
+							printf("Normal uni set\n");
+						}
+					}
+					if(BIT_CHECK(i->globalUniformFlags,GlobalUniforms::MVP) && success)
+					{
+						if(!set_global_uniform_to_program(tempShaderID,"MatrixBlock",
+									MATRIXES_UNIFORM_LOC))
+						{
+							success = false;
+						}
+					}
+					if(BIT_CHECK(i->globalUniformFlags,GlobalUniforms::GlobalLight) && success)
+					{
+						//printf("SET LIGHTS");
+						//uint lightIndex = glGetUniformBlockIndex(*idIter, "GlobalLight");   
+						//glUniformBlockBinding(*idIter, lightIndex, GLOBALLIGHT_UNIFORM_LOC);
+						//glCheckError();
+						if(!set_global_uniform_to_program(tempShaderID,"GlobalLight",
+									GLOBALLIGHT_UNIFORM_LOC))
+						{
+							success = false;
+						}
+					}
+
+					if(success)
+					{
+						printf("loading succeed \n");
+						glDeleteProgram(manager->shaderProgramIds[index]);
+						manager->shaderProgramIds[index] = tempShaderID;
+						memcpy(i->uniforms,tempArray,sizeof(UniformInfo) * i->numUniforms);
+					}
+					else{
+						glDeleteProgram(tempShaderID);
+						printf("loading failed \n");
+					}
+
+				}
+
+			}
+
+#if 0
 			if(!compare_file_times(i->combinedFileWriteTime,handle))
 			{
 				printf("HOT RELOADING %s \n",i->combiedPath);fflush(stdout);
