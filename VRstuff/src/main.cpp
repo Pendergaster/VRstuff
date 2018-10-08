@@ -45,6 +45,7 @@
 #include<shader_utils.h>
 #include<Utils.h>
 #include<Containers.h>
+#include <smallDLLloader.h>
 #include "input.h"
 // data for reloading and opengl state
 #include "textures.h"
@@ -78,9 +79,8 @@ void cursor_position_callback(GLFWwindow*, double xpos, double ypos)
 	mousePos.y = (float)ypos;
 }
 
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+void key_callback(GLFWwindow* , int key, int , int action, int )
 {
-	//printf("reee\n");
 	if (action == GLFW_PRESS)
 	{
 		INPUTS::set_key_down(key);
@@ -584,8 +584,20 @@ int main()
 	
 #endif
 	
-	
-	
+	DLLHandle gameDLL;
+	if(!load_DLL(&gameDLL,"game/DebugBin/game.dll"))
+	{
+		ABORT_MESSAGE("failed to load game \n");
+	}
+	func_ptr init_game = load_DLL_function(gameDLL,"init_game");
+	if(!init_game){
+		ABORT_MESSAGE("failed to get func init_game \n");
+	}
+	func_ptr update_game = load_DLL_function(gameDLL,"update_game");
+	if(!update_game){
+		ABORT_MESSAGE("failed to get func update_game \n");
+	}
+	init_game(NULL);
 	while (!glfwWindowShouldClose(window))
 	{
 #if VR

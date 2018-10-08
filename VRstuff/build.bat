@@ -12,9 +12,11 @@ if not defined DEV_ENV (
 set DEV_ENV=???
 
 set includes=-I"../include" -I"../Shared" -I"..\..\..\PakkiUtils" -I"..\vrheaders"
-set game_includes=-I"../Shared"
+set game_includes=-I"../Shared" -I"..\..\..\PakkiUtils"
 set lib_path="../libraries/"
 set libs=glfw3.lib opengl32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib  Shell32.lib assimp-vc140-mt.lib LibOVR.lib
+set gamelibs = ""
+
 SETLOCAL
 
 
@@ -38,10 +40,15 @@ IF /I "%1"=="build_test" (
 
 
 IF /I "%1"=="build_game" (
+
+		cd game
 		pushd DebugBin
-		cl %CLAGS% -nologo %game_includes% ..\game\game.c  /MD /LD /link  %libs% -LIBPATH:../libraries  
+		REM -LD -> buildaa .dll -MD jälkee
+		REM nologo ei turhaa printtiä / /MD common runtime multithreaded   /   /link alottaa linkkaamisen / 
+		cl -Z7 -Od -nologo -W4 -wd4201 %game_includes% ..\src\game.cpp  /MD /LD /link  %gamelibs% -LIBPATH:../libraries  
 		popd
-		)
+		cd ../
+)
 
 
 IF /I "%1"=="run" (
@@ -51,7 +58,7 @@ IF /I "%1"=="run" (
 		popd
 		)
 
-		REM TestBin\test.exe
+REM TestBin\test.exe
 IF /I "%1"=="run_test" (
 		REM chdir %~dp0
 		REM pushd TestBin
