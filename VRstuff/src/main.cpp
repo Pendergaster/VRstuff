@@ -585,7 +585,11 @@ int main()
 #endif
 	
 	DLLHandle gameDLL;
+#if defined (_WIN32)
 	if(!load_DLL(&gameDLL,"game/DebugBin/game.dll"))
+#elif __linux__
+	if(!load_DLL(&gameDLL,"./game/DebugBin/game.lib"))
+#endif
 	{
 		ABORT_MESSAGE("failed to load game \n");
 	}
@@ -712,6 +716,7 @@ int main()
 			{
 				printf("ARROW RIGHT \n");
 			}
+			update_game(NULL);
 			INPUTS::update_keys();
 			//printf("pitch %f : yaw %f \n",camera.pitch,camera.yaw);
 			accumulator -= dt;
