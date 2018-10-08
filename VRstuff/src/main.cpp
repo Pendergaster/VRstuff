@@ -3,7 +3,14 @@
 #define VR 1
 #if VR
 #include <dxgi.h>
+
+
+//#include "CAPI_GLE.h"
+//#include "Extras/OVR_Math.h"
+//#include "OVR_CAPI.h"
+
 #endif
+#include <assert.h>
 #include<stb_image.h>
 #undef STB_IMAGE_IMPLEMENTATION
 #include <stdio.h>
@@ -317,6 +324,34 @@ void render(RenderData* renderables,int numRenderables,
 		FrameTexture* frameTextures,uint* eyeVaos,Material vrProgramMaterial);
 
 GLFWwindow* window = NULL;
+#if VR
+	//static OGL Platform;
+ //OVR::GLEContext         GLEContext;
+// Include the OculusVR SDK
+	#include <OVR_CAPI.h>
+	bool Application()
+	{
+	   ovrResult result = ovr_Initialize(nullptr);
+	   if (OVR_FAILURE(result))
+	       return false;
+
+	   ovrSession session;
+	   ovrGraphicsLuid luid;
+	   result = ovr_Create(&session, &luid);
+	   if (OVR_FAILURE(result))
+	   {
+	      ovr_Shutdown();
+	      return false;
+	   }
+
+	   ovrHmdDesc desc = ovr_GetHmdDesc(session);
+	   ovrSizei resolution = desc.Resolution;
+
+	   ovr_Destroy(session);
+	   ovr_Shutdown();
+	   return true;
+	}
+#endif
 int main()
 {
 	printf("hello! \n");
@@ -501,9 +536,61 @@ int main()
 	Material vrMaterial = create_new_material(&shaders,"EyeProg");
 	set_material_texture(&shaders,&vrMaterial,0,0);
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	
+#if VR
+	bool vrSucc = false; //Application();
+	ovrSession session;
+	do{
+		 ovrResult result = ovr_Initialize(nullptr);
+	   if (OVR_FAILURE(result))
+	       break;
+
+	
+	   ovrGraphicsLuid luid;
+	   result = ovr_Create(&session, &luid);
+	   if (OVR_FAILURE(result))
+	   {
+	      ovr_Shutdown();
+	      break;
+	   }
+		
+		float frustomHorizontalFOV = session->CameraFrustumHFovInRadians;
+		
+		
+		
+		
+	   ovrHmdDesc desc = ovr_GetHmdDesc(session);
+	   ovrSizei resolution = desc.Resolution;
+
+	   defer { ovr_Destroy(session);};
+	   defer {ovr_Shutdown();};
+	  
+	   ovrTrackingState ts = ovr_GetTrackingState(session, ovr_GetTimeInSeconds(), ovrTrue);
+	   if (ts.StatusFlags & (ovrStatus_OrientationTracked | ovrStatus_PositionTracked)) 
+	   {
+			ovrPosef pose = ts.HeadPose.ThePose;
+			...
+	   }
+	  
+	  
+	  
+	 vrSucc = true;
+	}while(false);
+	
+	
+	if(vrSucc){ printf("JEI \n");}
+	if(!vrSucc){ printf("NEI \n");}
+	
+	
+#endif
+	
+	
+	
 	while (!glfwWindowShouldClose(window))
 	{
-
+#if VR
+		ovrTrackingState ts = ovr_GetTrackingState(session, ovr_GetTimeInSeconds(), ovrTrue);
+#endif
 		glfwPollEvents();
 #if 0
 		int joyStickPresent = glfwJoystickPresent(GLFW_JOYSTICK_1);
