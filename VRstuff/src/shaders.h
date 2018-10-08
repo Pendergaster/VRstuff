@@ -290,12 +290,15 @@ void hotload_shaders(ShaderManager* manager,CONTAINER::MemoryBlock* workingMem)
 				uint tempShaderID = 0;
 				if(compile_program(*i,&tempShaderID,vertFile,fragFile))
 				{
+                    glUseProgram(tempShaderID);
+                    defer{ glUseProgram(0); };
 					int numTex = 0;
 					bool success = true;
 					UniformInfo* tempArray = (UniformInfo*)CONTAINER::get_next_memory_block(*workingMem);
 					CONTAINER::increase_memory_block(workingMem,sizeof(UniformInfo) * i->numUniforms);
 					memcpy(tempArray,i->uniforms,sizeof(UniformInfo) * i->numUniforms);
 					//for(UniformInfo* uni = i->uniforms;uni < i->uniforms + i->numUniforms;uni++)
+                    glCheckError();
 					for(UniformInfo* uni = tempArray;uni < tempArray + i->numUniforms;uni++)
 					{
 						if(uni->type == UniformType::SAMPLER2D)
@@ -305,7 +308,7 @@ void hotload_shaders(ShaderManager* manager,CONTAINER::MemoryBlock* workingMem)
 								continue;
 							}
 							printf("Sampler set\n");
-						}
+						} 
 						else if(uni->type == UniformType::MODEL)
 						{
 							int location = glGetUniformLocation(tempShaderID,"model");
@@ -326,6 +329,7 @@ void hotload_shaders(ShaderManager* manager,CONTAINER::MemoryBlock* workingMem)
 							}
 							printf("Normal uni set\n");
 						}
+                        glCheckError();
 					}
 					if(BIT_CHECK(i->globalUniformFlags,GlobalUniforms::MVP) && success)
 					{

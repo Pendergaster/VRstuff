@@ -492,7 +492,7 @@ int main()
 			0.0f,  1.f,  1.f , 1.f,		// top right
 			0.0f, -1.f,  1.f , 0.f,		// bottom right
 			-1.0f, -1.0f, 0.f , 0.f,		// bottom left
-			-1.0f,  1.0f, 0.f , 1.f		// top left 
+			-1.0f,  1.0f, 0.f , 1.f		// top left
 		};
 		float verticesRight[] = {
 			1.f,  1.f,  1.f , 1.f,		// top right
@@ -756,7 +756,7 @@ void render(RenderData* renderables,int numRenderables,
 		MATH::vec4 diffuse;
 		MATH::vec4 specular;
 	} light;
-
+    glCheckError();
 	light.dir = MATH::vec4(1.f, -1.0f, 0.f,1.f);
 	light.ambient = MATH::vec4(0.3f, 0.3f, 0.3f,1.f);
 	light.diffuse = MATH::vec4(0.8f, 0.8f, 0.8f,1.f);
