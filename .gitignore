@@ -30,6 +30,7 @@ DebugBin/
 #KHR/
 TestBin/
 glad.c
+temp.dll
 *.out
 
 # Visual Studio 2015/2017 cache/options directory
