@@ -3,6 +3,11 @@
 #include <gameDefs.h>
 #include "game.h"
 
+#include <imgui/imgui.h>
+#include <imgui/imgui.cpp>
+#include <imgui/imgui_draw.cpp>
+#include <imgui/imgui_widgets.cpp>
+
 #define MATERIALS(MODE)\
 	MODE(PlanetMat)\
 
@@ -66,6 +71,19 @@ EXPORT void init_game(void* p)
 
 EXPORT void update_game(void* p)
 {
+	static bool load = true;
 	GameHook* hook = (GameHook*)p;
-	printf(" update \n");
+	if(load)
+	{
+		//ImGuiIO& io = *hook->imguiContext;(void)io;
+		//ImGui::GetCurrentContext();
+		ImGui::SetCurrentContext(hook->imguiContext);
+		load = false;
+		printf("im loaded again\n");
+	}
+	ImGui::Begin("Game window ");
+	ImGui::Text("oot homo petteri ");
+	ImGui::End();
+	//GameHook* hook = (GameHook*)p;
+	//printf(" update \n");
 }

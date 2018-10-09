@@ -3,6 +3,7 @@
 #include <Utils.h>
 #include <MathUtil.h>
 #include <Containers.h>
+#include <imgui/imgui.h>
 #include "meshdefs.h"
 #include "materialdefs.h"
 #include "ShaderDefs.h"
@@ -28,6 +29,7 @@ struct GameHook
 	int						numMaterials = 0;
 	Material*				materials = NULL;
 	CONTAINER::MemoryBlock	gameMemory;
+	ImGuiContext*			imguiContext;
 };
 
 
