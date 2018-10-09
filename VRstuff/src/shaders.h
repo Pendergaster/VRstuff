@@ -7,9 +7,13 @@
 #include <glad/glad.h>
 #include <ModelData.h>
 #include <shader_utils.h>
-#include "ShaderDefs.h"
+#include <ShaderDefs.h>
 #include "SystemUniforms.h"
 #include "glerrorcheck.h"
+
+#define MAX_UNIFORMS 1000
+#define MAX_SYSTEM_UNIFORMS 100
+
 
 static inline bool setup_uniform(UniformInfo* uniform,uint id)
 {
@@ -249,13 +253,6 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 		*workingMem = prevMemState;
 		glUseProgram(0);
 	}
-}
-
-static uint get_shader_program_id(const ShaderManager& manager,const char* name)
-{
-	int* temp = CONTAINER::access_table<int>(manager.shaderProgramCache,name);
-	ASSERT_MESSAGE(temp,"FAILED TO FIND SHADERPROGRAM :: %s \n",name);
-	return (uint)*temp;
 }
 
 void hotload_shaders(ShaderManager* manager,CONTAINER::MemoryBlock* workingMem)

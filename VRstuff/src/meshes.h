@@ -8,28 +8,7 @@
 #include <ModelData.h>
 #include <file_system.h>
 #include "glerrorcheck.h"
-struct Mesh
-{
-	uint vertBuffer = 0;
-	uint normalBuffer = 0;
-	uint texCoordBuffer = 0;
-	uint indexBuffer = 0;
-	uint vao = 0;
-};
-struct MeshInfo
-{
-	char*	name = NULL;
-	char*	path = NULL;
-	int		numVerts = 0;
-	int		numIndexes = 0;
-};
-struct MeshData
-{
-	uint							numMeshes = 0;
-	CONTAINER::StringTable<int>		meshCache;
-	Mesh*							meshArray = NULL;
-	MeshInfo*						meshInfos = NULL;
-};
+#include <meshdefs.h>
 //TODO free method for meshes? 
 //TODO generoi opengl meshit muualla? 
 static inline bool load_mesh(MeshInfo* info,Mesh* data,CONTAINER::MemoryBlock* workingMem)
@@ -126,12 +105,5 @@ static void fill_mesh_cache(MeshData* meshData,CONTAINER::MemoryBlock* workingMe
 
 		glBindVertexArray(0);
 	}
-}
-typedef int MeshId;
-static MeshId get_mesh(MeshData* meshes,const char* name)
-{
-	int* index = CONTAINER::access_table(meshes->meshCache,name);
-	ASSERT_MESSAGE(index,"MESH NOT FOUND :: %s \n",name);
-	return *index;
 }
 #endif //PAKKI_MESHES

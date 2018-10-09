@@ -1,11 +1,9 @@
 #ifndef PAKKI_SHADER_DEFS
 #define PAKKI_SHADER_DEFS
 #include <Containers.h>
+#include <file_system.h>
 #include <Utils.h>
-#include <stb_image.h>
-#include <glad/glad.h>
-#include <ModelData.h>
-#include <shader_utils.h>
+//#include <shader_utils.h>
 #define UNIFORMTYPES(MODE)\
 	MODE(INVALID)\
 	MODE(INTTYPE)\
@@ -121,8 +119,11 @@ struct ShaderManager
 	Uniform*						uniforms = NULL;
 	UniformInfo*					uniformInfos = NULL;
 };
-#define MAX_UNIFORMS 1000
-#define MAX_SYSTEM_UNIFORMS 100
-
+static uint get_shader_program_id(const ShaderManager& manager,const char* name)
+{
+	int* temp = CONTAINER::access_table<int>(manager.shaderProgramCache,name);
+	ASSERT_MESSAGE(temp,"FAILED TO FIND SHADERPROGRAM :: %s \n",name);
+	return (uint)*temp;
+}
 
 #endif //PAKKI_SHADER_DEFS

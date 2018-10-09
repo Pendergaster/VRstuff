@@ -3,12 +3,6 @@
 #define VR 0
 #if VR
 #include <dxgi.h>
-
-
-//#include "CAPI_GLE.h"
-//#include "Extras/OVR_Math.h"
-//#include "OVR_CAPI.h"
-
 #endif
 #include <assert.h>
 #include<stb_image.h>
@@ -46,6 +40,8 @@
 #include<Utils.h>
 #include<Containers.h>
 #include <smallDLLloader.h>
+#include <gameDefs.h>
+#include <ShaderDefs.h>
 #include "input.h"
 // data for reloading and opengl state
 #include "textures.h"
@@ -128,10 +124,11 @@ static void init_camera(Camera* cam)
 	MATH::perspective(&cam->projection,MATH::deg_to_rad * fov, 
 			(float)SCREENWIDHT / (float) SCREENHEIGHT,0.1f, 10000.f);
 #else 
-		MATH::perspective(&cam->projection,MATH::deg_to_rad * fov, 
+	MATH::perspective(&cam->projection,MATH::deg_to_rad * fov, 
 			(float)(SCREENWIDHT/2) / (float) SCREENHEIGHT,0.1f, 10000.f);
 #endif
 }
+
 static inline void update_camera(Camera* cam,MATH::vec2 newMousePos)
 {
 	static MATH::vec2 oldMousePos = newMousePos;
@@ -174,75 +171,8 @@ static inline void update_camera(Camera* cam,MATH::vec2 newMousePos)
 //TODO samaan bufferiin pojat
 
 
-struct Material
-{
-	uint shaderProgram;
-	uint uniformIndex;
-	uint numUniforms;
-};
-Material create_new_material(ShaderManager* manager,const char* name)
-{
-	int* shaderIndex = CONTAINER::access_table(manager->shaderProgramCache,name);
-	ASSERT_MESSAGE(shaderIndex,"SHADERPROGRAM DOES NOT EXIST :: %s \n",name);
-	ShaderProgram* program = &manager->shaderPrograms[*shaderIndex];
-	Material ret;
-	ret.uniformIndex =  manager->numUniforms;
-	manager->numUniforms += program->numUniforms;
-	ret.numUniforms = program->numUniforms;
-	ret.shaderProgram = *shaderIndex;
-	for(uint i = 0 ; i < ret.numUniforms;i++)
-	{
-		manager->uniforms[ret.uniformIndex + i].type = manager->uniformInfos
-			[ret.uniformIndex + i].type;
-	}
-	return ret; 
-}
-static inline Uniform* get_uniform(ShaderManager* manager,
-		Material* mat,int index)
-{
-	Uniform* m = &manager->uniforms[mat->uniformIndex + index];
-	return m;
-}
-static inline void set_material_vec4(ShaderManager* manager,
-		Material* mat,int index, const MATH::vec4& vec)
-{
-	Uniform* uni = get_uniform(manager,mat,index);
-	ASSERT_MESSAGE(uni->type == UniformType::VEC4,"UNIFORM IS NOT CORRECT TYPE\n");
-	uni->_vec4 = vec;
-}
-static inline void set_material_float(ShaderManager* manager,
-		Material* mat,int index, const float val)
-{
-	Uniform* uni = get_uniform(manager,mat,index);
-	ASSERT_MESSAGE(uni->type == UniformType::FLOATTYPE,"UNIFORM IS NOT CORRECT TYPE\n");
-	uni->_float = val;
-}
-static inline void set_material_int(ShaderManager* manager,
-		Material* mat,int index, const int val)
-{
-	Uniform* uni = get_uniform(manager,mat,index);
-	ASSERT_MESSAGE(uni->type == UniformType::INTTYPE,"UNIFORM IS NOT CORRECT TYPE\n");
-	uni->_int = val;
-}
-static inline void set_material_texture(ShaderManager* manager,
-		Material* mat,int index, const int shaderCacheID)
-{
-	Uniform* uni = get_uniform(manager,mat,index);
-	ASSERT_MESSAGE(uni->type == UniformType::SAMPLER2D,"UNIFORM IS NOT CORRECT TYPE\n");
-	uni->_textureCacheId = shaderCacheID;
-}
 //TODO textuuri set BOE BOE 
 //TODO camera 
-struct RenderData
-{
-	Material			material;
-	MeshId				meshID = 0;
-	MATH::vec3			position;
-	MATH::vec3			oriTemp;
-	MATH::quaternion	orientation;
-	float				scale = 0;
-};
-
 //void render(RenderData* renderables,int numRenderables,
 //MeshData* meshes,ShaderManager* shaders ,
 //const SystemUniforms* uniforms,const Camera* camera,uint* textureIds);
@@ -318,40 +248,105 @@ static inline void set_and_clear_frameTexture(const FrameTexture& frameTex)
 	glViewport(0, 0, frameTex.textureWidth, frameTex.textureHeight);
 	glCheckError();
 }
+#if 0
 void render(RenderData* renderables,int numRenderables,
 		MeshData* meshes,ShaderManager* shaders ,
 		const SystemUniforms* uniforms,const Camera* camera,uint* textureIds,
 		FrameTexture* frameTextures,uint* eyeVaos,Material vrProgramMaterial);
+#endif
 
 GLFWwindow* window = NULL;
 #if VR
-	//static OGL Platform;
- //OVR::GLEContext         GLEContext;
+//static OGL Platform;
+//OVR::GLEContext         GLEContext;
 // Include the OculusVR SDK
-	#include <OVR_CAPI.h>
-	bool Application()
+#include <OVR_CAPI.h>
+bool Application()
+{
+	ovrResult result = ovr_Initialize(nullptr);
+	if (OVR_FAILURE(result))
+		return false;
+
+	ovrSession session;
+	ovrGraphicsLuid luid;
+	result = ovr_Create(&session, &luid);
+	if (OVR_FAILURE(result))
 	{
-	   ovrResult result = ovr_Initialize(nullptr);
-	   if (OVR_FAILURE(result))
-	       return false;
-
-	   ovrSession session;
-	   ovrGraphicsLuid luid;
-	   result = ovr_Create(&session, &luid);
-	   if (OVR_FAILURE(result))
-	   {
-	      ovr_Shutdown();
-	      return false;
-	   }
-
-	   ovrHmdDesc desc = ovr_GetHmdDesc(session);
-	   ovrSizei resolution = desc.Resolution;
-
-	   ovr_Destroy(session);
-	   ovr_Shutdown();
-	   return true;
+		ovr_Shutdown();
+		return false;
 	}
+
+	ovrHmdDesc desc = ovr_GetHmdDesc(session);
+	ovrSizei resolution = desc.Resolution;
+
+	ovr_Destroy(session);
+	ovr_Shutdown();
+	return true;
+}
 #endif
+struct DLLHotloadHandle
+{
+	FILESYS::FileHandle fileHandle;
+	char*				dllname;
+	DLLHandle			dllHandle;
+};
+bool hotload_dll(DLLHotloadHandle* dll)
+{
+	FILESYS::FileHandle tempHandle;
+	if(!FILESYS::get_filehandle(dll->dllname,&tempHandle)){
+		return false;
+	}
+	if(!FILESYS::compare_file_times(tempHandle,dll->fileHandle))
+	{
+		LOG("Reloading dll %s \n",dll->dllname);
+#if defined (_WIN32)
+		if(FILESYS::does_file_exist("/.lock"))
+#elif __linux__
+			if(FILESYS::does_file_exist("./.lock"))
+#endif
+			{
+				printf("file locked %s \n",dll->dllname);
+				return false;
+			}
+		dll->fileHandle = tempHandle;
+		if(FILESYS::does_file_exist(dll->dllname))
+		{
+			UnloadDLL(&dll->dllHandle);
+			if(!load_DLL(&dll->dllHandle,dll->dllname))
+			{
+				ABORT_MESSAGE("failed to load game \n");
+			}
+			printf("dll loaded successfully \n");
+			return true;
+		}
+	}
+	return false;
+}
+#if 0
+void render(RenderData* renderables,int numRenderables,
+		Material* materials,int numMaterials,
+		MeshData* meshes,ShaderManager* shaders ,
+		const SystemUniforms* uniforms,const Camera* camera,uint* textureIds,
+		FrameTexture* frameTextures,uint* eyeVaos,Material vrProgram)
+{
+
+#endif
+struct RenderCommands
+{
+	RenderData*		renderables;
+	int*			renderIndexes = NULL;
+	int				numRenderables = 0;
+	Material*		materials = NULL;
+	Camera*			camera = NULL;
+	ShaderManager*	shaders = NULL;
+	uint*			textureIds = NULL;
+	FrameTexture*	frameTextures = NULL;
+	SystemUniforms* uniforms = NULL;
+	Material		vrProgram;
+	MeshData*		meshes = NULL;
+};
+
+void render(RenderCommands commands);
 int main()
 {
 	printf("hello! \n");
@@ -415,16 +410,17 @@ int main()
 	INPUTS::Input inputs;
 	init_inputs(&inputs);
 
-	PROFILER::end_timer(PROFILER::TimerID::Start,&timers);
 	//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	const double dt = 1.0 / 60.0;
 	double currentTime = glfwGetTime();
 	double accumulator = 0.0;
 
+#if 0
 	Material material = create_new_material(&shaders,"MainProg");
 	int moonTex = get_texture(textures,"MoonTexture");
 	set_material_texture(&shaders,&material,0,moonTex);
 	MeshId meshId = get_mesh(&meshes,"Planet");
+
 	RenderData renderData;
 
 	renderData.material = material;
@@ -433,6 +429,8 @@ int main()
 	//renderData.orientation = MATH::quaternion(0,0,0,0);
 	renderData.position = MATH::vec3(0,0,0);
 	renderData.scale = 0.7f;
+
+#endif
 #if 0
 	{
 		glGenFramebuffers(1,&frameBuffer);
@@ -536,72 +534,88 @@ int main()
 	Material vrMaterial = create_new_material(&shaders,"EyeProg");
 	set_material_texture(&shaders,&vrMaterial,0,0);
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	
+
 #if VR
 	bool vrSucc = false; //Application();
 	ovrSession session;
 	do{
-		 ovrResult result = ovr_Initialize(nullptr);
-	   if (OVR_FAILURE(result))
-	       break;
+		ovrResult result = ovr_Initialize(nullptr);
+		if (OVR_FAILURE(result))
+			break;
 
-	
-	   ovrGraphicsLuid luid;
-	   result = ovr_Create(&session, &luid);
-	   if (OVR_FAILURE(result))
-	   {
-	      ovr_Shutdown();
-	      break;
-	   }
-		
+
+		ovrGraphicsLuid luid;
+		result = ovr_Create(&session, &luid);
+		if (OVR_FAILURE(result))
+		{
+			ovr_Shutdown();
+			break;
+		}
+
 		float frustomHorizontalFOV = session->CameraFrustumHFovInRadians;
-		
-		
-		
-		
-	   ovrHmdDesc desc = ovr_GetHmdDesc(session);
-	   ovrSizei resolution = desc.Resolution;
 
-	   defer { ovr_Destroy(session);};
-	   defer {ovr_Shutdown();};
-	  
-	   ovrTrackingState ts = ovr_GetTrackingState(session, ovr_GetTimeInSeconds(), ovrTrue);
-	   if (ts.StatusFlags & (ovrStatus_OrientationTracked | ovrStatus_PositionTracked)) 
-	   {
+
+
+
+		ovrHmdDesc desc = ovr_GetHmdDesc(session);
+		ovrSizei resolution = desc.Resolution;
+
+		defer { ovr_Destroy(session);};
+		defer {ovr_Shutdown();};
+
+		ovrTrackingState ts = ovr_GetTrackingState(session, ovr_GetTimeInSeconds(), ovrTrue);
+		if (ts.StatusFlags & (ovrStatus_OrientationTracked | ovrStatus_PositionTracked)) 
+		{
 			ovrPosef pose = ts.HeadPose.ThePose;
 			...
-	   }
-	  
-	  
-	  
-	 vrSucc = true;
+		}
+
+
+
+		vrSucc = true;
 	}while(false);
-	
-	
+
+
 	if(vrSucc){ printf("JEI \n");}
 	if(!vrSucc){ printf("NEI \n");}
-	
-	
+
+
 #endif
-	
-	DLLHandle gameDLL;
+
+	DLLHotloadHandle gameDLL;
 #if defined (_WIN32)
-	if(!load_DLL(&gameDLL,"game/DebugBin/game.dll"))
+	gameDLL.dllname = (char*)"game/DebugBin/game.dll";
 #elif __linux__
-	if(!load_DLL(&gameDLL,"./game/DebugBin/game.lib"))
+	gameDLL.dllname = (char*)"./game/DebugBin/game.lib";
 #endif
+	func_ptr init_game;
+	func_ptr update_game;
 	{
-		ABORT_MESSAGE("failed to load game \n");
+#if defined (_WIN32)
+		if(!load_DLL(&gameDLL.dllHandle,gameDLL.dllname))
+#elif __linux__
+			if(!load_DLL(&gameDLL.dllHandle,gameDLL.dllname))
+#endif
+			{
+				ABORT_MESSAGE("failed to load game \n");
+			}
+		init_game = load_DLL_function(gameDLL.dllHandle,"init_game");
+		if(!init_game){
+			ABORT_MESSAGE("Failed to load init game \n");
+		}
+		update_game = load_DLL_function(gameDLL.dllHandle,"update_game");
+		if(!update_game){
+			ABORT_MESSAGE("Failed to load update game \n");
+		}
 	}
-	func_ptr init_game = load_DLL_function(gameDLL,"init_game");
-	if(!init_game){
-		ABORT_MESSAGE("failed to get func init_game \n");
-	}
-	func_ptr update_game = load_DLL_function(gameDLL,"update_game");
-	if(!update_game){
-		ABORT_MESSAGE("failed to get func update_game \n");
-	}
-	init_game(NULL);
+
+	GameHook hook;
+	hook.shaders = &shaders;
+	hook.meshes = &meshes;
+	CONTAINER::init_memory_block(&hook.gameMemory,GAME_MEMORY_SIZE);
+
+	init_game(&hook);
+	PROFILER::end_timer(PROFILER::TimerID::Start,&timers);
 	while (!glfwWindowShouldClose(window))
 	{
 #if VR
@@ -716,7 +730,7 @@ int main()
 			{
 				printf("ARROW RIGHT \n");
 			}
-			update_game(NULL);
+			update_game(&hook);
 			INPUTS::update_keys();
 			//printf("pitch %f : yaw %f \n",camera.pitch,camera.yaw);
 			accumulator -= dt;
@@ -732,8 +746,22 @@ int main()
 		//void render(RenderData* renderables,int numRenderables,
 		//	MeshData* meshes,ShaderManager* shaders ,
 		//		const SystemUniforms* uniforms,const Camera* camera,uint* textureIds);
-		render(&renderData,1,&meshes,&shaders,&sysUniforms,
-				&camera,textures.textureIds,eyes,vrVaos,vrMaterial);
+		RenderCommands rend;
+		rend.camera = &camera;
+		rend.frameTextures = eyes;
+		rend.meshes = &meshes;
+		rend.renderables = hook.renderables;
+		rend.numRenderables = hook.numRenderables;
+		rend.shaders = &shaders;
+		rend.textureIds = textures.textureIds;
+		rend.materials = hook.materials;
+		rend.uniforms = &sysUniforms;
+		rend.vrProgram = vrMaterial;
+
+
+		//render(&renderData,1,&meshes,&shaders,&sysUniforms,
+		//		&camera,textures.textureIds,eyes,vrVaos,vrMaterial);
+		render(rend);
 		ImGui::Render();
 		int display_w, display_h;
 		//glfwMakeContextCurrent(window);
@@ -751,19 +779,28 @@ int main()
 		PROFILER::end_timer(PROFILER::TimerID::Iteration,&timers);
 		//printf("RELOADING \n");fflush(stdout);
 		hotload_shaders(&shaders,&workingMemory);
+		if(hotload_dll(&gameDLL))
+		{
+			init_game = load_DLL_function(gameDLL.dllHandle,"init_game");
+			if(!init_game){
+				ABORT_MESSAGE("Failed to load init game \n");
+			}
+			update_game = load_DLL_function(gameDLL.dllHandle,"update_game");
+			if(!update_game){
+				ABORT_MESSAGE("Failed to load update game \n");
+			}
+
+		}
 	}
 	PROFILER::show_timers(&timers);
 	glfwTerminate();
 	return 0;
 }
-void render(RenderData* renderables,int numRenderables,
-		MeshData* meshes,ShaderManager* shaders ,
-		const SystemUniforms* uniforms,const Camera* camera,uint* textureIds,
-		FrameTexture* frameTextures,uint* eyeVaos,Material vrProgram)
+void render(RenderCommands commands)
 {
 #if !VR
-	glBindBuffer(GL_UNIFORM_BUFFER,uniforms->matrixUniformBufferObject);
-	glBufferSubData(GL_UNIFORM_BUFFER,0,sizeof(MATH::mat4) * 2, (void*)camera);
+	glBindBuffer(GL_UNIFORM_BUFFER,commands.uniforms->matrixUniformBufferObject);
+	glBufferSubData(GL_UNIFORM_BUFFER,0,sizeof(MATH::mat4) * 2, (void*)commands.camera);
 	glBindBuffer(GL_UNIFORM_BUFFER,0);
 #endif
 
@@ -773,12 +810,12 @@ void render(RenderData* renderables,int numRenderables,
 		MATH::vec4 diffuse;
 		MATH::vec4 specular;
 	} light;
-    glCheckError();
+	glCheckError();
 	light.dir = MATH::vec4(1.f, -1.0f, 0.f,1.f);
 	light.ambient = MATH::vec4(0.3f, 0.3f, 0.3f,1.f);
 	light.diffuse = MATH::vec4(0.8f, 0.8f, 0.8f,1.f);
 	light.specular = MATH::vec4( 0.5f, 0.5f, 0.5f,1.f);
-	glBindBuffer(GL_UNIFORM_BUFFER,uniforms->globalLightBufferObject);
+	glBindBuffer(GL_UNIFORM_BUFFER,commands.uniforms->globalLightBufferObject);
 	glCheckError();
 	glBufferSubData(GL_UNIFORM_BUFFER,0,sizeof(MATH::vec4) * 4, &light);
 	glCheckError();
@@ -808,29 +845,33 @@ void render(RenderData* renderables,int numRenderables,
 
 
 #endif
-		for(RenderData* i = renderables; i < renderables + numRenderables; i++)
+		for(int i = 0; i < commands.numRenderables; i++)
 		{
-			ShaderProgram* prog = &shaders->shaderPrograms[i->material.shaderProgram];
-			uint glID = shaders->shaderProgramIds[i->material.shaderProgram];
+			int currentIndex = commands.renderIndexes[i];
+			RenderData* currentRenderData = &commands.renderables[currentIndex];
+			Material* currentMaterial = &commands.materials[currentRenderData->materialID];
+			
+			ShaderProgram* prog = &commands.shaders->shaderPrograms[currentMaterial->shaderProgram];
+			uint glID = commands.shaders->shaderProgramIds[currentMaterial->shaderProgram];
 			glUseProgram(glID);
 
 #if 1
 			MATH::quaternion q(MATH::vec3(
-						i->oriTemp.x * MATH::deg_to_rad,
-						i->oriTemp.y * MATH::deg_to_rad,
-						i->oriTemp.z * MATH::deg_to_rad
+						currentRenderData->oriTemp.x * MATH::deg_to_rad,
+						currentRenderData->oriTemp.y * MATH::deg_to_rad,
+						currentRenderData->oriTemp.z * MATH::deg_to_rad
 						));
 			//	printf("%.3f :: %.3f :: %.3f :: %.3f\n",q.i,q.j,q.k,q.scalar);
 			//printf("lenght %.4f \n",MATH::lenght(q));
 			MATH::mat4 model(q);//i->orientation);
-			MATH::translate(&model,i->position);
-			MATH::scale_mat4(&model,i->scale);
+			MATH::translate(&model,currentRenderData->position);
+			MATH::scale_mat4(&model,currentRenderData->scale);
 #endif
 			//glUniformMatrix4fv(prog->modelUniformPosition, 1, GL_FALSE, (GLfloat*)model.mat);
 			glCheckError();
-			for(uint i2 = 0; i2 < i->material.numUniforms;i2++)
+			for(uint i2 = 0; i2 < currentMaterial->numUniforms;i2++)
 			{
-				Uniform* uniToSet = &shaders->uniforms[i->material.uniformIndex + i2];
+				Uniform* uniToSet = &commands.shaders->uniforms[currentMaterial->uniformIndex + i2];
 				UniformInfo* info = &prog->uniforms[i2];
 
 				//for(int texPlace = 0; texPlace < prog->)
@@ -858,7 +899,7 @@ void render(RenderData* renderables,int numRenderables,
 					case UniformType::SAMPLER2D:
 						{
 							glActiveTexture(GL_TEXTURE0 + info->glTexLocation);
-							glBindTexture(GL_TEXTURE_2D, textureIds[uniToSet->_textureCacheId]);
+							glBindTexture(GL_TEXTURE_2D, commands.textureIds[uniToSet->_textureCacheId]);
 						}break;
 					case UniformType::MODEL:
 						{
@@ -873,8 +914,8 @@ void render(RenderData* renderables,int numRenderables,
 
 			glCheckError();
 			//SHADER::set_mat4_name();
-			Mesh* currentMesh = &meshes->meshArray[i->meshID];
-			MeshInfo* currentMeshInfo = &meshes->meshInfos[i->meshID];
+			Mesh* currentMesh = &commands.meshes->meshArray[currentRenderData->meshID];
+			MeshInfo* currentMeshInfo = &commands.meshes->meshInfos[currentRenderData->meshID];
 			glBindVertexArray(currentMesh->vao);
 			glDrawElements(GL_TRIANGLES,currentMeshInfo->numIndexes, GL_UNSIGNED_INT,0);
 			glCheckError();
@@ -893,7 +934,7 @@ void render(RenderData* renderables,int numRenderables,
 	glViewport(0, 0, display_w, display_h);
 	glClearColor(0.f, 0.f, 0.f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	
+
 	glCheckError();
 	ShaderProgram* prog = &shaders->shaderPrograms[vrProgram.shaderProgram];
 	glBindVertexArray(eyeVaos[0]);
