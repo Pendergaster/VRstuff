@@ -2,7 +2,7 @@
 	"Planet" : {
 		"metaDataPath" : "metadata/Planet1.bin",
 		"rawPath" : "models/Planet1.obj"
-	}
+	},
 	"SpaceShip" : {
 		"metaDataPath" : "metadata/SpaceShip.bin",
 		"rawPath" : "models/SpaceShip.obj"

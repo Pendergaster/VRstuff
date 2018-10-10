@@ -613,11 +613,16 @@ void render(RenderData* renderables,int numRenderables,
 		GameHook hook;
 		hook.shaders = &shaders;
 		hook.meshes = &meshes;
+		hook.textures = &textures;
 		hook.imguiContext = imguiContext;
 		CONTAINER::init_memory_block(&hook.gameMemory,GAME_MEMORY_SIZE);
-
+		printf("context set\n");
 		init_game(&hook);
 		PROFILER::end_timer(PROFILER::TimerID::Start,&timers);
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+		ImGui::EndFrame();
 		while (!glfwWindowShouldClose(window))
 		{
 #if VR
@@ -696,7 +701,7 @@ void render(RenderData* renderables,int numRenderables,
 				ImGui_ImplOpenGL3_NewFrame();
 				ImGui_ImplGlfw_NewFrame();
 				ImGui::NewFrame();
-
+				//printf("new frame\n");fflush(stdout);
 				update_game(&hook);
 				INPUTS::update_keys();
 				//printf("pitch %f : yaw %f \n",camera.pitch,camera.yaw);
@@ -732,6 +737,8 @@ void render(RenderData* renderables,int numRenderables,
 						ImGui::End();
 					}
 				}
+
+				//printf("end frame\n");
 				ImGui::EndFrame();
 			}
 #if !VR
@@ -761,6 +768,7 @@ void render(RenderData* renderables,int numRenderables,
 			//render(&renderData,1,&meshes,&shaders,&sysUniforms,
 			//		&camera,textures.textureIds,eyes,vrVaos,vrMaterial);
 			render(rend);
+			//printf("renderings \n");fflush(stdout);;
 			ImGui::Render();
 			int display_w, display_h;
 			//glfwMakeContextCurrent(window);

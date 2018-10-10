@@ -3,6 +3,7 @@
 #include <Containers.h>
 #include <file_system.h>
 #include <Utils.h>
+#include <MathUtil.h>
 //#include <shader_utils.h>
 #define UNIFORMTYPES(MODE)\
 	MODE(INVALID)\

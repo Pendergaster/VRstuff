@@ -7,6 +7,7 @@
 #include "meshdefs.h"
 #include "materialdefs.h"
 #include "ShaderDefs.h"
+#include "texturedefs.h"
 #define GAME_MEMORY_SIZE 100000
 struct RenderData
 {
@@ -30,6 +31,7 @@ struct GameHook
 	Material*				materials = NULL;
 	CONTAINER::MemoryBlock	gameMemory;
 	ImGuiContext*			imguiContext;
+	TextureData*			textures;
 };
 
 

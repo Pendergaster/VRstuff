@@ -56,12 +56,14 @@ EXPORT void init_game(void* p)
 	
 	RenderData planetData;
 	planetData.materialID = MaterialType::PlanetMat;
-	planetData.meshID = get_mesh(hook->meshes,"Planet");
+	planetData.meshID = get_mesh(hook->meshes,"SpaceShip");
 	planetData.orientation = MATH::quaternion();
 	planetData.position = MATH::vec3(0,0,0);
 	planetData.scale = 0.5f;
 	planetData.oriTemp = MATH::vec3();
 
+	TextureID moonTex = get_texture(*hook->textures,"SpaceShip");
+	set_material_texture(hook->shaders,&hook->materials[0],1,moonTex);
 	hook->renderables[0] = planetData;
 	hook->renderIndexes[0] = 0;
 	hook->numRenderables = 1;
@@ -81,9 +83,10 @@ EXPORT void update_game(void* p)
 		load = false;
 		printf("im loaded again\n");
 	}
-	ImGui::Begin("Game window ");
-	ImGui::Text("oot homo petteri ");
-	ImGui::End();
+	
+	//ImGui::Begin("Game window ");
+//	ImGui::Text("oot homo petteri ");
+//	ImGui::End();
 	//GameHook* hook = (GameHook*)p;
 	//printf(" update \n");
 }
