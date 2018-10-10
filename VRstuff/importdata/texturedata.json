@@ -1,16 +1,24 @@
 {
 	"MoonTexture" : 
-		{
-				"Path" : "assets/MoonTexture.png",
-				"Mipmap" : false,
-				"SRGB" : false,
-				"Wrap" : "Repeat"
-		},
-		"SpaceShip" : 
-		{
-				"Path" : "assets/SpaceshipTexture.png",
-				"Mipmap" : false,
-				"SRGB" : false,
-				"Wrap" : "Repeat"
-		}
+	{
+		"Path" : "assets/MoonTexture.png",
+		"Mipmap" : false,
+		"SRGB" : false,
+		"Wrap" : "Repeat"
+	},
+	"SpaceShip" : 
+	{
+		"Path" : "assets/SpaceshipTexture.png",
+		"Mipmap" : false,
+		"SRGB" : false,
+		"Wrap" : "Repeat"
+	},
+	"Ground" : 
+	{
+		"Path" : "assets/gound.jpg",
+		"Mipmap" : false,
+		"SRGB" : false,
+		"Wrap" : "Repeat"
+	}
+
 }

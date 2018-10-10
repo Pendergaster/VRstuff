@@ -56,14 +56,14 @@ EXPORT void init_game(void* p)
 	
 	RenderData planetData;
 	planetData.materialID = MaterialType::PlanetMat;
-	planetData.meshID = get_mesh(hook->meshes,"SpaceShip");
+	planetData.meshID = get_mesh(hook->meshes,"Planet");
 	planetData.orientation = MATH::quaternion();
 	planetData.position = MATH::vec3(0,0,0);
 	planetData.scale = 0.5f;
 	planetData.oriTemp = MATH::vec3();
 
-	TextureID moonTex = get_texture(*hook->textures,"SpaceShip");
-	set_material_texture(hook->shaders,&hook->materials[0],1,moonTex);
+	TextureID moonTex = get_texture(*hook->textures,"Ground");
+	set_material_texture(hook->shaders,&planetMat,1,moonTex);
 	hook->renderables[0] = planetData;
 	hook->renderIndexes[0] = 0;
 	hook->numRenderables = 1;

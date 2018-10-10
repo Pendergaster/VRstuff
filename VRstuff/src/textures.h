@@ -13,7 +13,10 @@ static inline bool load_texture(TextureInfo* info,uint id)
 	TextureInfo temp = *info;
 	unsigned char* data = stbi_load(temp.path, &temp.widht, &temp.height, &temp.channels,0);
 	//ASSERT_MESSAGE(data,"FAILED TO LOAD TEXTURE :: %s \n",temp.name);
-	if (!data) return false;
+	if (!data) {
+		LOG("Texture not found %s \n",temp.path);
+		return false;
+	}
 	defer {stbi_image_free(data);};
 
 	glBindTexture(GL_TEXTURE_2D,id);
