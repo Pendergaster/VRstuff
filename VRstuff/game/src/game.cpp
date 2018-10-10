@@ -52,7 +52,6 @@ EXPORT void init_game(void* p)
 
 	//hook->materials[0] = 
 	Material planetMat = create_new_material(hook->shaders,"MainProg");
-	hook->materials[0] = planetMat;
 	
 	RenderData planetData;
 	planetData.materialID = MaterialType::PlanetMat;
@@ -64,6 +63,7 @@ EXPORT void init_game(void* p)
 
 	TextureID moonTex = get_texture(*hook->textures,"Ground");
 	set_material_texture(hook->shaders,&planetMat,1,moonTex);
+	hook->materials[0] = planetMat;
 	hook->renderables[0] = planetData;
 	hook->renderIndexes[0] = 0;
 	hook->numRenderables = 1;
