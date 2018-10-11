@@ -1,6 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
+//#define _ITERATOR_DEBUG_LEVEL 0
 #define STB_IMAGE_IMPLEMENTATION
-#define VR 0
+#define VR 1
 #if VR
 #include <dxgi.h>
 #endif
@@ -341,6 +342,7 @@ void render(RenderData* renderables,int numRenderables,
 		ShaderManager*	shaders = NULL;
 		uint*			textureIds = NULL;
 		FrameTexture*	frameTextures = NULL;
+        uint*           eyeVaos = NULL;
 		SystemUniforms* uniforms = NULL;
 		Material		vrProgram;
 		MeshData*		meshes = NULL;
@@ -477,11 +479,7 @@ void render(RenderData* renderables,int numRenderables,
 		};
 #endif
 
-		FrameTexture eyes[2] = 
-		{create_new_frameTexture(SCREENWIDHT/ 2,SCREENHEIGHT,GL_COLOR_ATTACHMENT0,FrameBufferAttacment::Color |FrameBufferAttacment::Depth  )
-			,create_new_frameTexture(SCREENWIDHT/ 2,SCREENHEIGHT,GL_COLOR_ATTACHMENT0,FrameBufferAttacment::Color |FrameBufferAttacment::Depth )};
-
-		glBindFramebuffer(GL_FRAMEBUFFER,0);
+		
 		//static inline FrameTexture create_new_frameTexture(uint width,uint height,GLenum attachment,FrameBufferAttacment type)
 
 		uint vrVaos[2];
@@ -539,13 +537,17 @@ void render(RenderData* renderables,int numRenderables,
 #if VR
 		bool vrSucc = false; //Application();
 		ovrSession session;
+	    ovrGraphicsLuid luid;
+        //resolutions, and info about device
+        ovrHmdDesc desc;
+        defer{ ovr_Destroy(session); };
+        defer{ ovr_Shutdown(); };
 		do{
 			ovrResult result = ovr_Initialize(nullptr);
 			if (OVR_FAILURE(result))
 				break;
 
 
-			ovrGraphicsLuid luid;
 			result = ovr_Create(&session, &luid);
 			if (OVR_FAILURE(result))
 			{
@@ -553,17 +555,16 @@ void render(RenderData* renderables,int numRenderables,
 				break;
 			}
 
-			float frustomHorizontalFOV = session->CameraFrustumHFovInRadians;
+			//float frustomHorizontalFOV = session->CameraFrustumHFovInRadians;
 
 
 
 
-			ovrHmdDesc desc = ovr_GetHmdDesc(session);
+			desc = ovr_GetHmdDesc(session);
 			ovrSizei resolution = desc.Resolution;
 
-			defer { ovr_Destroy(session);};
-			defer {ovr_Shutdown();};
-
+			
+#if 0
 			ovrTrackingState ts = ovr_GetTrackingState(session, ovr_GetTimeInSeconds(), ovrTrue);
 			if (ts.StatusFlags & (ovrStatus_OrientationTracked | ovrStatus_PositionTracked)) 
 			{
@@ -571,11 +572,16 @@ void render(RenderData* renderables,int numRenderables,
 				...
 			}
 
-
-
+#endif
+			ovr_SetTrackingOriginType(session, ovrTrackingOrigin_FloorLevel);
 			vrSucc = true;
 		}while(false);
 
+        FrameTexture eyes[2] =
+        { create_new_frameTexture(desc.Resolution.w / 2,desc.Resolution.h / 2,GL_COLOR_ATTACHMENT0,FrameBufferAttacment::Color | FrameBufferAttacment::Depth)
+            ,create_new_frameTexture(desc.Resolution.w / 2,desc.Resolution.h / 2,GL_COLOR_ATTACHMENT0,FrameBufferAttacment::Color | FrameBufferAttacment::Depth) };
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		if(vrSucc){ printf("JEI \n");}
 		if(!vrSucc){ printf("NEI \n");}
@@ -623,10 +629,50 @@ void render(RenderData* renderables,int numRenderables,
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 		ImGui::EndFrame();
+#if VR
+		long long frameIndex = 0;
+		//ovrHmdDesc hmdDesc = ovr_GetHmdDesc(session);
+#endif
 		while (!glfwWindowShouldClose(window))
 		{
 #if VR
+			 ovrSessionStatus sessionStatus;
+			ovr_GetSessionStatus(session, &sessionStatus);
+			if (sessionStatus.ShouldQuit){
+				printf("ovr exit \n");
+				break;
+			}
+			ovrResult result = ovr_WaitToBeginFrame(session, frameIndex);
 			ovrTrackingState ts = ovr_GetTrackingState(session, ovr_GetTimeInSeconds(), ovrTrue);
+			if (ts.StatusFlags & (ovrStatus_OrientationTracked | ovrStatus_PositionTracked)) 
+			{
+				ovrPosef pose = ts.HeadPose.ThePose;
+				//...
+				
+				
+			ovrEyeRenderDesc eyeRenderDesc[2];
+            eyeRenderDesc[0] = ovr_GetRenderDesc(session, ovrEye_Left, desc.DefaultEyeFov[0]);
+            eyeRenderDesc[1] = ovr_GetRenderDesc(session, ovrEye_Right, desc.DefaultEyeFov[1]);
+			
+			ovrPosef EyeRenderPose[2];
+            ovrPosef HmdToEyePose[2] = { eyeRenderDesc[0].HmdToEyePose,
+                                         eyeRenderDesc[1].HmdToEyePose};
+			double sensorSampleTime;    
+			//sensorSampleTime is fed into the layer later
+            ovr_GetEyePoses(session, frameIndex, ovrTrue, HmdToEyePose, EyeRenderPose, &sensorSampleTime);
+										 
+            printf("%.3f, %.3f --  %.3f \n",
+			EyeRenderPose[0].Position.x, EyeRenderPose[0].Position.y, EyeRenderPose[0].Position.z);
+			
+			Matrix4f eyeOneOrientation(EyeRenderPose[0].Orientation);
+			Matrix4f eyeTwoOrientation(EyeRenderPose[1].Orientation);
+			Vector3f finalUpOne = eyeOneOrientation.Transform(Vector3f(0, 1, 0));
+			Vector3f finalUpTwo = eyeTwoOrientation.Transform(Vector3f(0, 1, 0));
+			Vector3f finalForwardOne = eyeOneOrientation.Transform(Vector3f(0, 0, -1));
+			Vector3f finalForwardTwo = eyeTwoOrientation.Transform(Vector3f(0, 0, -1));
+			Vector3f shiftedEyePos = rollPitchYaw.Transform(EyeRenderPose[eye].Position);
+			}
+			
 #endif
 			glfwPollEvents();
 #if 0
@@ -764,6 +810,7 @@ void render(RenderData* renderables,int numRenderables,
 			rend.uniforms = &sysUniforms;
 			rend.vrProgram = vrMaterial;
 			rend.renderIndexes = hook.renderIndexes;
+            rend.eyeVaos = vrVaos;
 
 			//render(&renderData,1,&meshes,&shaders,&sysUniforms,
 			//		&camera,textures.textureIds,eyes,vrVaos,vrMaterial);
@@ -840,7 +887,7 @@ void render(RenderData* renderables,int numRenderables,
 		glEnable(GL_MULTISAMPLE);
 		glEnable(GL_CULL_FACE); 
 
-		for(FrameTexture* eye = frameTextures; eye < frameTextures + 2; eye++)
+		for(FrameTexture* eye = commands.frameTextures; eye < commands.frameTextures + 2; eye++)
 		{
 			set_and_clear_frameTexture(*eye);
 			glEnable(GL_DEPTH_TEST);
@@ -848,8 +895,8 @@ void render(RenderData* renderables,int numRenderables,
 			glEnable(GL_CULL_FACE); 
 			glCheckError();
 
-			glBindBuffer(GL_UNIFORM_BUFFER,uniforms->matrixUniformBufferObject);
-			glBufferSubData(GL_UNIFORM_BUFFER,0,sizeof(MATH::mat4) * 2, (void*)camera);
+			glBindBuffer(GL_UNIFORM_BUFFER,commands.uniforms->matrixUniformBufferObject);
+			glBufferSubData(GL_UNIFORM_BUFFER,0,sizeof(MATH::mat4) * 2, (void*)commands.camera);
 			glBindBuffer(GL_UNIFORM_BUFFER,0);
 
 
@@ -937,7 +984,7 @@ void render(RenderData* renderables,int numRenderables,
 		glDisable(GL_DEPTH_TEST);
 		glDisable(GL_CULL_FACE); 
 		glBindFramebuffer(GL_FRAMEBUFFER,0);
-		glUseProgram(shaders->shaderProgramIds[vrProgram.shaderProgram]);
+		glUseProgram(commands.shaders->shaderProgramIds[commands.vrProgram.shaderProgram]);
 		int display_w, display_h;
 		glfwGetFramebufferSize(window, &display_w, &display_h);
 		glViewport(0, 0, display_w, display_h);
@@ -945,15 +992,15 @@ void render(RenderData* renderables,int numRenderables,
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		glCheckError();
-		ShaderProgram* prog = &shaders->shaderPrograms[vrProgram.shaderProgram];
-		glBindVertexArray(eyeVaos[0]);
+		ShaderProgram* prog = &commands.shaders->shaderPrograms[commands.vrProgram.shaderProgram];
+		glBindVertexArray(commands.eyeVaos[0]);
 		UniformInfo* info = &prog->uniforms[0];
 		glActiveTexture(GL_TEXTURE0 + info->glTexLocation);
-		glBindTexture(GL_TEXTURE_2D,frameTextures[0].texture);
+		glBindTexture(GL_TEXTURE_2D,commands.frameTextures[0].texture);
 		glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,0);
 
-		glBindVertexArray(eyeVaos[1]);
-		glBindTexture(GL_TEXTURE_2D,frameTextures[1].texture);
+		glBindVertexArray(commands.eyeVaos[1]);
+		glBindTexture(GL_TEXTURE_2D,commands.frameTextures[1].texture);
 		glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT,0);
 		glCheckError();
 
