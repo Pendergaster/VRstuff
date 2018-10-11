@@ -62,7 +62,7 @@ EXPORT void init_game(void* p)
 	planetData.oriTemp = MATH::vec3();
 
 	TextureID moonTex = get_texture(*hook->textures,"Ground");
-	set_material_texture(hook->shaders,&planetMat,1,moonTex);
+	set_material_texture(hook->shaders,&planetMat,0,moonTex);
 	hook->materials[0] = planetMat;
 	hook->renderables[0] = planetData;
 	hook->renderIndexes[0] = 0;

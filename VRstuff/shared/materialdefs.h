@@ -22,8 +22,9 @@ Material create_new_material(ShaderManager* manager,const char* name)
 	ret.shaderProgram = *shaderIndex;
 	for(uint i = 0 ; i < ret.numUniforms;i++)
 	{
-		manager->uniforms[ret.uniformIndex + i].type = manager->uniformInfos
-			[ret.uniformIndex + i].type;
+		manager->uniforms[ret.uniformIndex + i].type = program->uniforms[i].type;
+		   //	manager->uniformInfos
+			//[ret.uniformIndex + i].type;
 	}
 	return ret; 
 }
