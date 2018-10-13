@@ -9,9 +9,11 @@ struct SystemUniforms
 {
 	uint matrixUniformBufferObject = 0;
 	uint globalLightBufferObject = 0;
+	uint cameraBlockBufferObject = 0;
 };
 #define MATRIXES_UNIFORM_LOC 0
 #define GLOBALLIGHT_UNIFORM_LOC 1
+#define CAMERABLOCK_BUFFER_LOC 2
 bool set_global_uniform_to_program(uint program,const char* name,uint location)
 {
 	uint index = glGetUniformBlockIndex(program,name); 
@@ -38,7 +40,7 @@ void init_systemuniforms(SystemUniforms* rend,ShaderProgram* programs,
 			//glUniformBlockBinding(*idIter, matrixIndex, MATRIXES_UNIFORM_LOC);
 			//glCheckError();
 			if(!set_global_uniform_to_program(*idIter,"MatrixBlock",
-					MATRIXES_UNIFORM_LOC))
+						MATRIXES_UNIFORM_LOC))
 			{
 				ABORT_MESSAGE("Failed to set Matrix Block \n");
 			}
@@ -52,11 +54,26 @@ void init_systemuniforms(SystemUniforms* rend,ShaderProgram* programs,
 			//glUniformBlockBinding(*idIter, lightIndex, GLOBALLIGHT_UNIFORM_LOC);
 			//glCheckError();
 			if(!set_global_uniform_to_program(*idIter,"GlobalLight",
-					GLOBALLIGHT_UNIFORM_LOC))
+						GLOBALLIGHT_UNIFORM_LOC))
 			{
 				ABORT_MESSAGE("Failed to set GlobalLight \n");
 			}
 		}
+#if 0
+		if(BIT_CHECK(i->globalUniformFlags,GlobalUniforms::CameraBlock))
+		{
+			//printf("SET LIGHTS");
+			//uint lightIndex = glGetUniformBlockIndex(*idIter, "GlobalLight");   
+			//glUniformBlockBinding(*idIter, lightIndex, GLOBALLIGHT_UNIFORM_LOC);
+			//glCheckError();
+			if(!set_global_uniform_to_program(*idIter,"CameraBlock",
+						CAMERABLOCK_BUFFER_LOC))
+			{
+				ABORT_MESSAGE("Failed to set camera buffer loc \n");
+			}
+		}
+#endif
+
 	}
 
 	{
@@ -95,7 +112,27 @@ void init_systemuniforms(SystemUniforms* rend,ShaderProgram* programs,
 
 		glCheckError();
 	}
+#if 0
+	{
+		glCheckError();
+		glGenBuffers(1, &rend->cameraBlockBufferObject);
 
+		glCheckError();
+		glBindBuffer(GL_UNIFORM_BUFFER, rend->cameraBlockBufferObject);
+
+		glCheckError();
+		glBufferData(GL_UNIFORM_BUFFER, sizeof(MATH::vec4),
+				NULL, GL_STATIC_DRAW); 
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+		glCheckError();
+		glBindBufferRange(GL_UNIFORM_BUFFER, CAMERABLOCK_BUFFER_LOC, 
+				rend->cameraBlockBufferObject, 0, sizeof(MATH::vec4)); 
+
+		glCheckError();
+	}
+#endif
+	//TODO POJAT SAMAAN BUFFERIIN!
 	//glUniformBlockBinding(defaultRendererID, matrixIndex, 2);
 }
 

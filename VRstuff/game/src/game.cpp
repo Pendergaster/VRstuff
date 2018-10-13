@@ -31,6 +31,16 @@ struct Game
 	int		renderablesFreelistSize = 0;
 };
 #define MAX_RENDER_OBJECTS 100
+RenderData create_new_renderdata(uint materialID, uint meshID,const MATH::vec3& pos,float scale)
+{
+	RenderData ret;
+	ret.materialID = materialID;
+	ret.meshID = meshID;
+	ret.position = pos;
+	ret.scale = scale;
+	return ret;
+}
+
 EXPORT void init_game(void* p)
 {
 	Game game;
@@ -83,6 +93,9 @@ EXPORT void update_game(void* p)
 		load = false;
 		printf("im loaded again\n");
 	}
+	MATH::quaternion rot(MATH::vec3(0,1,0),MATH::deg_to_rad * 50.f);
+	hook->renderables->position.x = 0.0f; 	
+	hook->renderables->oriTemp.y  *= 10.f;
 	
 	//ImGui::Begin("Game window ");
 //	ImGui::Text("oot homo petteri ");

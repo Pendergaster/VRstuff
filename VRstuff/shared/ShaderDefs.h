@@ -45,9 +45,10 @@ struct UniformInfo
 
 enum GlobalUniforms
 {
-	Invalid = 0x0,
-	MVP = 0x1,
-	GlobalLight = 0x2,
+	Invalid = 0 << 1,
+	MVP = 2 << 1,
+	GlobalLight = 3 << 1,
+	CameraBlock = 4 << 1,
 };
 
 struct Uniform

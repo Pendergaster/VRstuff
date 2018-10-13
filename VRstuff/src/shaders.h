@@ -158,6 +158,12 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 					//currentShaderProg.globalUniformFlags = 
 					BIT_SET(currentShaderProg.globalUniformFlags,GlobalUniforms::GlobalLight);
 				}
+				else if(!strcmp(glUniName,"CameraBlock")){
+					LOG("DETECTED CameraBlock \n");
+					//currentShaderProg.globalUniformFlags = 
+					BIT_SET(currentShaderProg.globalUniformFlags,GlobalUniforms::GlobalLight);
+				}
+
 				else{
 					ABORT_MESSAGE("GLOBALUNIFORM NOT DEFINED %s \n",currentName);
 				}

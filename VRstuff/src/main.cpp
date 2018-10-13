@@ -1,7 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 //#define _ITERATOR_DEBUG_LEVEL 0
 #define STB_IMAGE_IMPLEMENTATION
-#define VR 1
+#define VR 0
 #if VR
 #include <dxgi.h>
 #endif
@@ -342,7 +342,7 @@ void render(RenderData* renderables,int numRenderables,
 		ShaderManager*	shaders = NULL;
 		uint*			textureIds = NULL;
 		FrameTexture*	frameTextures = NULL;
-        uint*           eyeVaos = NULL;
+		uint*           eyeVaos = NULL;
 		SystemUniforms* uniforms = NULL;
 		Material		vrProgram;
 		MeshData*		meshes = NULL;
@@ -479,7 +479,7 @@ void render(RenderData* renderables,int numRenderables,
 		};
 #endif
 
-		
+
 		//static inline FrameTexture create_new_frameTexture(uint width,uint height,GLenum attachment,FrameBufferAttacment type)
 
 		uint vrVaos[2];
@@ -537,11 +537,11 @@ void render(RenderData* renderables,int numRenderables,
 #if VR
 		bool vrSucc = false; //Application();
 		ovrSession session;
-	    ovrGraphicsLuid luid;
-        //resolutions, and info about device
-        ovrHmdDesc desc;
-        defer{ ovr_Destroy(session); };
-        defer{ ovr_Shutdown(); };
+		ovrGraphicsLuid luid;
+		//resolutions, and info about device
+		ovrHmdDesc desc;
+		defer{ ovr_Destroy(session); };
+		defer{ ovr_Shutdown(); };
 		do{
 			ovrResult result = ovr_Initialize(nullptr);
 			if (OVR_FAILURE(result))
@@ -563,7 +563,7 @@ void render(RenderData* renderables,int numRenderables,
 			desc = ovr_GetHmdDesc(session);
 			ovrSizei resolution = desc.Resolution;
 
-			
+
 #if 0
 			ovrTrackingState ts = ovr_GetTrackingState(session, ovr_GetTimeInSeconds(), ovrTrue);
 			if (ts.StatusFlags & (ovrStatus_OrientationTracked | ovrStatus_PositionTracked)) 
@@ -577,11 +577,11 @@ void render(RenderData* renderables,int numRenderables,
 			vrSucc = true;
 		}while(false);
 
-        FrameTexture eyes[2] =
-        { create_new_frameTexture(desc.Resolution.w / 2,desc.Resolution.h / 2,GL_COLOR_ATTACHMENT0,FrameBufferAttacment::Color | FrameBufferAttacment::Depth)
-            ,create_new_frameTexture(desc.Resolution.w / 2,desc.Resolution.h / 2,GL_COLOR_ATTACHMENT0,FrameBufferAttacment::Color | FrameBufferAttacment::Depth) };
+		FrameTexture eyes[2] =
+		{ create_new_frameTexture(desc.Resolution.w / 2,desc.Resolution.h / 2,GL_COLOR_ATTACHMENT0,FrameBufferAttacment::Color | FrameBufferAttacment::Depth)
+			,create_new_frameTexture(desc.Resolution.w / 2,desc.Resolution.h / 2,GL_COLOR_ATTACHMENT0,FrameBufferAttacment::Color | FrameBufferAttacment::Depth) };
 
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 		if(vrSucc){ printf("JEI \n");}
 		if(!vrSucc){ printf("NEI \n");}
@@ -636,7 +636,7 @@ void render(RenderData* renderables,int numRenderables,
 		while (!glfwWindowShouldClose(window))
 		{
 #if VR
-			 ovrSessionStatus sessionStatus;
+			ovrSessionStatus sessionStatus;
 			ovr_GetSessionStatus(session, &sessionStatus);
 			if (sessionStatus.ShouldQuit){
 				printf("ovr exit \n");
@@ -648,31 +648,31 @@ void render(RenderData* renderables,int numRenderables,
 			{
 				ovrPosef pose = ts.HeadPose.ThePose;
 				//...
-				
-				
-			ovrEyeRenderDesc eyeRenderDesc[2];
-            eyeRenderDesc[0] = ovr_GetRenderDesc(session, ovrEye_Left, desc.DefaultEyeFov[0]);
-            eyeRenderDesc[1] = ovr_GetRenderDesc(session, ovrEye_Right, desc.DefaultEyeFov[1]);
-			
-			ovrPosef EyeRenderPose[2];
-            ovrPosef HmdToEyePose[2] = { eyeRenderDesc[0].HmdToEyePose,
-                                         eyeRenderDesc[1].HmdToEyePose};
-			double sensorSampleTime;    
-			//sensorSampleTime is fed into the layer later
-            ovr_GetEyePoses(session, frameIndex, ovrTrue, HmdToEyePose, EyeRenderPose, &sensorSampleTime);
-										 
-            printf("%.3f, %.3f --  %.3f \n",
-			EyeRenderPose[0].Position.x, EyeRenderPose[0].Position.y, EyeRenderPose[0].Position.z);
-			
-			Matrix4f eyeOneOrientation(EyeRenderPose[0].Orientation);
-			Matrix4f eyeTwoOrientation(EyeRenderPose[1].Orientation);
-			Vector3f finalUpOne = eyeOneOrientation.Transform(Vector3f(0, 1, 0));
-			Vector3f finalUpTwo = eyeTwoOrientation.Transform(Vector3f(0, 1, 0));
-			Vector3f finalForwardOne = eyeOneOrientation.Transform(Vector3f(0, 0, -1));
-			Vector3f finalForwardTwo = eyeTwoOrientation.Transform(Vector3f(0, 0, -1));
-			Vector3f shiftedEyePos = rollPitchYaw.Transform(EyeRenderPose[eye].Position);
+
+
+				ovrEyeRenderDesc eyeRenderDesc[2];
+				eyeRenderDesc[0] = ovr_GetRenderDesc(session, ovrEye_Left, desc.DefaultEyeFov[0]);
+				eyeRenderDesc[1] = ovr_GetRenderDesc(session, ovrEye_Right, desc.DefaultEyeFov[1]);
+
+				ovrPosef EyeRenderPose[2];
+				ovrPosef HmdToEyePose[2] = { eyeRenderDesc[0].HmdToEyePose,
+					eyeRenderDesc[1].HmdToEyePose};
+				double sensorSampleTime;    
+				//sensorSampleTime is fed into the layer later
+				ovr_GetEyePoses(session, frameIndex, ovrTrue, HmdToEyePose, EyeRenderPose, &sensorSampleTime);
+
+				printf("%.3f, %.3f --  %.3f \n",
+						EyeRenderPose[0].Position.x, EyeRenderPose[0].Position.y, EyeRenderPose[0].Position.z);
+
+				Matrix4f eyeOneOrientation(EyeRenderPose[0].Orientation);
+				Matrix4f eyeTwoOrientation(EyeRenderPose[1].Orientation);
+				Vector3f finalUpOne = eyeOneOrientation.Transform(Vector3f(0, 1, 0));
+				Vector3f finalUpTwo = eyeTwoOrientation.Transform(Vector3f(0, 1, 0));
+				Vector3f finalForwardOne = eyeOneOrientation.Transform(Vector3f(0, 0, -1));
+				Vector3f finalForwardTwo = eyeTwoOrientation.Transform(Vector3f(0, 0, -1));
+				Vector3f shiftedEyePos = rollPitchYaw.Transform(EyeRenderPose[eye].Position);
 			}
-			
+
 #endif
 			glfwPollEvents();
 #if 0
@@ -800,7 +800,9 @@ void render(RenderData* renderables,int numRenderables,
 			//		const SystemUniforms* uniforms,const Camera* camera,uint* textureIds);
 			RenderCommands rend;
 			rend.camera = &camera;
+#if VR
 			rend.frameTextures = eyes;
+#endif
 			rend.meshes = &meshes;
 			rend.renderables = hook.renderables;
 			rend.numRenderables = hook.numRenderables;
@@ -810,7 +812,7 @@ void render(RenderData* renderables,int numRenderables,
 			rend.uniforms = &sysUniforms;
 			rend.vrProgram = vrMaterial;
 			rend.renderIndexes = hook.renderIndexes;
-            rend.eyeVaos = vrVaos;
+			rend.eyeVaos = vrVaos;
 
 			//render(&renderData,1,&meshes,&shaders,&sysUniforms,
 			//		&camera,textures.textureIds,eyes,vrVaos,vrMaterial);
@@ -855,9 +857,26 @@ void render(RenderData* renderables,int numRenderables,
 	void render(RenderCommands commands)
 	{
 #if !VR
-		glBindBuffer(GL_UNIFORM_BUFFER,commands.uniforms->matrixUniformBufferObject);
-		glBufferSubData(GL_UNIFORM_BUFFER,0,sizeof(MATH::mat4) * 2, (void*)commands.camera);
+		glBindBuffer(GL_UNIFORM_BUFFER,commands.
+				uniforms->matrixUniformBufferObject);
+		glBufferSubData(GL_UNIFORM_BUFFER,
+				0,sizeof(MATH::mat4) * 2, (void*)commands.camera);
 		glBindBuffer(GL_UNIFORM_BUFFER,0);
+#if 0	
+		glBindBuffer(GL_UNIFORM_BUFFER,commands.
+				uniforms->cameraBlockBufferObject);
+		MATH::vec4 tempPos(
+				commands.camera->position.x,
+				commands.camera->position.y,
+				commands.camera->position.z,
+				1
+				);
+
+		glBufferSubData(GL_UNIFORM_BUFFER,
+				0,sizeof(MATH::mat4), (void*)&tempPos);
+		glBindBuffer(GL_UNIFORM_BUFFER,0);
+#endif
+
 #endif
 
 		struct lightutil{

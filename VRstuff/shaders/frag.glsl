@@ -7,6 +7,7 @@ in DATA
 	vec2 uv;
 	vec3 normal;
 	vec3 fragPos;
+	vec3 viewPos;
 } frag_in;
 
 uniform sampler2D tex;
@@ -14,7 +15,7 @@ out vec4 _color;
 
 void main()
 {
-	vec3 viewPos = vec3(0.f,0.f,6.f);
+	vec3 viewPos = frag_in.viewPos;
 	vec3 viewDir = normalize(viewPos - frag_in.fragPos);
 	vec3 lightColor = CalculateGlobalLighting(
 		frag_in.normal,
