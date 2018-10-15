@@ -360,6 +360,7 @@ void render(RenderData* renderables,int numRenderables,
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 		glfwWindowHint(GLFW_SAMPLES, 4);
+		glfwSwapInterval(0);
 		window = glfwCreateWindow(SCREENWIDHT,SCREENHEIGHT, "Tabula Rasa", NULL, NULL);
 		ASSERT_MESSAGE(window,"FAILED TO INIT WINDOW \n"); // failed to create window
 		glfwMakeContextCurrent(window);

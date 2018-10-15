@@ -12,10 +12,10 @@ if not defined DEV_ENV (
 set DEV_ENV=???
 
 set includes=-I"../include" -I"../Shared" -I"..\..\..\PakkiUtils" -I"..\vrheaders"
-set game_includes=-I"../../shared" -I"../../../../PakkiUtils"
+set game_includes=-I"../../shared" -I"../../../../PakkiUtils" -I"../include"
 set lib_path="../libraries/"
-set libs=glfw3.lib opengl32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib  Shell32.lib assimp-vc140-mt.lib LibOVR.lib
-set gamelibs = ""
+set libs=glfw3.lib opengl32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib  Shell32.lib assimp-vc140-mt.lib LibOVR.lib 
+set gamelibs=OpenAL32.lib
 
 SETLOCAL
 
@@ -46,7 +46,7 @@ IF /I "%1"=="build_game" (
 		pushd DebugBin
 		REM -LD -> buildaa .dll -MD jälkee
 		REM nologo ei turhaa printtiä / /MD common runtime multithreaded   /   /link alottaa linkkaamisen / 
-		cl -Z7 -Od -nologo -W4 -wd4201 %game_includes% ..\src\game.cpp  /MD /LD /link  %gamelibs% -LIBPATH:../libraries  
+		cl -Z7 -Od -nologo -W4 -wd4201 %game_includes% ..\src\game.cpp  /MD /LD /EHcs /link  %gamelibs% -LIBPATH:../libraries  
 		popd
 		cd ../
 		del .lock

@@ -30,6 +30,7 @@ struct GameHook
 	int						numMaterials = 0;
 	Material*				materials = NULL;
 	CONTAINER::MemoryBlock	gameMemory;
+	CONTAINER::MemoryBlock	workingMemory;
 	ImGuiContext*			imguiContext;
 	TextureData*			textures;
 };
