@@ -1,4 +1,9 @@
 {
+	"Cube" : 
+	{
+		"metaDataPath" : "metadata/cube.bin",
+		"rawPath" : "models/cube.dae"
+	},
 	"Planet" : {
 		"metaDataPath" : "metadata/Planet1.bin",
 		"rawPath" : "models/Planet1.obj"

@@ -64,6 +64,7 @@ REM TestBin\test.exe
 IF /I "%1"=="run_test" (
 		REM chdir %~dp0
 		REM pushd TestBin
+		echo "Running test"
 		TestBin\test.exe
 		REM popd
 		)

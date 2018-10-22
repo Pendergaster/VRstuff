@@ -31,8 +31,6 @@
 #include "imgui_impl_opengl3.cpp"
 #endif
 
-#define SCREENWIDHT 1000
-#define SCREENHEIGHT 1000
 //#include <file_system.h>
 #include<JsonToken.h>
 #include <MathUtil.h>
@@ -43,6 +41,7 @@
 #include <smallDLLloader.h>
 #include <gameDefs.h>
 #include <ShaderDefs.h>
+#include <sharedinputs.h>
 #include "input.h"
 // data for reloading and opengl state
 #include "textures.h"
@@ -69,29 +68,20 @@
    for mesh
    for object
    */
-static MATH::vec2 mousePos(0,0);
+//static MATH::vec2 mousePos(0,0);
+#if 0
 void cursor_position_callback(GLFWwindow*, double xpos, double ypos)
 {
 	mousePos.x = (float)xpos;
 	mousePos.y = (float)ypos;
 }
-
-void key_callback(GLFWwindow* , int key, int , int action, int )
-{
-	if (action == GLFW_PRESS)
-	{
-		INPUTS::set_key_down(key);
-	}
-	else if (action == GLFW_RELEASE)
-	{
-		INPUTS::set_key_up(key);
-	}
-}
+#endif
 static void error_callback(int e, const char *d)
 {
 	printf("Error %d: %s\n", e, d);
 }
 
+#if 0
 struct Camera 
 {
 	MATH::mat4	view;
@@ -102,7 +92,6 @@ struct Camera
 	float		yaw;
 	float		pitch;
 };
-static const MATH::vec3 worldUp(0.f,1.f,0.f);
 static void init_camera(Camera* cam)
 {
 	MATH::identify(&cam->view);
@@ -130,6 +119,9 @@ static void init_camera(Camera* cam)
 #endif
 }
 
+#endif
+
+#if 0
 static inline void update_camera(Camera* cam,MATH::vec2 newMousePos)
 {
 	static MATH::vec2 oldMousePos = newMousePos;
@@ -169,6 +161,7 @@ static inline void update_camera(Camera* cam,MATH::vec2 newMousePos)
 #endif
 
 }
+#endif
 //TODO samaan bufferiin pojat
 
 
@@ -289,7 +282,7 @@ struct DLLHotloadHandle
 {
 	FILESYS::FileHandle fileHandle;
 	char*				dllname;
-	DLLHandle			dllHandle;
+	DLLHandle			dllHandle = 0;
 };
 bool hotload_dll(DLLHotloadHandle* dll)
 {
@@ -335,10 +328,11 @@ void render(RenderData* renderables,int numRenderables,
 	struct RenderCommands
 	{
 		RenderData*		renderables;
-		int*			renderIndexes = NULL;
+		//int*			renderIndexes = NULL;
 		int				numRenderables = 0;
 		Material*		materials = NULL;
-		Camera*			camera = NULL;
+		MATH::mat4		view;
+		MATH::mat4		projection;
 		ShaderManager*	shaders = NULL;
 		uint*			textureIds = NULL;
 		FrameTexture*	frameTextures = NULL;
@@ -348,7 +342,7 @@ void render(RenderData* renderables,int numRenderables,
 		MeshData*		meshes = NULL;
 	};
 
-	void render(RenderCommands commands);
+	void render(const RenderCommands& commands);
 	int main()
 	{
 		printf("hello! \n");
@@ -387,8 +381,8 @@ void render(RenderData* renderables,int numRenderables,
 
 		LOG("Game inited \n"); fflush(stdout);
 		glCheckError();
-		Camera camera;
-		init_camera(&camera);
+		//Camera camera;
+		//init_camera(&camera);
 
 
 		SystemUniforms sysUniforms;
@@ -411,8 +405,8 @@ void render(RenderData* renderables,int numRenderables,
 
 		// Setup style
 		ImGui::StyleColorsDark();
-		INPUTS::Input inputs;
-		init_inputs(&inputs);
+		//INPUTS::Input inputs;
+		//init_inputs(&inputs);
 
 		//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 		const double dt = 1.0 / 60.0;
@@ -598,9 +592,11 @@ void render(RenderData* renderables,int numRenderables,
 #endif
 		func_ptr init_game;
 		func_ptr update_game;
+		func_ptr on_game_reload;
+		func_ptr dispose_game;
 		{
 #if defined (_WIN32)
-			if(!load_DLL(&gameDLL.dllHandle,gameDLL.dllname))
+ 			if(!load_DLL(&gameDLL.dllHandle,gameDLL.dllname))
 #elif __linux__
 				if(!load_DLL(&gameDLL.dllHandle,gameDLL.dllname))
 #endif
@@ -615,14 +611,28 @@ void render(RenderData* renderables,int numRenderables,
 			if(!update_game){
 				ABORT_MESSAGE("Failed to load update game \n");
 			}
+			on_game_reload = load_DLL_function(gameDLL.dllHandle,"on_game_reload");
+			if(!on_game_reload){
+				ABORT_MESSAGE("Failed to load on_game_reload game \n");
+			}
+			dispose_game = load_DLL_function(gameDLL.dllHandle,"dispose_game");
+			if(!dispose_game){
+				ABORT_MESSAGE("Failed to load dispose_game game \n");
+			}
+			if(!FILESYS::get_filehandle(gameDLL.dllname,&gameDLL.fileHandle))
+			{
+				ABORT_MESSAGE("SOMETHING WENT WRONG \n");
+			}
 		}
 
 		GameHook hook;
+		init_inputs(&hook.inputs);
 		hook.shaders = &shaders;
 		hook.meshes = &meshes;
 		hook.textures = &textures;
 		hook.imguiContext = imguiContext;
 		CONTAINER::init_memory_block(&hook.gameMemory,GAME_MEMORY_SIZE);
+		CONTAINER::init_memory_block(&hook.workingMemory,GAME_WORKING_MEMORY);
 		printf("context set\n");
 		init_game(&hook);
 		PROFILER::end_timer(PROFILER::TimerID::Start,&timers);
@@ -712,45 +722,48 @@ void render(RenderData* renderables,int numRenderables,
 			//glfwPollEvents(); 
 			while(accumulator >= dt)
 			{
-				update_camera(&camera,mousePos);
-				if(INPUTS::key_pressed(INPUTS::Key::KEY_W))
+				//update_camera(&camera,g_inputs->mpos);
+#if 0
+				if(key_pressed(Key::KEY_W))
 				{
 					printf("KEY W \n");
 				}
-				if(INPUTS::key_pressed(INPUTS::Key::KEY_A))
+				if(key_pressed(Key::KEY_A))
 				{
 					printf("KEY A \n");
 				}
-				if(INPUTS::key_pressed(INPUTS::Key::KEY_D))
+				if(key_pressed(Key::KEY_D))
 				{
 					printf("KEY D \n");
 				}
-				if(INPUTS::key_pressed(INPUTS::Key::KEY_S))
+				if(key_pressed(Key::KEY_S))
 				{
 					printf("KEY S \n");
 				}
-				if(INPUTS::joy_key_pressed(INPUTS::JoyKey::KEY_ARROW_DOWN))
+				if(joy_key_pressed(JoyKey::KEY_ARROW_DOWN))
 				{
 					printf("ARROW DOWN \n");
 				}
-				if(INPUTS::joy_key_pressed(INPUTS::JoyKey::KEY_ARROW_UP))
+				if(joy_key_pressed(JoyKey::KEY_ARROW_UP))
 				{
 					printf("ARROW UP \n");
 				}
-				if(INPUTS::joy_key_pressed(INPUTS::JoyKey::KEY_ARROW_LEFT))
+				if(joy_key_pressed(JoyKey::KEY_ARROW_LEFT))
 				{
 					printf("ARROW LEFT \n");
 				}
-				if(INPUTS::joy_key_pressed(INPUTS::JoyKey::KEY_ARROW_RIGHT))
+				if(joy_key_pressed(JoyKey::KEY_ARROW_RIGHT))
 				{
 					printf("ARROW RIGHT \n");
 				}
+#endif
 				ImGui_ImplOpenGL3_NewFrame();
 				ImGui_ImplGlfw_NewFrame();
 				ImGui::NewFrame();
 				//printf("new frame\n");fflush(stdout);
+				hook.runTime = (float)glfwGetTime();
 				update_game(&hook);
-				INPUTS::update_keys();
+				update_keys();
 				//printf("pitch %f : yaw %f \n",camera.pitch,camera.yaw);
 				accumulator -= dt;
 				{
@@ -800,7 +813,9 @@ void render(RenderData* renderables,int numRenderables,
 			//	MeshData* meshes,ShaderManager* shaders ,
 			//		const SystemUniforms* uniforms,const Camera* camera,uint* textureIds);
 			RenderCommands rend;
-			rend.camera = &camera;
+			rend.projection = hook.projectionMatrix;
+			rend.view = hook.viewMatrix;
+			//rend.camera = &camera;
 #if VR
 			rend.frameTextures = eyes;
 #endif
@@ -812,7 +827,7 @@ void render(RenderData* renderables,int numRenderables,
 			rend.materials = hook.materials;
 			rend.uniforms = &sysUniforms;
 			rend.vrProgram = vrMaterial;
-			rend.renderIndexes = hook.renderIndexes;
+			//rend.renderIndexes = hook.renderIndexes;
 			rend.eyeVaos = vrVaos;
 
 			//render(&renderData,1,&meshes,&shaders,&sysUniforms,
@@ -847,21 +862,32 @@ void render(RenderData* renderables,int numRenderables,
 				if(!update_game){
 					ABORT_MESSAGE("Failed to load update game \n");
 				}
+				on_game_reload = load_DLL_function(gameDLL.dllHandle,"on_game_reload");
+				if(!on_game_reload){
+					ABORT_MESSAGE("Failed to load on_game_reload game \n");
+				}
+				dispose_game = load_DLL_function(gameDLL.dllHandle,"dispose_game");
+				if(!dispose_game){
+					ABORT_MESSAGE("Failed to load dispose_game game \n");
+				}
+
+				on_game_reload(&hook);
 
 			}
 #endif
 		}
+		dispose_game(&hook);
 		PROFILER::show_timers(&timers);
 		glfwTerminate();
 		return 0;
 	}
-	void render(RenderCommands commands)
+	void render(const RenderCommands& commands)
 	{
 #if !VR
 		glBindBuffer(GL_UNIFORM_BUFFER,commands.
 				uniforms->matrixUniformBufferObject);
 		glBufferSubData(GL_UNIFORM_BUFFER,
-				0,sizeof(MATH::mat4) * 2, (void*)commands.camera);
+				0,sizeof(MATH::mat4) * 2, (void*)&commands.view);
 		glBindBuffer(GL_UNIFORM_BUFFER,0);
 #if 0	
 		glBindBuffer(GL_UNIFORM_BUFFER,commands.
@@ -923,7 +949,7 @@ void render(RenderData* renderables,int numRenderables,
 #endif
 			for(int i = 0; i < commands.numRenderables; i++)
 			{
-				int currentIndex = commands.renderIndexes[i];
+				int currentIndex = i; //commands.renderIndexes[i];
 				RenderData* currentRenderData = &commands.renderables[currentIndex];
 				Material* currentMaterial = &commands.materials[currentRenderData->materialID];
 

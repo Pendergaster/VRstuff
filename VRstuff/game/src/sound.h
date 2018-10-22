@@ -26,7 +26,7 @@ enum SoundType : int
 
 const char* sound_names[] = 
 {
-	SOUNDS(GENERATE_STRING)
+	SOUNDS(GENERATE_SOUND_STRING)
 };
 
 
@@ -77,9 +77,10 @@ struct SoundLoadInfo
 struct SoundInfo
 {
 	//ALuint source = 0;
-	ALuint buffer = 0;
-	ALuint frequency = 0;//sampleRate;
-	ALuint format = 0;
+	ALuint	buffer = 0;
+	ALuint	frequency = 0;//sampleRate;
+	ALuint	format = 0;
+	float	audioLenght;
 };
 
 struct SoundPlayer
@@ -87,6 +88,7 @@ struct SoundPlayer
 	ALuint		source = 0;
 	float		pitch = 0;
 	float		gain = 0;
+	SoundType	myAudio = MaxSounds;
 };
 #define MAX_PLAYERS 100
 struct SoundContext
@@ -149,7 +151,7 @@ SoundLoadInfo load_wav(const char* path,unsigned char** buf,CONTAINER::MemoryBlo
 	fread(&info.dataSize,sizeof(info.dataSize),1,fp);
 	*buf = (unsigned char*)CONTAINER::get_next_memory_block(*workMem);
 	CONTAINER::increase_memory_block_aligned(workMem,sizeof(unsigned char) * info.dataSize);
-	fread(buf,sizeof(unsigned char),info.dataSize,fp);
+	fread(*buf,sizeof(unsigned char),info.dataSize,fp);
 
 	return info;
 }
@@ -182,27 +184,33 @@ static void init_sound_device(SoundContext* soundCon,CONTAINER::MemoryBlock* wor
 	soundCon->playerFreeList = (uint*)CONTAINER::get_next_memory_block(*staticMem);
 	CONTAINER::increase_memory_block(staticMem,sizeof(uint) * MAX_PLAYERS);
 	SoundInfo* currentInfo = soundCon->soundInfos;
-	for(char* name = (char*)sound_names;name;name++ ,currentInfo++)
+	for(char** name = (char**)sound_names;name < sound_names + MaxSounds;name++ ,currentInfo++)
 	{
 		unsigned char* buf = NULL;
 		CONTAINER::MemoryBlock prevState = *workMem;
-		SoundLoadInfo loadInfo = load_wav(name,&buf,workMem);
+		SoundLoadInfo loadInfo = load_wav(*name,&buf,workMem);
 		currentInfo->frequency = loadInfo.sampleRate;
+		currentInfo->audioLenght = 
+			loadInfo.dataSize / (loadInfo.sampleRate * loadInfo.channels * loadInfo.bitsPerSample/8.f);
 		if(8 == loadInfo.bitsPerSample )
 		{
 			if(1 == loadInfo.channels ){
 				currentInfo->format = AL_FORMAT_MONO8;
+				LOG("Sound %s is mono \n",*name);
 			}
 			else if(2 == loadInfo.channels ){
 				currentInfo->format = AL_FORMAT_STEREO8;
+				LOG("Sound %s is stereo \n",*name);
 			}
 		}
 		else if(16 == loadInfo.bitsPerSample)
 		{
 			if(1 == loadInfo.channels ){
+				LOG("Sound %s is mono \n",*name);
 				currentInfo->format = AL_FORMAT_MONO16;
 			}
 			else if(2 == loadInfo.channels ){
+				LOG("Sound %s is stereo \n",*name);
 				currentInfo->format = AL_FORMAT_STEREO16;
 			}
 		}else {ABORT_MESSAGE("SOMETHING FAILED \n");}
@@ -222,7 +230,8 @@ static void init_sound_device(SoundContext* soundCon,CONTAINER::MemoryBlock* wor
 	alListenerfv(AL_POSITION,(float*)&soundCon->listenerPos);
 	alListenerfv(AL_VELOCITY,(float*)&soundCon->listenerVelocity);
 	alListenerfv(AL_ORIENTATION,(float*)&soundCon->orientationAT);
-
+	soundCon->context = context;
+	soundCon->device = device;
 	g_soundContext = soundCon;
 }
 
@@ -230,9 +239,12 @@ typedef uint PlayerHandle;
 
 static inline PlayerHandle get_new_player()
 {
+	printf("setting new player \n"); fflush(stdout);
+	ASSERT_MESSAGE(g_soundContext,"SOUND CONTEXT NOT SET \n");
 	ASSERT_MESSAGE(g_soundContext,"SOUND CONTEXT NOT SET \n");
 	uint ret = 0;
 	SoundPlayer* player = NULL;
+	OpenALErrorCheck();
 	if(0 < g_soundContext->playerFreeListIndex)
 	{
 		--g_soundContext->playerFreeListIndex;
@@ -240,16 +252,22 @@ static inline PlayerHandle get_new_player()
 	}
 	else
 	{
+
+		printf("getting new player \n"); fflush(stdout);
 		ASSERT_MESSAGE(g_soundContext->playerIndex < MAX_PLAYERS,"TOO MANY SOUND PLAYERS \n");
+
+		printf("new player id is %d \n",g_soundContext->playerIndex); fflush(stdout);
 		ret = g_soundContext->playerIndex;
 		g_soundContext->playerIndex++;
 	}
 	player = &g_soundContext->players[ret];
 
+	printf("new player is got\n"); fflush(stdout);
 	alGenSources(1,&player->source);
 
+	printf("player is generetegenereted\n"); fflush(stdout);
 	OpenALErrorCheck();
-	return 0;
+	return ret;
 }
 
 static inline void set_player(PlayerHandle handle,SoundType sound,MATH::vec3 pos, MATH::vec3 vel,float gain,float pitch,bool loopping)
@@ -267,15 +285,12 @@ static inline void set_player(PlayerHandle handle,SoundType sound,MATH::vec3 pos
 
 	player->pitch = pitch;
 	player->gain = gain;
+	player->myAudio = sound;
 }
-static inline void set_listener_worldData(PlayerHandle handle,
-		const MATH::vec3& pos,const MATH::vec3& vel,const MATH::vec3& at,
+static inline void set_listener_worldData(const MATH::vec3& pos,const MATH::vec3& vel,
+		const MATH::vec3& at,
 		const MATH::vec3& up)
 {
-	SoundPlayer* player = &g_soundContext->players[handle];
-	alSourcefv(player->source,AL_POSITION,(float*)&pos);
-	OpenALErrorCheck();
-
 
 	g_soundContext->listenerPos = pos;
 	g_soundContext->listenerVelocity = vel;
@@ -288,6 +303,7 @@ static inline void set_listener_worldData(PlayerHandle handle,
 
 static inline void set_player_pos(PlayerHandle handle,const MATH::vec3& pos)
 {
+	//printf("%.3f %.3f %.3f \n",pos.x,pos.y,pos.z);
 	SoundPlayer* player = &g_soundContext->players[handle];
 	alSourcefv(player->source,AL_POSITION,(float*)&pos);
 	OpenALErrorCheck();
@@ -308,7 +324,7 @@ static inline void set_player_pitch(PlayerHandle handle,float pitch)
 static inline void set_player_gain(PlayerHandle handle,float gain)
 {
 	SoundPlayer* player = &g_soundContext->players[handle];
-	alSourcef(player->source,AL_PITCH,gain);
+	alSourcef(player->source,AL_GAIN,gain);
 	OpenALErrorCheck();
 	player->gain = gain;
 }
@@ -325,10 +341,66 @@ static inline void player_pause(PlayerHandle handle)
 	OpenALErrorCheck();
 }
 
+static void set_sound_context(SoundContext* context)
+{
+	ASSERT_MESSAGE(!g_soundContext,"Contex already set \n");
+	g_soundContext = context;
+}
+
+static inline SoundInfo get_sound_info(SoundType sound)
+{
+	return g_soundContext->soundInfos[sound];
+}
+
+/*
+   static inline void playFromSeek(ALuint source, ALuint buffer, ALfloat seek) { 
+   if (seek < 0 || seek > 1) return; //stopping if seek is invalid
+   alSourcei(source, AL_BUFFER, buffer); //retrieving source's buffer
+   ALint tot = 0;
+   alGetBufferi(buffer, AL_SIZE, &tot); //size of buffer (in bytes)
+   alSourcei(source, AL_BYTE_OFFSET, seek*tot); //positionning...
+   alSourcePlay(source); //let's play
+   return source;
+   }
+   */
 
 
+static void wind_player_to(PlayerHandle handle,float at)
+{
+	ASSERT_MESSAGE(g_soundContext,"Contex already set \n");
+	ASSERT_MESSAGE(handle < MAX_PLAYERS,"Invalid Player\n");
+	SoundPlayer* player = &g_soundContext->players[handle];
 
+	alSourceRewind(player->source);
 
+	ALint iTotal = 0;
+	ALint iCurrent = 0;
+	ALint uiBuffer = g_soundContext->soundInfos[player->myAudio].buffer;
+	float audioLenght = g_soundContext->soundInfos[player->myAudio].audioLenght;
+	alGetSourcei(player->source, AL_BUFFER, &uiBuffer);
+	alGetBufferi(uiBuffer, AL_SIZE, &iTotal);
 
+	float offset = at / audioLenght;
+	iCurrent = iTotal * offset;
+
+	alSourcei(player->source, AL_BYTE_OFFSET, iCurrent);
+	alSourcePlay(player->source);
+	OpenALErrorCheck();
+}
+#if 0
+void playFromSec(ALuint source, ALuint buffer, ALfloat sec) {
+	//that's just a seek pos defined by sec / (total size in sec)
+	playFromSeek(source, buffer, sec/getBufferLengthInSec(buffer));
+}
+ALfloat getBufferLengthInSec(ALuint buffer) {
+	ALint size, bits, channels, freq;
+	alGetBufferi(buffer, AL_SIZE, &size);
+	alGetBufferi(buffer, AL_BITS, &bits);
+	alGetBufferi(buffer, AL_CHANNELS, &channels);
+	alGetBufferi(buffer, AL_FREQUENCY, &freq);
+	if(alGetError() != AL_NO_ERROR) return -1.0f;
+	return (ALfloat)((ALuint)size/channels/(bits/8)) / (ALfloat)freq;
+}
+#endif
 
 #endif
