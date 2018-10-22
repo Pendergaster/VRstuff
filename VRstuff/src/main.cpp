@@ -1,10 +1,8 @@
 #define _CRT_SECURE_NO_WARNINGS
 //#define _ITERATOR_DEBUG_LEVEL 0
 #define STB_IMAGE_IMPLEMENTATION
-#define VR 0
-#if VR
-#include <dxgi.h>
-#endif
+
+
 #include <assert.h>
 #include<stb_image.h>
 #undef STB_IMAGE_IMPLEMENTATION
@@ -58,6 +56,35 @@
 #endif
 #define STATIC_MEM_SIZE 100000
 #define WORKING_MEM_SIZE 100000
+struct FrameTexture
+{
+    uint texture;
+    uint buffer;
+    uint textureWidth;
+    uint textureHeight;
+    int	 attachments;
+};
+struct RenderCommands
+{
+    RenderData*		renderables;
+    //int*			renderIndexes = NULL;
+    int				numRenderables = 0;
+    Material*		materials = NULL;
+    MATH::mat4		view;
+    MATH::mat4		projection;
+    ShaderManager*	shaders = NULL;
+    uint*			textureIds = NULL;
+    FrameTexture*	frameTextures = NULL;
+    uint*           eyeVaos = NULL;
+    SystemUniforms* uniforms = NULL;
+    Material		vrProgram;
+    MeshData*		meshes = NULL;
+};
+
+
+#if VR
+#include <vrfuncs.h>
+#endif
 /*
    renderings 
 
@@ -182,14 +209,7 @@ enum FrameBufferAttacment : int
 	Color = 1 << 1,
 	Depth = 1 << 2,
 };
-struct FrameTexture
-{
-	uint texture;
-	uint buffer;
-	uint textureWidth;
-	uint textureHeight;
-	int	 attachments;
-};
+
 static inline FrameTexture create_new_frameTexture(uint width,uint height,GLenum attachment,int type)
 {
 	FrameTexture ret;
@@ -250,7 +270,7 @@ void render(RenderData* renderables,int numRenderables,
 #endif
 
 GLFWwindow* window = NULL;
-#if VR
+#if 0
 //static OGL Platform;
 //OVR::GLEContext         GLEContext;
 // Include the OculusVR SDK
@@ -325,22 +345,7 @@ void render(RenderData* renderables,int numRenderables,
 {
 
 #endif
-	struct RenderCommands
-	{
-		RenderData*		renderables;
-		//int*			renderIndexes = NULL;
-		int				numRenderables = 0;
-		Material*		materials = NULL;
-		MATH::mat4		view;
-		MATH::mat4		projection;
-		ShaderManager*	shaders = NULL;
-		uint*			textureIds = NULL;
-		FrameTexture*	frameTextures = NULL;
-		uint*           eyeVaos = NULL;
-		SystemUniforms* uniforms = NULL;
-		Material		vrProgram;
-		MeshData*		meshes = NULL;
-	};
+	
 
 	void render(const RenderCommands& commands);
 	int main()
@@ -530,34 +535,7 @@ void render(RenderData* renderables,int numRenderables,
 		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 #if VR
-		bool vrSucc = false; //Application();
-		ovrSession session;
-		ovrGraphicsLuid luid;
-		//resolutions, and info about device
-		ovrHmdDesc desc;
-		defer{ ovr_Destroy(session); };
-		defer{ ovr_Shutdown(); };
-		do{
-			ovrResult result = ovr_Initialize(nullptr);
-			if (OVR_FAILURE(result))
-				break;
-
-
-			result = ovr_Create(&session, &luid);
-			if (OVR_FAILURE(result))
-			{
-				ovr_Shutdown();
-				break;
-			}
-
-			//float frustomHorizontalFOV = session->CameraFrustumHFovInRadians;
-
-
-
-
-			desc = ovr_GetHmdDesc(session);
-			ovrSizei resolution = desc.Resolution;
-
+		
 
 #if 0
 			ovrTrackingState ts = ovr_GetTrackingState(session, ovr_GetTimeInSeconds(), ovrTrue);
@@ -568,18 +546,19 @@ void render(RenderData* renderables,int numRenderables,
 			}
 
 #endif
-			ovr_SetTrackingOriginType(session, ovrTrackingOrigin_FloorLevel);
-			vrSucc = true;
-		}while(false);
-
+		init_vr_platform();
+		glBindFramebuffer(GL_FRAMEBUFFER,0);
+		defer{dispose_vr_platform();};
+		
+		
 		FrameTexture eyes[2] =
 		{ create_new_frameTexture(desc.Resolution.w / 2,desc.Resolution.h / 2,GL_COLOR_ATTACHMENT0,FrameBufferAttacment::Color | FrameBufferAttacment::Depth)
 			,create_new_frameTexture(desc.Resolution.w / 2,desc.Resolution.h / 2,GL_COLOR_ATTACHMENT0,FrameBufferAttacment::Color | FrameBufferAttacment::Depth) };
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-		if(vrSucc){ printf("JEI \n");}
-		if(!vrSucc){ printf("NEI \n");}
+		//if(vrSucc){ printf("JEI \n");}
+		//if(!vrSucc){ printf("NEI \n");}
 
 
 #endif
@@ -640,51 +619,10 @@ void render(RenderData* renderables,int numRenderables,
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 		ImGui::EndFrame();
-#if VR
-		long long frameIndex = 0;
-		//ovrHmdDesc hmdDesc = ovr_GetHmdDesc(session);
-#endif
+
 		while (!glfwWindowShouldClose(window))
 		{
-#if VR
-			ovrSessionStatus sessionStatus;
-			ovr_GetSessionStatus(session, &sessionStatus);
-			if (sessionStatus.ShouldQuit){
-				printf("ovr exit \n");
-				break;
-			}
-			ovrResult result = ovr_WaitToBeginFrame(session, frameIndex);
-			ovrTrackingState ts = ovr_GetTrackingState(session, ovr_GetTimeInSeconds(), ovrTrue);
-			if (ts.StatusFlags & (ovrStatus_OrientationTracked | ovrStatus_PositionTracked)) 
-			{
-				ovrPosef pose = ts.HeadPose.ThePose;
-				//...
-
-
-				ovrEyeRenderDesc eyeRenderDesc[2];
-				eyeRenderDesc[0] = ovr_GetRenderDesc(session, ovrEye_Left, desc.DefaultEyeFov[0]);
-				eyeRenderDesc[1] = ovr_GetRenderDesc(session, ovrEye_Right, desc.DefaultEyeFov[1]);
-
-				ovrPosef EyeRenderPose[2];
-				ovrPosef HmdToEyePose[2] = { eyeRenderDesc[0].HmdToEyePose,
-					eyeRenderDesc[1].HmdToEyePose};
-				double sensorSampleTime;    
-				//sensorSampleTime is fed into the layer later
-				ovr_GetEyePoses(session, frameIndex, ovrTrue, HmdToEyePose, EyeRenderPose, &sensorSampleTime);
-
-				printf("%.3f, %.3f --  %.3f \n",
-						EyeRenderPose[0].Position.x, EyeRenderPose[0].Position.y, EyeRenderPose[0].Position.z);
-
-				Matrix4f eyeOneOrientation(EyeRenderPose[0].Orientation);
-				Matrix4f eyeTwoOrientation(EyeRenderPose[1].Orientation);
-				Vector3f finalUpOne = eyeOneOrientation.Transform(Vector3f(0, 1, 0));
-				Vector3f finalUpTwo = eyeTwoOrientation.Transform(Vector3f(0, 1, 0));
-				Vector3f finalForwardOne = eyeOneOrientation.Transform(Vector3f(0, 0, -1));
-				Vector3f finalForwardTwo = eyeTwoOrientation.Transform(Vector3f(0, 0, -1));
-				Vector3f shiftedEyePos = rollPitchYaw.Transform(EyeRenderPose[eye].Position);
-			}
-
-#endif
+			update_vr_state();
 			glfwPollEvents();
 #if 0
 			int joyStickPresent = glfwJoystickPresent(GLFW_JOYSTICK_1);
@@ -834,11 +772,18 @@ void render(RenderData* renderables,int numRenderables,
 			//		&camera,textures.textureIds,eyes,vrVaos,vrMaterial);
 			render(rend);
 			//printf("renderings \n");fflush(stdout);;
-			ImGui::Render();
 			int display_w, display_h;
 			//glfwMakeContextCurrent(window);
 			glfwGetFramebufferSize(window, &display_w, &display_h);
 			glViewport(0, 0, display_w, display_h);
+            glCheckError();
+			render_vr(rend);
+            glCheckError();
+            glCheckError();
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glfwGetFramebufferSize(window, &display_w, &display_h);
+            glViewport(0, 0, display_w, display_h);
+			ImGui::Render();
 			//glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
 			//glClearColor(1.f, 0.f, 0.f, 1.0f);
 			//glClear(GL_COLOR_BUFFER_BIT);
@@ -942,7 +887,7 @@ void render(RenderData* renderables,int numRenderables,
 			glCheckError();
 
 			glBindBuffer(GL_UNIFORM_BUFFER,commands.uniforms->matrixUniformBufferObject);
-			glBufferSubData(GL_UNIFORM_BUFFER,0,sizeof(MATH::mat4) * 2, (void*)commands.camera);
+			glBufferSubData(GL_UNIFORM_BUFFER,0,sizeof(MATH::mat4) * 2, (void*)&commands.view);
 			glBindBuffer(GL_UNIFORM_BUFFER,0);
 
 

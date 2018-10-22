@@ -13,7 +13,7 @@
 #define GAME_WORKING_MEMORY 60000000
 #define SCREENWIDHT 1000
 #define SCREENHEIGHT 1000
-
+#define VR 1
 struct RenderData
 {
 	int					materialID;

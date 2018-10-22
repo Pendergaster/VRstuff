@@ -207,13 +207,13 @@ static void init_camera(Camera* cam,MATH::mat4* view,MATH::mat4* projection,
 	//deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 10000.f);
 
 	const float fov = 45.f;
-//#if !VR
+#if !VR
 	MATH::perspective(projection,MATH::deg_to_rad * fov, 
 			(float)SCREENWIDHT / (float) SCREENHEIGHT,0.1f, 10000.f);
-//#else 
-//	MATH::perspective(projection,MATH::deg_to_rad * fov, 
-//			(float)(SCREENWIDHT/2) / (float) SCREENHEIGHT,0.1f, 10000.f);
-//#endif
+#else 
+	MATH::perspective(projection,MATH::deg_to_rad * fov, 
+			(float)(SCREENWIDHT/2) / (float) SCREENHEIGHT,0.1f, 10000.f);
+#endif
 }
 
 
@@ -295,7 +295,7 @@ EXPORT void init_game(void* p)
 	//uint numRenderObjects)
 
 	hook->numRenderables = game->renderData.dataHandleIndex - game->renderData.freeListIndex;
-	printf("%d \n",hook->numRenderables);
+	//printf("%d \n",hook->numRenderables);
 	//static RenderData create_new_renderdata
 	//(uint materialID, uint meshID,const MATH::vec3& pos,float scale)
 #if 0
@@ -345,7 +345,7 @@ EXPORT void init_game(void* p)
 	for(BeatPosition* i = game->positions; i < game->positions + game->numBeats;i++)
 	{
 		*i = (BeatPosition)MATH::irand_range((int)BeatPosition::MaxPosition);
-		printf("%d ,\n",*i);
+		//printf("%d ,\n",*i);
 	}
 	game->state = Pause;
 	game->intervalFreq = 1.f / bps;
@@ -535,7 +535,7 @@ EXPORT void update_game(void* p)
 			{
 				game->currentInterval = newInterval;
 				BeatPosition SpawnType = game->positions[newInterval];
-				printf("Spawning new cube! \n");
+				//printf("Spawning new cube! \n");
 				float xs[2] = {0,0};
 				//[l][d][u][r]
 				if(SpawnType == BeatPosition::Down)
