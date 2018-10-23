@@ -533,7 +533,7 @@ void render(RenderData* renderables,int numRenderables,
 		//uint vrProgramID = get_shader_program_id(shaders,"EyeProg");
 		Material vrMaterial = create_new_material(&shaders,"EyeProg");
 		set_material_texture(&shaders,&vrMaterial,0,0);
-		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 #if VR
 
@@ -550,13 +550,13 @@ void render(RenderData* renderables,int numRenderables,
 		init_vr_platform();
 		glBindFramebuffer(GL_FRAMEBUFFER,0);
 		defer{dispose_vr_platform();};
-
+#if 0
 		FrameTexture eyes[2] =
-		{ create_new_frameTexture(desc.Resolution.w / 2,desc.Resolution.h / 2,GL_COLOR_ATTACHMENT0,FrameBufferAttacment::Color | FrameBufferAttacment::Depth)
+	{ create_new_frameTexture(desc.Resolution.w / 2,desc.Resolution.h / 2,GL_COLOR_ATTACHMENT0,FrameBufferAttacment::Color | FrameBufferAttacment::Depth)
 			,create_new_frameTexture(desc.Resolution.w / 2,desc.Resolution.h / 2,GL_COLOR_ATTACHMENT0,FrameBufferAttacment::Color | FrameBufferAttacment::Depth) };
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
+#endif
 		//if(vrSucc){ printf("JEI \n");}
 		//if(!vrSucc){ printf("NEI \n");}
 
@@ -830,7 +830,7 @@ void render(RenderData* renderables,int numRenderables,
 				//printf("end frame\n");
 				ImGui::EndFrame();
 			}
-#if !VR
+#if VR
 			glClearColor(1.f, 0.f, 0.f, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			glEnable(GL_DEPTH_TEST);
@@ -845,7 +845,7 @@ void render(RenderData* renderables,int numRenderables,
 			rend.projection = hook.projectionMatrix;
 			rend.view = hook.viewMatrix;
 			//rend.camera = &camera;
-#if VR
+#if !VR
 			rend.frameTextures = eyes;
 #endif
 			rend.meshes = &meshes;
@@ -861,7 +861,7 @@ void render(RenderData* renderables,int numRenderables,
 
 			//render(&renderData,1,&meshes,&shaders,&sysUniforms,
 			//		&camera,textures.textureIds,eyes,vrVaos,vrMaterial);
-			render(rend);
+			//render(rend);
 			//printf("renderings \n");fflush(stdout);;
 			int display_w, display_h;
 			//glfwMakeContextCurrent(window);
@@ -876,11 +876,11 @@ void render(RenderData* renderables,int numRenderables,
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			glfwGetFramebufferSize(window, &display_w, &display_h);
 			glViewport(0, 0, display_w, display_h);
-			ImGui::Render();
+			//ImGui::Render();
 			//glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
 			//glClearColor(1.f, 0.f, 0.f, 1.0f);
 			//glClear(GL_COLOR_BUFFER_BIT);
-			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+			//ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 			//glfwMakeContextCurrent(window);
 			glCheckError();
@@ -919,9 +919,10 @@ void render(RenderData* renderables,int numRenderables,
 		glfwTerminate();
 		return 0;
 	}
+//#define VR 0
 	void render(const RenderCommands& commands)
 	{
-#if !VR
+#if VR
 		glBindBuffer(GL_UNIFORM_BUFFER,commands.
 				uniforms->matrixUniformBufferObject);
 		glBufferSubData(GL_UNIFORM_BUFFER,
@@ -964,7 +965,7 @@ void render(RenderData* renderables,int numRenderables,
 		glCheckError();
 		//FIRST PASS
 		//glBindFramebuffer(GL_FRAMEBUFFER,frameBuffer);
-#if VR
+#if !VR
 		//glClearColor(1.f, 0.f, 0.f, 1.0f);
 		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_DEPTH_TEST);
@@ -1061,7 +1062,7 @@ void render(RenderData* renderables,int numRenderables,
 				glCheckError();
 			}
 
-#if VR
+#if !VR
 		}
 		//set_and_clear_frameTexture();
 		//SECOND PASS
@@ -1090,4 +1091,4 @@ void render(RenderData* renderables,int numRenderables,
 
 #endif
 	}
-
+//#define VR 1

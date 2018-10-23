@@ -121,7 +121,7 @@ struct OculusTextureBuffer
 
     void SetAndClearRenderSurface()
     {
-        glClearColor(1.f, 0.f, 0.f, 1.0f);
+      
         GLuint curColorTexId;
         GLuint curDepthTexId;
         {
@@ -138,7 +138,7 @@ struct OculusTextureBuffer
         glBindFramebuffer(GL_FRAMEBUFFER, fboId);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, curColorTexId, 0);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, curDepthTexId, 0);
-
+        glClearColor(0.f, 0.f, 1.f, 1.0f);
         glViewport(0, 0, texSize.w, texSize.h);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glEnable(GL_FRAMEBUFFER_SRGB);
@@ -270,11 +270,11 @@ void init_vr_platform()
 	LOG("VR INITIALIZED !\n");
 }
 
-void dispose_vr_platform()
-{
-	ovr_Destroy(session);
-	ovr_Shutdown();
-}
+//void dispose_vr_platform()
+//{
+//	ovr_Destroy(session);
+//	ovr_Shutdown();
+//}
 
 void update_vr_state()
 {
@@ -346,46 +346,7 @@ void render_vr(const RenderCommands& commands)
         return;
     }
 
-    //ovrResult result = ovr_WaitToBeginFrame(session, frameIndex);
-#if 0
-    ovrTrackingState ts = ovr_GetTrackingState(session, ovr_GetTimeInSeconds(), ovrTrue);
-    if (ts.StatusFlags & (ovrStatus_OrientationTracked | ovrStatus_PositionTracked))
-    {
-        ovrPosef pose = ts.HeadPose.ThePose;
-        //...
-
-
-        ovrEyeRenderDesc eyeRenderDesc[2];
-        eyeRenderDesc[0] = ovr_GetRenderDesc(session, ovrEye_Left, desc.DefaultEyeFov[0]);
-        eyeRenderDesc[1] = ovr_GetRenderDesc(session, ovrEye_Right, desc.DefaultEyeFov[1]);
-
-        ovrPosef EyeRenderPose[2];
-        ovrPosef HmdToEyePose[2] = { eyeRenderDesc[0].HmdToEyePose,
-            eyeRenderDesc[1].HmdToEyePose };
-        double sensorSampleTime;
-        //sensorSampleTime is fed into the layer later
-        ovr_GetEyePoses(session, frameIndex, ovrTrue, HmdToEyePose, EyeRenderPose, &sensorSampleTime);
-
-        printf("%.3f, %.3f --  %.3f \n",
-            EyeRenderPose[0].Position.x, EyeRenderPose[0].Position.y, EyeRenderPose[0].Position.z);
-#if 0
-        Matrix4f eyeOneOrientation(EyeRenderPose[0].Orientation);
-        Matrix4f eyeTwoOrientation(EyeRenderPose[1].Orientation);
-        Vector3f finalUpOne = eyeOneOrientation.Transform(Vector3f(0, 1, 0));
-        Vector3f finalUpTwo = eyeTwoOrientation.Transform(Vector3f(0, 1, 0));
-        Vector3f finalForwardOne = eyeOneOrientation.Transform(Vector3f(0, 0, -1));
-        Vector3f finalForwardTwo = eyeTwoOrientation.Transform(Vector3f(0, 0, -1));
-        Vector3f shiftedEyePos = rollPitchYaw.Transform(EyeRenderPose[eye].Position);
-#endif	
-    }
-#endif
-
-
-
-
-
-
-
+    //vrResult result = ovr_WaitToBeginFrame(session, frameIndex);
 
 
     /**********************************************************/
@@ -416,6 +377,7 @@ void render_vr(const RenderCommands& commands)
     ovrTimewarpProjectionDesc posTimewarpProjectionDesc = {};
 
 
+	
    
 
     for (int eye = 0; eye < 2; ++eye)
@@ -424,7 +386,18 @@ void render_vr(const RenderCommands& commands)
         eyeRenderTexture[eye]->SetAndClearRenderSurface();
 
         // Get view and projection matrices
-        OVR::Matrix4f rollPitchYaw = OVR::Matrix4f::RotationY(0);
+        OVR::Matrix4f rollPitchYaw = OVR::Matrix4f::RotationY(3.f);
+        MATH::mat4 reee = MATH::rotationMatZ(3.f);
+
+
+        printf("%f %f %f %f \n %f %f %f %f \n %f %f %f %f \n %f %f %f %f \n  \n"
+            , rollPitchYaw.M[0][0], rollPitchYaw.M[1][0], rollPitchYaw.M[2][0], rollPitchYaw.M[3][0],
+            rollPitchYaw.M[0][1], rollPitchYaw.M[1][1], rollPitchYaw.M[2][1], rollPitchYaw.M[3][1],
+            rollPitchYaw.M[0][2], rollPitchYaw.M[1][2], rollPitchYaw.M[2][2], rollPitchYaw.M[3][2],
+            rollPitchYaw.M[0][3], rollPitchYaw.M[1][3], rollPitchYaw.M[2][3], rollPitchYaw.M[3][3]);
+
+
+
         OVR::Matrix4f finalRollPitchYaw = rollPitchYaw * OVR::Matrix4f(EyeRenderPose[eye].Orientation);
         OVR::Vector3f finalUp = finalRollPitchYaw.Transform(OVR::Vector3f(0, 1, 0));
         OVR::Vector3f finalForward = finalRollPitchYaw.Transform(OVR::Vector3f(0, 0, -1));
@@ -434,17 +407,40 @@ void render_vr(const RenderCommands& commands)
         viewProj[0] = OVR::Matrix4f::LookAtRH(shiftedEyePos, shiftedEyePos + finalForward, finalUp);
         viewProj[1] = ovrMatrix4f_Projection(desc.DefaultEyeFov[eye], 0.2f, 1000.0f, ovrProjection_None);
         posTimewarpProjectionDesc = ovrTimewarpProjectionDesc_FromProjection(viewProj[1], ovrProjection_None);
-
-
-        glEnable(GL_DEPTH_TEST);
-        glEnable(GL_MULTISAMPLE);
-        glEnable(GL_CULL_FACE);
+		printf("%d \n",sizeof(OVR::Matrix4f));
+		printf("%d %d \n", eyeRenderTexture[eye]->GetSize().w , 
+            eyeRenderTexture[eye]->GetSize().h);
+		
+		
+       // glEnable(GL_DEPTH_TEST);
+        //glEnable(GL_MULTISAMPLE);
+        //glEnable(GL_CULL_FACE);
         glCheckError();
         glBindBuffer(GL_UNIFORM_BUFFER, commands.uniforms->matrixUniformBufferObject);
-        glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(MATH::mat4) * 2, (void*)&viewProj);
+        glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(MATH::mat4) * 2, (void*)viewProj);
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
+		glCheckError();
 
+			struct lightutil{
+			MATH::vec4 dir;
+			MATH::vec4 ambient;
+			MATH::vec4 diffuse;
+			MATH::vec4 specular;
+		} light;
+		glCheckError();
+		light.dir = MATH::vec4(1.f, -1.0f, 0.f,1.f);
+		light.ambient = MATH::vec4(0.3f, 0.3f, 0.3f,1.f);
+		light.diffuse = MATH::vec4(0.8f, 0.8f, 0.8f,1.f);
+		light.specular = MATH::vec4( 0.5f, 0.5f, 0.5f,1.f);
+		glBindBuffer(GL_UNIFORM_BUFFER,commands.uniforms->globalLightBufferObject);
+		glCheckError();
+		glBufferSubData(GL_UNIFORM_BUFFER,0,sizeof(MATH::vec4) * 4, &light);
+		glCheckError();
+		glBindBuffer(GL_UNIFORM_BUFFER,0);
 
+		glCheckError();
+		
+		
         for (int i = 0; i < commands.numRenderables; i++)
         {
             int currentIndex = i; //commands.renderIndexes[i];
@@ -567,6 +563,29 @@ void render_vr(const RenderCommands& commands)
 	}
 
     frameIndex++;
+
+
+#if 1
+    // Blit mirror texture to back buffer
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, mirrorFBO);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    GLint w = windowSize.w;
+    GLint h = windowSize.h;
+    glBlitFramebuffer(0, h, w, 0,
+        0, 0, w, h,
+        GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+#endif
+}
+
+void dispose_vr_platform()
+{
+	if (mirrorTexture) ovr_DestroyMirrorTexture(session, mirrorTexture);
+	  for (int eye = 0; eye < 2; ++eye)
+    {
+        delete eyeRenderTexture[eye];
+    }
+	ovr_Destroy(session);
 }
 
 #endif //VR_FUNCS
