@@ -621,6 +621,7 @@ void render(RenderData* renderables,int numRenderables,
 		ImGui::EndFrame();
 		uint skyvao = 0;
 		///uint vertposlocation = 0;
+#if 0
 		{
 
 			///static TextureID get_texture(const TextureData& textures,const char* name)
@@ -707,7 +708,7 @@ void render(RenderData* renderables,int numRenderables,
 			//create_new_material()
 
 		}
-
+#endif
 		while (!glfwWindowShouldClose(window))
 		{
 #if VR

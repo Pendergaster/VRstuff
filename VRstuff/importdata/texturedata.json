@@ -16,51 +16,6 @@
 		"TextureType":"Texture2D"
 
 	},
-	"sky_front" : 
-	{
-		"Path" : ",
-		"Mipmap" : false,
-		"SRGB" : false,
-		"Wrap" : "ClampToEdge",
-		"TextureType":"CubeMap"
-
-	},
-	"sky_back" : 
-	{
-		"Path" : "assets/sky_back.tga",
-		"Mipmap" : false,
-		"SRGB" : false,
-		"Wrap" : "ClampToEdge",
-		"TextureType":"CubeMap"
-
-	},
-	"sky_top" : 
-	{
-		"Path" : "assets/sky_up.tga",
-		"Mipmap" : false,
-		"SRGB" : false,
-		"Wrap" : "ClampToEdge",
-		"TextureType":"CubeMap"
-
-	},
-	"sky_down" : 
-	{
-		"Path" : "assets/sky_down.tga",
-		"Mipmap" : false,
-		"SRGB" : false,
-		"Wrap" : "ClampToEdge",
-		"TextureType":"CubeMap"
-
-	},
-	"sky_left" : 
-	{
-		"Path" : "assets/sky_left.tga",
-		"Mipmap" : false,
-		"SRGB" : false,
-		"Wrap" : "ClampToEdge",
-		"TextureType":"CubeMap"
-
-	},
 	"sky_box" : 
 	{
 		"Path" : "assets/sky_right.tga",
