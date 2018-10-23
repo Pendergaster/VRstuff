@@ -4,21 +4,75 @@
 		"Path" : "assets/MoonTexture.png",
 		"Mipmap" : false,
 		"SRGB" : false,
-		"Wrap" : "Repeat"
+		"Wrap" : "Repeat",
+		"TextureType":"Texture2D"
 	},
 	"SpaceShip" : 
 	{
 		"Path" : "assets/SpaceshipTexture.png",
 		"Mipmap" : false,
 		"SRGB" : false,
-		"Wrap" : "Repeat"
+		"Wrap" : "Repeat",
+		"TextureType":"Texture2D"
+
 	},
-	"Ground" : 
+	"sky_front" : 
 	{
-		"Path" : "assets/gound.jpg",
+		"Path" : ",
 		"Mipmap" : false,
 		"SRGB" : false,
-		"Wrap" : "Repeat"
-	}
+		"Wrap" : "ClampToEdge",
+		"TextureType":"CubeMap"
 
+	},
+	"sky_back" : 
+	{
+		"Path" : "assets/sky_back.tga",
+		"Mipmap" : false,
+		"SRGB" : false,
+		"Wrap" : "ClampToEdge",
+		"TextureType":"CubeMap"
+
+	},
+	"sky_top" : 
+	{
+		"Path" : "assets/sky_up.tga",
+		"Mipmap" : false,
+		"SRGB" : false,
+		"Wrap" : "ClampToEdge",
+		"TextureType":"CubeMap"
+
+	},
+	"sky_down" : 
+	{
+		"Path" : "assets/sky_down.tga",
+		"Mipmap" : false,
+		"SRGB" : false,
+		"Wrap" : "ClampToEdge",
+		"TextureType":"CubeMap"
+
+	},
+	"sky_left" : 
+	{
+		"Path" : "assets/sky_left.tga",
+		"Mipmap" : false,
+		"SRGB" : false,
+		"Wrap" : "ClampToEdge",
+		"TextureType":"CubeMap"
+
+	},
+	"sky_box" : 
+	{
+		"Path" : "assets/sky_right.tga",
+		"Mipmap" : false,
+		"SRGB" : false,
+		"Wrap" : "ClampToEdge",
+		"TextureType":"CubeMap",
+		"SkyFront" : "assets/sky_front.tga",
+		"SkyBack" : "assets/sky_back.tga",
+		"SkyUp" : "assets/sky_up.tga",
+		"SkyDown": "assets/sky_down.tga",
+		"SkyRight" : "assets/sky_right.tga",
+		"SkyLeft" : "assets/sky_left.tga"
+	}
 }

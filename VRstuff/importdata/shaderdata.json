@@ -19,5 +19,16 @@
 			"tex" : "SAMPLER2D" 
 		}
 
+	},
+	"SkyProg" : 
+	{
+		"CombinedPath" : "shaders/skyboxshader.glsl",
+		"RenderGroup" : "PostProcess",
+		"Uniforms" : 
+		{
+			"skybox" : "SAMPLERCUBE" 
+		}
+
 	}
+
 }

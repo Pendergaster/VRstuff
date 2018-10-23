@@ -59,7 +59,8 @@ static inline void set_material_texture(ShaderManager* manager,
 		Material* mat,int index, const int shaderCacheID)
 {
 	Uniform* uni = get_uniform(manager,mat,index);
-	ASSERT_MESSAGE(uni->type == UniformType::SAMPLER2D,"UNIFORM IS NOT CORRECT TYPE :: CORRECT IS %s\n", UNIFORM_TYPE_NAMES[uni->type] );
+	ASSERT_MESSAGE(uni->type == UniformType::SAMPLER2D ||
+			uni->type == UniformType::SAMPLERCUBE,"UNIFORM IS NOT CORRECT TYPE :: CORRECT IS %s\n", UNIFORM_TYPE_NAMES[uni->type] );
 	uni->_textureCacheId = shaderCacheID;
 }
 #endif

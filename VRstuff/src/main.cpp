@@ -42,6 +42,7 @@
 #include <sharedinputs.h>
 #include "input.h"
 // data for reloading and opengl state
+#include <texturedefs.h>
 #include "textures.h"
 #include "meshes.h"
 #include "shaders.h"
@@ -58,27 +59,27 @@
 #define WORKING_MEM_SIZE 100000
 struct FrameTexture
 {
-    uint texture;
-    uint buffer;
-    uint textureWidth;
-    uint textureHeight;
-    int	 attachments;
+	uint texture;
+	uint buffer;
+	uint textureWidth;
+	uint textureHeight;
+	int	 attachments;
 };
 struct RenderCommands
 {
-    RenderData*		renderables;
-    //int*			renderIndexes = NULL;
-    int				numRenderables = 0;
-    Material*		materials = NULL;
-    MATH::mat4		view;
-    MATH::mat4		projection;
-    ShaderManager*	shaders = NULL;
-    uint*			textureIds = NULL;
-    FrameTexture*	frameTextures = NULL;
-    uint*           eyeVaos = NULL;
-    SystemUniforms* uniforms = NULL;
-    Material		vrProgram;
-    MeshData*		meshes = NULL;
+	RenderData*		renderables;
+	//int*			renderIndexes = NULL;
+	int				numRenderables = 0;
+	Material*		materials = NULL;
+	MATH::mat4		view;
+	MATH::mat4		projection;
+	ShaderManager*	shaders = NULL;
+	uint*			textureIds = NULL;
+	FrameTexture*	frameTextures = NULL;
+	uint*           eyeVaos = NULL;
+	SystemUniforms* uniforms = NULL;
+	Material		vrProgram;
+	MeshData*		meshes = NULL;
 };
 
 
@@ -345,7 +346,7 @@ void render(RenderData* renderables,int numRenderables,
 {
 
 #endif
-	
+
 
 	void render(const RenderCommands& commands);
 	int main()
@@ -535,22 +536,21 @@ void render(RenderData* renderables,int numRenderables,
 		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 #if VR
-		
+
 
 #if 0
-			ovrTrackingState ts = ovr_GetTrackingState(session, ovr_GetTimeInSeconds(), ovrTrue);
-			if (ts.StatusFlags & (ovrStatus_OrientationTracked | ovrStatus_PositionTracked)) 
-			{
-				ovrPosef pose = ts.HeadPose.ThePose;
-				...
-			}
+		ovrTrackingState ts = ovr_GetTrackingState(session, ovr_GetTimeInSeconds(), ovrTrue);
+		if (ts.StatusFlags & (ovrStatus_OrientationTracked | ovrStatus_PositionTracked)) 
+		{
+			ovrPosef pose = ts.HeadPose.ThePose;
+			...
+		}
 
 #endif
 		init_vr_platform();
 		glBindFramebuffer(GL_FRAMEBUFFER,0);
 		defer{dispose_vr_platform();};
-		
-		
+
 		FrameTexture eyes[2] =
 		{ create_new_frameTexture(desc.Resolution.w / 2,desc.Resolution.h / 2,GL_COLOR_ATTACHMENT0,FrameBufferAttacment::Color | FrameBufferAttacment::Depth)
 			,create_new_frameTexture(desc.Resolution.w / 2,desc.Resolution.h / 2,GL_COLOR_ATTACHMENT0,FrameBufferAttacment::Color | FrameBufferAttacment::Depth) };
@@ -575,7 +575,7 @@ void render(RenderData* renderables,int numRenderables,
 		func_ptr dispose_game;
 		{
 #if defined (_WIN32)
- 			if(!load_DLL(&gameDLL.dllHandle,gameDLL.dllname))
+			if(!load_DLL(&gameDLL.dllHandle,gameDLL.dllname))
 #elif __linux__
 				if(!load_DLL(&gameDLL.dllHandle,gameDLL.dllname))
 #endif
@@ -619,10 +619,100 @@ void render(RenderData* renderables,int numRenderables,
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 		ImGui::EndFrame();
+		uint skyvao = 0;
+		///uint vertposlocation = 0;
+		{
+
+			///static TextureID get_texture(const TextureData& textures,const char* name)
+			TextureID front = get_texture(textures,"sky_front");
+			TextureID back = get_texture(textures,"sky_back");
+			TextureID top = get_texture(textures,"sky_top");
+			TextureID down = get_texture(textures,"sky_down");
+			TextureID right = get_texture(textures,"sky_right");
+			TextureID left = get_texture(textures,"sky_left");
+			float skyboxVertices[] = {
+				-1.0f,  1.0f, -1.0f,
+				-1.0f, -1.0f, -1.0f,
+				1.0f, -1.0f, -1.0f,
+				1.0f, -1.0f, -1.0f,
+				1.0f,  1.0f, -1.0f,
+				-1.0f,  1.0f, -1.0f,
+
+				-1.0f, -1.0f,  1.0f,
+				-1.0f, -1.0f, -1.0f,
+				-1.0f,  1.0f, -1.0f,
+				-1.0f,  1.0f, -1.0f,
+				-1.0f,  1.0f,  1.0f,
+				-1.0f, -1.0f,  1.0f,
+
+				1.0f, -1.0f, -1.0f,
+				1.0f, -1.0f,  1.0f,
+				1.0f,  1.0f,  1.0f,
+				1.0f,  1.0f,  1.0f,
+				1.0f,  1.0f, -1.0f,
+				1.0f, -1.0f, -1.0f,
+
+				-1.0f, -1.0f,  1.0f,
+				-1.0f,  1.0f,  1.0f,
+				1.0f,  1.0f,  1.0f,
+				1.0f,  1.0f,  1.0f,
+				1.0f, -1.0f,  1.0f,
+				-1.0f, -1.0f,  1.0f,
+
+				-1.0f,  1.0f, -1.0f,
+				1.0f,  1.0f, -1.0f,
+				1.0f,  1.0f,  1.0f,
+				1.0f,  1.0f,  1.0f,
+				-1.0f,  1.0f,  1.0f,
+				-1.0f,  1.0f, -1.0f,
+
+				-1.0f, -1.0f, -1.0f,
+				-1.0f, -1.0f,  1.0f,
+				1.0f, -1.0f, -1.0f,
+				1.0f, -1.0f, -1.0f,
+				-1.0f, -1.0f,  1.0f,
+				1.0f, -1.0f,  1.0f
+			};
+
+			Material skyMaterial = create_new_material(&shaders,"SkyProg");
+
+			set_material_texture(&shaders,&skyMaterial,0,0);
+
+			glGenVertexArrays(1,&skyvao);
+			uint skyvbo = 0;
+			glGenBuffers(1,&skyvbo);
+
+			glBindVertexArray(skyvao);
+			glBindBuffer(GL_ARRAY_BUFFER,skyvao);
+
+			glEnableVertexAttribArray(0);
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)0);
+
+
+			//glBindBuffer(GL_ARRAY_BUFFER,vbo);
+
+			//glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 36, NULL, GL_STATIC_DRAW);
+			//glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * 36, skyboxVertices);
+
+			glBindBuffer(GL_ARRAY_BUFFER, skyvbo);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+
+			glBindVertexArray(0);
+			
+			//uint glID = shaders.shaderProgramIds[skyMaterial.shaderProgram];
+			//glUseProgram(glID);
+			
+			//glUseProgram(0);
+
+			//create_new_material()
+
+		}
 
 		while (!glfwWindowShouldClose(window))
 		{
+#if VR
 			update_vr_state();
+#endif
 			glfwPollEvents();
 #if 0
 			int joyStickPresent = glfwJoystickPresent(GLFW_JOYSTICK_1);
@@ -776,13 +866,15 @@ void render(RenderData* renderables,int numRenderables,
 			//glfwMakeContextCurrent(window);
 			glfwGetFramebufferSize(window, &display_w, &display_h);
 			glViewport(0, 0, display_w, display_h);
-            glCheckError();
+			glCheckError();
+#if VR
 			render_vr(rend);
-            glCheckError();
-            glCheckError();
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            glfwGetFramebufferSize(window, &display_w, &display_h);
-            glViewport(0, 0, display_w, display_h);
+#endif
+			glCheckError();
+			glCheckError();
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glfwGetFramebufferSize(window, &display_w, &display_h);
+			glViewport(0, 0, display_w, display_h);
 			ImGui::Render();
 			//glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
 			//glClearColor(1.f, 0.f, 0.f, 1.0f);

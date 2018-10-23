@@ -35,12 +35,25 @@ static inline bool load_texture(TextureInfo* info,uint id)
 	else if(temp.wrapMode == WrapMode::Repeat){
 		mode = GL_REPEAT;
 	}
+	GLenum textype = 0;
+	if(info->texType == TextureType::Texture2D)
+	{
+		textype = GL_TEXTURE_2D;
+	}
+	else if(info->texType == TextureType::CubeMap)
+	{
+		textype = GL_TEXTURE_CUBE_MAP;
+	}
 
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,mode);
-	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,mode);
+	glTexParameteri(textype,GL_TEXTURE_WRAP_S,mode);
+	glTexParameteri(textype,GL_TEXTURE_WRAP_T,mode);
+	if(textype == GL_TEXTURE_CUBE_MAP){
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	}
 
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameterf(textype, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameterf(textype, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
 
 	GLenum mode3 = temp.channels == 3 ? GL_RGB : GL_RGBA;
 	GLenum mode2 = temp.srgb ? (temp.channels == 3 ? GL_SRGB : GL_SRGB_ALPHA) : mode3;
@@ -80,15 +93,10 @@ static void init_textures_from_metadata(TextureData* textureData,
 			(int)textureData->numTextures);
 	for(uint i = 0; i < names.numobj ; i++)
 	{
+		TextureInfo info;
 		char* currentName = names.buffer[i];
 		JsonToken* currentToken = token[currentName].GetToken();
 		ASSERT_MESSAGE(currentToken,"TEXTURE DATA IS NOT VALID :: %s \n",currentName);
-		char* path = (*currentToken)["Path"].GetString();
-		ASSERT_MESSAGE(path,"TEXTURE PATH IS NOT VALID :: %s \n",currentName);
-		TextureInfo info;
-        info.path = (char*)CONTAINER::get_next_memory_block(*staticMem);
-		strcpy(info.path,path);
-		CONTAINER::increase_memory_block_aligned(staticMem,(int)strlen(info.path)+1);
 		//info.channels = channels;
 		//info.height = height;
 		//info.widht = widht;
@@ -114,12 +122,78 @@ static void init_textures_from_metadata(TextureData* textureData,
 			}
 		}
 		ASSERT_MESSAGE(i2 < WrapMode::MaxModes,"WRAPMODE NOT DEFINED FOR %s",info.name);
-		//TODO  lataa opngl puoli
-		CONTAINER::insert_to_table<int>(&textureData->textureCache,info.name,i);
+		char* textype = (*currentToken)["TextureType"].GetString();
+		ASSERT_MESSAGE(textype,"TEX TYPE NOT DEFINED FOR %s",info.name);
+		i2 = 0;
+		for(; i2 < TextureType::MaxTexTypes; i2++)
+		{
+			if(!strcmp(textype,TEXTURE_TYPE_NAMES[i2]))
+			{
+				info.texType = i2;	
+				break;
+			}
+		}
+		ASSERT_MESSAGE(i2 < TextureType::MaxTexTypes,"TEXTURETYPE NOT DEFINED FOR %s",info.name);
+		if(info.texType != TextureType::CubeMap)
+		{
+			char* path = (*currentToken)["Path"].GetString();
+			ASSERT_MESSAGE(path,"TEXTURE PATH IS NOT VALID :: %s \n",currentName);
+			info.path = (char*)CONTAINER::get_next_memory_block(*staticMem);
+			strcpy(info.path,path);
+			CONTAINER::increase_memory_block_aligned(staticMem,(int)strlen(info.path)+1);
+		}
+		else //cubemap
+		{
+			char* tempName = NULL;
+			tempName = (*currentToken)["SkyFront"].GetString();
+			ASSERT_MESSAGE(tempName,"TEXTURE PATH IS NOT VALID :: %s \n",currentName);
+			info.frontPath = (char*)CONTAINER::get_next_memory_block(*staticMem);
+			strcpy(info.frontPath,tempName);
+			CONTAINER::increase_memory_block_aligned(staticMem,(int)strlen(info.path)+1);
+
+			tempName = (*currentToken)["SkyBack"].GetString();
+			ASSERT_MESSAGE(tempName,"TEXTURE PATH IS NOT VALID :: %s \n",currentName);
+			info.backPath = (char*)CONTAINER::get_next_memory_block(*staticMem);
+			strcpy(info.backPath,tempName);
+			CONTAINER::increase_memory_block_aligned(staticMem,(int)strlen(info.path)+1);
+
+
+			tempName = (*currentToken)["SkyTop"].GetString();
+			ASSERT_MESSAGE(tempName,"TEXTURE PATH IS NOT VALID :: %s \n",currentName);
+			info.topPath = (char*)CONTAINER::get_next_memory_block(*staticMem);
+			strcpy(info.topPath,tempName);
+			CONTAINER::increase_memory_block_aligned(staticMem,(int)strlen(info.path)+1);
+
+
+			tempName = (*currentToken)["SkyDown"].GetString();
+			ASSERT_MESSAGE(tempName,"TEXTURE PATH IS NOT VALID :: %s \n",currentName);
+			info.downPath = (char*)CONTAINER::get_next_memory_block(*staticMem);
+			strcpy(info.downPath,tempName);
+			CONTAINER::increase_memory_block_aligned(staticMem,(int)strlen(info.path)+1);
+
+
+			tempName = (*currentToken)["SkyRight"].GetString();
+			ASSERT_MESSAGE(tempName,"TEXTURE PATH IS NOT VALID :: %s \n",currentName);
+			info.rightPath = (char*)CONTAINER::get_next_memory_block(*staticMem);
+			strcpy(info.rightPath,tempName);
+			CONTAINER::increase_memory_block_aligned(staticMem,(int)strlen(info.path)+1);
+
+
+			tempName = (*currentToken)["SkyLeft"].GetString();
+			ASSERT_MESSAGE(tempName,"TEXTURE PATH IS NOT VALID :: %s \n",currentName);
+			info.leftPath = (char*)CONTAINER::get_next_memory_block(*staticMem);
+			strcpy(info.leftPath,tempName);
+			CONTAINER::increase_memory_block_aligned(staticMem,(int)strlen(info.path)+1);
+
+		}
 		if(!load_texture(&info,textureData->textureIds[i]))
 		{
 			ABORT_MESSAGE("FAILED TO LOAD TEXTURE %s \n",currentName);
 		}
+
+		//TextureTypes 
+		//TODO  lataa opngl puoli
+		CONTAINER::insert_to_table<int>(&textureData->textureCache,info.name,i);
 		textureData->textureInfos[i] = info;
 	}
 }

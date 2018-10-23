@@ -2,11 +2,12 @@
 #define PAKKI_TEXTUREDEFS
 #include <Utils.h>
 #include <Containers.h>
+
 #define WRAP_MODES(MODE)\
 	MODE(Repeat)\
-MODE(MirroredRepeat)\
-MODE(ClampToEdge)\
-MODE(ClampToBorder)\
+	MODE(MirroredRepeat)\
+	MODE(ClampToEdge)\
+	MODE(ClampToBorder)\
 
 
 const char* WRAP_MODE_NAMES[] = {
@@ -19,18 +20,40 @@ enum WrapMode : int
 		MaxModes
 };
 
+#define TEXTURE_TYPES(MODE)\
+	MODE(Texture2D)\
+	MODE(CubeMap)\
+
+
+const char* TEXTURE_TYPE_NAMES[] = {
+	TEXTURE_TYPES(GENERATE_STRING)
+};
+
+enum TextureType : int 
+{
+	TEXTURE_TYPES(GENERATE_ENUM)
+		MaxTexTypes
+};
+
+
 typedef int TextureID;
 
 struct TextureInfo
 {
 	char*		name = NULL;
-	char* 		path = NULL;
+	union{
+		char* 		path;
+		struct{
+			char* topPath,*downPath,*frontPath,*backPath,*rightPath,*leftPath;
+		};
+	};
 	bool 		mipmap = false;
 	bool 		srgb = false;
 	int			widht = 0;
 	int			height = 0;
 	int			channels = 0;
 	int 		wrapMode = WrapMode::Repeat; 
+	int			texType = TextureType::Texture2D;
 };
 struct TextureData
 {

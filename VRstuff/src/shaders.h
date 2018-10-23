@@ -13,8 +13,7 @@
 
 #define MAX_UNIFORMS 1000
 #define MAX_SYSTEM_UNIFORMS 100
-
-
+//TODO inc uni info
 static inline bool setup_uniform(UniformInfo* uniform,uint id)
 {
 	int location = glGetUniformLocation(id,uniform->name);
@@ -75,8 +74,10 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 	token.ParseFile("importdata/shaderdata.json");
 	token.GetKeys(&names);
 	CONTAINER::init_table_with_block(&manager->shaderProgramCache,staticMem,names.numobj);
+
 	manager->shaderProgramIds = (uint*)CONTAINER::get_next_memory_block(*staticMem);
-	CONTAINER::increase_memory_block(staticMem,names.numobj + sizeof(uint));
+	CONTAINER::increase_memory_block(staticMem,names.numobj * sizeof(uint));
+
 	manager->shaderPrograms = (ShaderProgram*)CONTAINER::get_next_memory_block(*staticMem);
 	CONTAINER::increase_memory_block(staticMem,MAX_SYSTEM_UNIFORMS * sizeof(ShaderProgram));
 
@@ -122,6 +123,7 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 		}
 		else
 		{
+			printf("%d num TEX test \n",manager->shaderPrograms->numTextures);
 			char* combinedPath = (*currentToken)["CombinedPath"].GetString();
 			ASSERT_MESSAGE(combinedPath,"PATHS NOT DEFINED FOR SHADER :: %s \n",currentName);
 			if(!SHADER::load_frag_and_vert(combinedPath,&vertFile,&fragFile,workingMem)){
@@ -135,10 +137,15 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 			FILESYS::get_filehandle(combinedPath,
 					&currentShaderProg.combinedFileWriteTime);
 			//printf("----------- \n %s \n-----------\n %s \n  ---------- \n",vertFile,fragFile);
+			printf("%d num TEX test \n",manager->shaderPrograms->numTextures);
 		}
+
+		printf("%d num TEX test \n",manager->shaderPrograms->numTextures);
 		if(!compile_program(currentShaderProg,&manager->shaderProgramIds[i],vertFile,fragFile)){
 			ABORT_MESSAGE("FAILED TO COMPILE SHADER");
 		}
+
+		printf("%d num TEX test \n",manager->shaderPrograms->numTextures);
 		glUseProgram(manager->shaderProgramIds[i]);
 		ValueType t = (*currentToken)["GlobalUniforms"].GetType();
 		if(t == ValueType::Jarray)
@@ -225,7 +232,8 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 			}
 			ASSERT_MESSAGE(uniformInfo.type != UniformType::INVALID,
 					"UNIFORM %s NOT VALID TYPE IN %s",uniformName,currentName);
-			if (uniformInfo.type == UniformType::SAMPLER2D)
+			if (uniformInfo.type == UniformType::SAMPLER2D ||
+					uniformInfo.type == UniformType::SAMPLERCUBE)
 			{
 				if(!setup_uniform_sampler2D(&uniformInfo,
 							manager->shaderProgramIds[i],currentShaderProg.numTextures++))
