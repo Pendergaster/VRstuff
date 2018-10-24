@@ -348,6 +348,8 @@ void render(RenderData* renderables,int numRenderables,
 #endif
 
 
+	static uint skyvao = 0;
+	static Material skymaterial;
 	void render(const RenderCommands& commands);
 	int main()
 	{
@@ -533,7 +535,7 @@ void render(RenderData* renderables,int numRenderables,
 		//uint vrProgramID = get_shader_program_id(shaders,"EyeProg");
 		Material vrMaterial = create_new_material(&shaders,"EyeProg");
 		set_material_texture(&shaders,&vrMaterial,0,0);
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 #if VR
 
@@ -552,7 +554,7 @@ void render(RenderData* renderables,int numRenderables,
 		defer{dispose_vr_platform();};
 #if 0
 		FrameTexture eyes[2] =
-	{ create_new_frameTexture(desc.Resolution.w / 2,desc.Resolution.h / 2,GL_COLOR_ATTACHMENT0,FrameBufferAttacment::Color | FrameBufferAttacment::Depth)
+		{ create_new_frameTexture(desc.Resolution.w / 2,desc.Resolution.h / 2,GL_COLOR_ATTACHMENT0,FrameBufferAttacment::Color | FrameBufferAttacment::Depth)
 			,create_new_frameTexture(desc.Resolution.w / 2,desc.Resolution.h / 2,GL_COLOR_ATTACHMENT0,FrameBufferAttacment::Color | FrameBufferAttacment::Depth) };
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -619,18 +621,13 @@ void render(RenderData* renderables,int numRenderables,
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 		ImGui::EndFrame();
-		uint skyvao = 0;
+		skyvao = 0;
 		///uint vertposlocation = 0;
-#if 0
+#if 1
 		{
 
 			///static TextureID get_texture(const TextureData& textures,const char* name)
-			TextureID front = get_texture(textures,"sky_front");
-			TextureID back = get_texture(textures,"sky_back");
-			TextureID top = get_texture(textures,"sky_top");
-			TextureID down = get_texture(textures,"sky_down");
-			TextureID right = get_texture(textures,"sky_right");
-			TextureID left = get_texture(textures,"sky_left");
+			//TextureID skyTex = get_texture(textures,"sky_box");
 			float skyboxVertices[] = {
 				-1.0f,  1.0f, -1.0f,
 				-1.0f, -1.0f, -1.0f,
@@ -675,34 +672,35 @@ void render(RenderData* renderables,int numRenderables,
 				1.0f, -1.0f,  1.0f
 			};
 
-			Material skyMaterial = create_new_material(&shaders,"SkyProg");
+			skymaterial = create_new_material(&shaders,"SkyProg");
 
-			set_material_texture(&shaders,&skyMaterial,0,0);
+			set_material_texture(&shaders,&skymaterial,0,get_texture(textures,"sky_box"));
 
 			glGenVertexArrays(1,&skyvao);
 			uint skyvbo = 0;
 			glGenBuffers(1,&skyvbo);
-
 			glBindVertexArray(skyvao);
 			glBindBuffer(GL_ARRAY_BUFFER,skyvao);
+			glBindBuffer(GL_ARRAY_BUFFER,skyvbo);
 
-			glEnableVertexAttribArray(0);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), skyboxVertices, 
+					GL_STATIC_DRAW);
+
+			glCheckError();
 			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)0);
+			glEnableVertexAttribArray(0);
+			glCheckError();
 
-
-			//glBindBuffer(GL_ARRAY_BUFFER,vbo);
 
 			//glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 36, NULL, GL_STATIC_DRAW);
 			//glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * 36, skyboxVertices);
 
-			glBindBuffer(GL_ARRAY_BUFFER, skyvbo);
-			glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
-
 			glBindVertexArray(0);
-			
+
+			glCheckError();
 			//uint glID = shaders.shaderProgramIds[skyMaterial.shaderProgram];
 			//glUseProgram(glID);
-			
+
 			//glUseProgram(0);
 
 			//create_new_material()
@@ -830,7 +828,7 @@ void render(RenderData* renderables,int numRenderables,
 				//printf("end frame\n");
 				ImGui::EndFrame();
 			}
-#if VR
+#if !VR
 			glClearColor(1.f, 0.f, 0.f, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			glEnable(GL_DEPTH_TEST);
@@ -845,7 +843,7 @@ void render(RenderData* renderables,int numRenderables,
 			rend.projection = hook.projectionMatrix;
 			rend.view = hook.viewMatrix;
 			//rend.camera = &camera;
-#if !VR
+#if VR
 			rend.frameTextures = eyes;
 #endif
 			rend.meshes = &meshes;
@@ -861,7 +859,7 @@ void render(RenderData* renderables,int numRenderables,
 
 			//render(&renderData,1,&meshes,&shaders,&sysUniforms,
 			//		&camera,textures.textureIds,eyes,vrVaos,vrMaterial);
-			//render(rend);
+			render(rend);
 			//printf("renderings \n");fflush(stdout);;
 			int display_w, display_h;
 			//glfwMakeContextCurrent(window);
@@ -876,11 +874,11 @@ void render(RenderData* renderables,int numRenderables,
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			glfwGetFramebufferSize(window, &display_w, &display_h);
 			glViewport(0, 0, display_w, display_h);
-			//ImGui::Render();
+			ImGui::Render();
 			//glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
 			//glClearColor(1.f, 0.f, 0.f, 1.0f);
 			//glClear(GL_COLOR_BUFFER_BIT);
-			//ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 			//glfwMakeContextCurrent(window);
 			glCheckError();
@@ -919,10 +917,10 @@ void render(RenderData* renderables,int numRenderables,
 		glfwTerminate();
 		return 0;
 	}
-//#define VR 0
+	//#define VR 0
 	void render(const RenderCommands& commands)
 	{
-#if VR
+#if !VR
 		glBindBuffer(GL_UNIFORM_BUFFER,commands.
 				uniforms->matrixUniformBufferObject);
 		glBufferSubData(GL_UNIFORM_BUFFER,
@@ -965,7 +963,7 @@ void render(RenderData* renderables,int numRenderables,
 		glCheckError();
 		//FIRST PASS
 		//glBindFramebuffer(GL_FRAMEBUFFER,frameBuffer);
-#if !VR
+#if VR
 		//glClearColor(1.f, 0.f, 0.f, 1.0f);
 		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_DEPTH_TEST);
@@ -1061,8 +1059,52 @@ void render(RenderData* renderables,int numRenderables,
 				glDrawElements(GL_TRIANGLES,currentMeshInfo->numIndexes, GL_UNSIGNED_INT,0);
 				glCheckError();
 			}
+			glActiveTexture(GL_TEXTURE0);
+			glDepthFunc(GL_LEQUAL); 
+			//ShaderProgram* prog = &commands.shaders->shaderPrograms[skymaterial.shaderProgram];
+			uint glID = commands.shaders->shaderProgramIds[skymaterial.shaderProgram];
+			//glDepthFunc(GL_LEQUAL);
+			//glDepthMask(GL_FALSE);
+			//skyboxShader.use();
+			glUseProgram(glID);
+			glCheckError();
+			// ... set view and projection matrix
+			//mat4 projection = { 0 };
+			//perspective(&projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
+			MATH::mat4 tempview = commands.view;
+			tempview.mat[3][0] = 0;
+			tempview.mat[3][1] = 0;
+			tempview.mat[3][2] = 0;
+			tempview.mat[3][3] = 1;
 
-#if !VR
+
+			glCheckError();
+			SHADER::set_mat4_name(glID,"view",tempview.mat);// projection.mat);
+			SHADER::set_mat4_name(glID,"projection",commands.projection.mat);// projection.mat);
+
+			glCheckError();
+
+			glBindVertexArray(skyvao);
+			glActiveTexture(GL_TEXTURE0 );
+
+			glCheckError();
+			Uniform* uniToSet = &commands.shaders->uniforms[skymaterial.uniformIndex];
+			printf("CUBE ID %d \n",commands.textureIds[uniToSet->_textureCacheId]);
+			glBindTexture(GL_TEXTURE_CUBE_MAP, commands.textureIds[uniToSet->_textureCacheId]);
+
+			glCheckError();
+			//glBindTexture(GL_TEXTURE_CUBE_MAP, engine.skyBoxID);
+			glDrawArrays(GL_TRIANGLES, 0, 36);
+
+			glCheckError();
+			//glDepthMask(GL_TRUE);
+			glDepthFunc(GL_LESS);
+
+			glCheckError();
+			glUseProgram(0);
+			glBindVertexArray(0);
+
+#if VR
 		}
 		//set_and_clear_frameTexture();
 		//SECOND PASS
@@ -1091,4 +1133,4 @@ void render(RenderData* renderables,int numRenderables,
 
 #endif
 	}
-//#define VR 1
+	//#define VR 1

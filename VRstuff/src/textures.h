@@ -11,7 +11,6 @@ static inline bool load_texture(TextureInfo* info, uint id)
 {
     //int widht = 0 ,height = 0 ,channels = 0;
     TextureInfo temp = *info;
-    glBindTexture(GL_TEXTURE_2D, id);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
     GLenum textype = 0;
@@ -23,6 +22,8 @@ static inline bool load_texture(TextureInfo* info, uint id)
     {
         textype = GL_TEXTURE_CUBE_MAP;
     }
+
+    glBindTexture(textype, id);
     GLenum mode3 = 0;// temp.channels == 3 ? GL_RGB : GL_RGBA;
     GLenum mode2 = 0;// temp.srgb ? (temp.channels == 3 ? GL_SRGB : GL_SRGB_ALPHA) : mode3;
     if (info->texType == TextureType::CubeMap)
@@ -30,7 +31,8 @@ static inline bool load_texture(TextureInfo* info, uint id)
         temp.widht = 0;
         temp.height = 0;
         temp.channels = 0;
-        int width, height, nrChannels;
+        int width, height;
+        printf("CUBE MAP ID %d \n",id);
         for (unsigned int i = 0; i < 6; i++)
         {
             unsigned char *data = stbi_load(temp.frontPath, &width, &height, &temp.channels, 0);
