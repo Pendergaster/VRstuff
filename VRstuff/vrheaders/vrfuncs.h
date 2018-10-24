@@ -390,26 +390,32 @@ void render_vr(const RenderCommands& commands)
         MATH::mat4 reee = MATH::rotationMatZ(3.f);
 
 
-        printf("%f %f %f %f \n %f %f %f %f \n %f %f %f %f \n %f %f %f %f \n  \n"
-            , rollPitchYaw.M[0][0], rollPitchYaw.M[1][0], rollPitchYaw.M[2][0], rollPitchYaw.M[3][0],
-            rollPitchYaw.M[0][1], rollPitchYaw.M[1][1], rollPitchYaw.M[2][1], rollPitchYaw.M[3][1],
-            rollPitchYaw.M[0][2], rollPitchYaw.M[1][2], rollPitchYaw.M[2][2], rollPitchYaw.M[3][2],
-            rollPitchYaw.M[0][3], rollPitchYaw.M[1][3], rollPitchYaw.M[2][3], rollPitchYaw.M[3][3]);
+        ///printf("%f %f %f %f \n %f %f %f %f \n %f %f %f %f \n %f %f %f %f \n  \n"
+           // , rollPitchYaw.M[0][0], rollPitchYaw.M[1][0], rollPitchYaw.M[2][0], rollPitchYaw.M[3][0],
+            //rollPitchYaw.M[0][1], rollPitchYaw.M[1][1], rollPitchYaw.M[2][1], rollPitchYaw.M[3][1],
+            //rollPitchYaw.M[0][2], rollPitchYaw.M[1][2], rollPitchYaw.M[2][2], rollPitchYaw.M[3][2],
+            //rollPitchYaw.M[0][3], rollPitchYaw.M[1][3], rollPitchYaw.M[2][3], rollPitchYaw.M[3][3]);
 
 
-
+		OVR::Vector3f Pos2(0,0,4.f);
         OVR::Matrix4f finalRollPitchYaw = rollPitchYaw * OVR::Matrix4f(EyeRenderPose[eye].Orientation);
         OVR::Vector3f finalUp = finalRollPitchYaw.Transform(OVR::Vector3f(0, 1, 0));
         OVR::Vector3f finalForward = finalRollPitchYaw.Transform(OVR::Vector3f(0, 0, -1));
-        OVR::Vector3f shiftedEyePos =/* Pos2 +*/ rollPitchYaw.Transform(EyeRenderPose[eye].Position);
+        OVR::Vector3f shiftedEyePos = Pos2 + rollPitchYaw.Transform(EyeRenderPose[eye].Position);
 
-        OVR::Matrix4f viewProj[2];
-        viewProj[0] = OVR::Matrix4f::LookAtRH(shiftedEyePos, shiftedEyePos + finalForward, finalUp);
-        viewProj[1] = ovrMatrix4f_Projection(desc.DefaultEyeFov[eye], 0.2f, 1000.0f, ovrProjection_None);
-        posTimewarpProjectionDesc = ovrTimewarpProjectionDesc_FromProjection(viewProj[1], ovrProjection_None);
-		printf("%d \n",sizeof(OVR::Matrix4f));
-		printf("%d %d \n", eyeRenderTexture[eye]->GetSize().w , 
-            eyeRenderTexture[eye]->GetSize().h);
+        MATH::mat4 viewProj[2];
+        OVR::Matrix4f vi = OVR::Matrix4f::LookAtRH(shiftedEyePos, shiftedEyePos + finalForward, finalUp);
+        OVR::Matrix4f pr = ovrMatrix4f_Projection(desc.DefaultEyeFov[eye], 0.2f, 1000.0f, ovrProjection_None);
+        posTimewarpProjectionDesc = ovrTimewarpProjectionDesc_FromProjection(pr, ovrProjection_None);
+		
+		MATH::mat4 v = (*((MATH::mat4*)(&vi)));
+		MATH::mat4 p = (*((MATH::mat4*)(&pr)));
+		
+		MATH::transpose(&viewProj[0],&v);
+		MATH::transpose(&viewProj[1],&p);
+		//printf("%d \n",sizeof(OVR::Matrix4f));
+		//printf("%d %d \n", eyeRenderTexture[eye]->GetSize().w , 
+          //  eyeRenderTexture[eye]->GetSize().h);
 		
 		
        // glEnable(GL_DEPTH_TEST);
@@ -514,6 +520,55 @@ void render_vr(const RenderCommands& commands)
                 glBindVertexArray(currentMesh->vao);
                 glDrawElements(GL_TRIANGLES, currentMeshInfo->numIndexes, GL_UNSIGNED_INT, 0);
                 glCheckError();
+				
+				
+				glActiveTexture(GL_TEXTURE0);
+			glDepthFunc(GL_LEQUAL); 
+			//ShaderProgram* prog = &commands.shaders->shaderPrograms[skymaterial.shaderProgram];
+			glID = commands.shaders->shaderProgramIds[skymaterial.shaderProgram];
+			//glDepthFunc(GL_LEQUAL);
+			//glDepthMask(GL_FALSE);
+			//skyboxShader.use();
+			glUseProgram(glID);
+			glCheckError();
+			// ... set view and projection matrix
+			//mat4 projection = { 0 };
+			//perspective(&projection, deg_to_rad(fov), (float)SCREENWIDHT / (float)SCREENHEIGHT, 0.1f, 100.f);
+            MATH::mat4 tempview = viewProj[0];//viewPro//commands.view;
+			tempview.mat[3][0] = 0;
+			tempview.mat[3][1] = 0;
+			tempview.mat[3][2] = 0;
+			tempview.mat[3][3] = 1;
+
+
+			glCheckError();
+			SHADER::set_mat4_name(glID,"view",tempview.mat);// projection.mat);
+			SHADER::set_mat4_name(glID,"projection",commands.projection.mat);// projection.mat);
+
+			glCheckError();
+
+			glBindVertexArray(skyvao);
+			glActiveTexture(GL_TEXTURE0 );
+
+			glCheckError();
+			Uniform* uniToSet = &commands.shaders->uniforms[skymaterial.uniformIndex];
+			//printf("CUBE ID %d \n",commands.textureIds[uniToSet->_textureCacheId]);
+			glBindTexture(GL_TEXTURE_CUBE_MAP, commands.textureIds[uniToSet->_textureCacheId]);
+
+			glCheckError();
+			//glBindTexture(GL_TEXTURE_CUBE_MAP, engine.skyBoxID);
+			glDrawArrays(GL_TRIANGLES, 0, 36);
+
+			glCheckError();
+			//glDepthMask(GL_TRUE);
+			glDepthFunc(GL_LESS);
+
+			glCheckError();
+			glUseProgram(0);
+			glBindVertexArray(0);
+				
+				
+				
             }
 
 

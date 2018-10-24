@@ -83,7 +83,9 @@ struct RenderCommands
 };
 
 
-#if VR
+#if !VR
+static uint skyvao = 0;
+	static Material skymaterial;
 #include <vrfuncs.h>
 #endif
 /*
@@ -348,8 +350,7 @@ void render(RenderData* renderables,int numRenderables,
 #endif
 
 
-	static uint skyvao = 0;
-	static Material skymaterial;
+	
 	void render(const RenderCommands& commands);
 	int main()
 	{
@@ -537,7 +538,7 @@ void render(RenderData* renderables,int numRenderables,
 		set_material_texture(&shaders,&vrMaterial,0,0);
 		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-#if VR
+#if !VR
 
 
 #if 0
@@ -866,7 +867,7 @@ void render(RenderData* renderables,int numRenderables,
 			glfwGetFramebufferSize(window, &display_w, &display_h);
 			glViewport(0, 0, display_w, display_h);
 			glCheckError();
-#if VR
+#if !VR
 			render_vr(rend);
 #endif
 			glCheckError();
@@ -1089,7 +1090,7 @@ void render(RenderData* renderables,int numRenderables,
 
 			glCheckError();
 			Uniform* uniToSet = &commands.shaders->uniforms[skymaterial.uniformIndex];
-			printf("CUBE ID %d \n",commands.textureIds[uniToSet->_textureCacheId]);
+			//printf("CUBE ID %d \n",commands.textureIds[uniToSet->_textureCacheId]);
 			glBindTexture(GL_TEXTURE_CUBE_MAP, commands.textureIds[uniToSet->_textureCacheId]);
 
 			glCheckError();
