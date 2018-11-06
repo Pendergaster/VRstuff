@@ -63,15 +63,20 @@ void _OpenALErrorCheck(const char* file,unsigned int line)
 
 struct SoundLoadInfo
 {
-	unsigned long	size;
-	unsigned long	chunkSize;
+	//unsigned long	size;
+	int				size;
+	//unsigned long	chunkSize;
+	int	chunkSize;
 	short			formatType;
 	short			channels;
-	unsigned long	sampleRate;
-	unsigned long	avgBytesPerSec;
+	//unsigned long	sampleRate;
+	int	sampleRate;
+	//unsigned long	avgBytesPerSec;
+	int	avgBytesPerSec;
 	short			bytesPerSample;
 	short			bitsPerSample;
-	unsigned long	dataSize;
+	//unsigned long	dataSize;
+	int	dataSize;
 };
 
 struct SoundInfo
@@ -123,9 +128,13 @@ SoundLoadInfo load_wav(const char* path,unsigned char** buf,CONTAINER::MemoryBlo
 	}
 
 	fread(&info.size,sizeof(info.size),1,fp);
+	printf("sizeof unsigned long %lu \n",sizeof(info.size));
+	printf("sizeof char %lu \n",sizeof(char));
+	printf("sizeof char %lu \n",sizeof(int));
 	fread(type,sizeof(char),4,fp);
 	if(type[0] != 'W' || type[1] != 'A' || type[2] != 'V' || type[3] != 'E')
 	{
+		printf("type : %s \n" ,type);
 		ABORT_MESSAGE("sound is not WAVE \n");
 	}
 
@@ -196,21 +205,21 @@ static void init_sound_device(SoundContext* soundCon,CONTAINER::MemoryBlock* wor
 		{
 			if(1 == loadInfo.channels ){
 				currentInfo->format = AL_FORMAT_MONO8;
-				LOG("Sound %s is mono \n",*name);
+				LOG("Sound %s is mono",*name);
 			}
 			else if(2 == loadInfo.channels ){
 				currentInfo->format = AL_FORMAT_STEREO8;
-				LOG("Sound %s is stereo \n",*name);
+				LOG("Sound %s is stereo",*name);
 			}
 		}
 		else if(16 == loadInfo.bitsPerSample)
 		{
 			if(1 == loadInfo.channels ){
-				LOG("Sound %s is mono \n",*name);
+				LOG("Sound %s is mono",*name);
 				currentInfo->format = AL_FORMAT_MONO16;
 			}
 			else if(2 == loadInfo.channels ){
-				LOG("Sound %s is stereo \n",*name);
+				LOG("Sound %s is stereo",*name);
 				currentInfo->format = AL_FORMAT_STEREO16;
 			}
 		}else {ABORT_MESSAGE("SOMETHING FAILED \n");}
@@ -239,7 +248,6 @@ typedef uint PlayerHandle;
 
 static inline PlayerHandle get_new_player()
 {
-	printf("setting new player \n"); fflush(stdout);
 	ASSERT_MESSAGE(g_soundContext,"SOUND CONTEXT NOT SET \n");
 	ASSERT_MESSAGE(g_soundContext,"SOUND CONTEXT NOT SET \n");
 	uint ret = 0;
@@ -253,19 +261,15 @@ static inline PlayerHandle get_new_player()
 	else
 	{
 
-		printf("getting new player \n"); fflush(stdout);
 		ASSERT_MESSAGE(g_soundContext->playerIndex < MAX_PLAYERS,"TOO MANY SOUND PLAYERS \n");
 
-		printf("new player id is %d \n",g_soundContext->playerIndex); fflush(stdout);
 		ret = g_soundContext->playerIndex;
 		g_soundContext->playerIndex++;
 	}
 	player = &g_soundContext->players[ret];
 
-	printf("new player is got\n"); fflush(stdout);
 	alGenSources(1,&player->source);
 
-	printf("player is generetegenereted\n"); fflush(stdout);
 	OpenALErrorCheck();
 	return ret;
 }

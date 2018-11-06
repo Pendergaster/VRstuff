@@ -317,20 +317,19 @@ EXPORT void init_game(void* p)
 	//SoundContext sounds;
 	//todo init working mem ymsyms
 	init_sound_device(&game->soundContext,&hook->workingMemory,&hook->gameMemory);
-	LOG("Sounds inited \n");
+	LOG("Sounds inited");
 	//set_listener_worldData(MATH::vec3(0,0,6.f),MATH::vec3(),
 	//		MATH::vec3(),MATH::vec3(0,1.f,0));
-	LOG("pos set \n");
+	LOG("pos set");
 	PlayerHandle s = get_new_player();
-	LOG("player set \n");
+	LOG("player set");
 	set_player(s,SoundType::sound,MATH::vec3(),MATH::vec3(),1.f,1.f,true);
-	LOG("Sounds inited \n");
+	LOG("Sounds inited");
 
 	player_pause(s);
 	game->song = s;
 	ImGui::SetCurrentContext(hook->imguiContext);
 	set_input_context(&hook->inputs);
-	printf("Game INITED \n");
 
 	const float bpm = 60.f;
 	const float bps = bpm / 60.f;
@@ -510,19 +509,16 @@ EXPORT void update_game(void* p)
 		{
 			game->beatRunTime = 0;
 			game->currentInterval = 0;
-			printf("resetting the beat time \n");
 			game->songRunTime = 0;
 			wind_player_to(game->song,0.f);
 			player_pause(game->song);
 			BIT_UNSET(game->state,GameState::SongStarted);
-			printf("Pausing the song! \n");
 		}
 
 		if(game->beatRunTime > travelTime )
 		{
 			if(!BIT_CHECK(game->state,GameState::SongStarted))
 			{
-				printf("song started! \n");
 				BIT_SET(game->state,GameState::SongStarted);
 				player_play(game->song);
 			}

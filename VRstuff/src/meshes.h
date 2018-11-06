@@ -82,13 +82,13 @@ static void fill_mesh_cache(MeshData* meshData,CONTAINER::MemoryBlock* workingMe
 	for(uint i = 0; i < names.numobj;i++)
 	{
 		char* currentName = names.buffer[i];
+		LOG("Getting model %s", currentName);
 		char* tempName = (char*)CONTAINER::get_next_memory_block(*staticAllocator);
 		strcpy(tempName,currentName);
 		CONTAINER::increase_memory_block_aligned(staticAllocator,(int)strlen(tempName)+1);
 		JsonToken* meshToken = token[currentName].GetToken();
 		ASSERT_MESSAGE(meshToken,"MESH TOKEN NOT VALID %s \n",currentName);
 		char* metaDataPath = (*meshToken)["metaDataPath"].GetString();
-		printf("metaDataPath path for %s is %s \n",currentName,metaDataPath);
 		MeshInfo info;
 		info.name = tempName;
 		info.path = metaDataPath;

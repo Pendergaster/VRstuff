@@ -12,7 +12,7 @@ void main()
     TexCoords = aPos;
 	vec4 pos = projection * view * vec4(aPos, 1.0);
     gl_Position = pos.xyww;
-};
+}
 
 #VertexEnd
 
@@ -31,6 +31,6 @@ void main()
 {    
     FragColor = texture(skybox, TexCoords);
  //   BrightColor = vec4(0);
-};
+}
 
 #FragmentEnd

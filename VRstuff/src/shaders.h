@@ -113,7 +113,6 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 			currentShaderProg.fragmentPath = (char*)CONTAINER::get_next_memory_block(*staticMem);
 			strcpy(currentShaderProg.fragmentPath , fragPath);
 			CONTAINER::increase_memory_block_aligned(staticMem,(int)strlen(currentShaderProg.fragmentPath) + 1);
-			//printf("--- \n %s ----- \n %s \n ----- \n",vertFile,fragFile);
 
 			FILESYS::get_filehandle(fragPath,
 					&currentShaderProg.fragmentFileWriteTime );
@@ -123,7 +122,6 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 		}
 		else
 		{
-			printf("%d num TEX test \n",manager->shaderPrograms->numTextures);
 			char* combinedPath = (*currentToken)["CombinedPath"].GetString();
 			ASSERT_MESSAGE(combinedPath,"PATHS NOT DEFINED FOR SHADER :: %s \n",currentName);
 			if(!SHADER::load_frag_and_vert(combinedPath,&vertFile,&fragFile,workingMem)){
@@ -136,16 +134,13 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 			CONTAINER::increase_memory_block_aligned(staticMem,(int)strlen(currentShaderProg.combiedPath) + 1);
 			FILESYS::get_filehandle(combinedPath,
 					&currentShaderProg.combinedFileWriteTime);
-			//printf("----------- \n %s \n-----------\n %s \n  ---------- \n",vertFile,fragFile);
-			printf("%d num TEX test \n",manager->shaderPrograms->numTextures);
 		}
 
-		printf("%d num TEX test \n",manager->shaderPrograms->numTextures);
-		if(!compile_program(currentShaderProg,&manager->shaderProgramIds[i],vertFile,fragFile)){
+		if(!compile_program(currentShaderProg,&manager->shaderProgramIds[i],vertFile,fragFile))
+		{
 			ABORT_MESSAGE("FAILED TO COMPILE SHADER");
 		}
 
-		printf("%d num TEX test \n",manager->shaderPrograms->numTextures);
 		glUseProgram(manager->shaderProgramIds[i]);
 		ValueType t = (*currentToken)["GlobalUniforms"].GetType();
 		if(t == ValueType::Jarray)
@@ -156,17 +151,17 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 				char* glUniName = (*currentToken)["GlobalUniforms"][uniIter].GetString();
 				ASSERT_MESSAGE(glUniName,"GLOBAL UNIFORM NAME NOT STRING :: %s \n",currentName);
 				if(!strcmp(glUniName,"MVP")){
-					LOG("DETECTED MVP \n");
+					LOG("DETECTED MVP ");
 					//currentShaderProg.globalUniformFlags = 
 					BIT_SET(currentShaderProg.globalUniformFlags,GlobalUniforms::MVP);
 				}
 				else if(!strcmp(glUniName,"GlobalLight")){
-					LOG("DETECTED GLOBALIGHT \n");
+					LOG("DETECTED GLOBALIGHT ");
 					//currentShaderProg.globalUniformFlags = 
 					BIT_SET(currentShaderProg.globalUniformFlags,GlobalUniforms::GlobalLight);
 				}
 				else if(!strcmp(glUniName,"CameraBlock")){
-					LOG("DETECTED CameraBlock \n");
+					LOG("DETECTED CameraBlock ");
 					//currentShaderProg.globalUniformFlags = 
 					BIT_SET(currentShaderProg.globalUniformFlags,GlobalUniforms::GlobalLight);
 				}
@@ -287,29 +282,29 @@ void hotload_shaders(ShaderManager* manager,CONTAINER::MemoryBlock* workingMem)
 			}
 			if(!compare_file_times(i->combinedFileWriteTime,handle))
 			{
-				printf("HOT RELOADING %s \n",i->combiedPath);
+				LOG("HOT RELOADING %s ",i->combiedPath);
 				fflush(stdout);
 				FILESYS::get_filehandle(i->combiedPath,
 						&i->combinedFileWriteTime);
 
 				if(!SHADER::load_frag_and_vert(i->combiedPath,&vertFile,&fragFile,workingMem))
 				{
-					LOG("Failed to hotload shader :: %s \n",i->combiedPath);
+					LOG("Failed to hotload shader :: %s ",i->combiedPath);
 					continue;
 				}
 
 				uint tempShaderID = 0;
 				if(compile_program(*i,&tempShaderID,vertFile,fragFile))
 				{
-                    glUseProgram(tempShaderID);
-                    defer{ glUseProgram(0); };
+					glUseProgram(tempShaderID);
+					defer{ glUseProgram(0); };
 					int numTex = 0;
 					bool success = true;
 					UniformInfo* tempArray = (UniformInfo*)CONTAINER::get_next_memory_block(*workingMem);
 					CONTAINER::increase_memory_block(workingMem,sizeof(UniformInfo) * i->numUniforms);
 					memcpy(tempArray,i->uniforms,sizeof(UniformInfo) * i->numUniforms);
 					//for(UniformInfo* uni = i->uniforms;uni < i->uniforms + i->numUniforms;uni++)
-                    glCheckError();
+					glCheckError();
 					for(UniformInfo* uni = tempArray;uni < tempArray + i->numUniforms;uni++)
 					{
 						if(uni->type == UniformType::SAMPLER2D)
@@ -318,7 +313,6 @@ void hotload_shaders(ShaderManager* manager,CONTAINER::MemoryBlock* workingMem)
 								success = false;
 								continue;
 							}
-							printf("Sampler set\n");
 						} 
 						else if(uni->type == UniformType::MODEL)
 						{
@@ -329,7 +323,6 @@ void hotload_shaders(ShaderManager* manager,CONTAINER::MemoryBlock* workingMem)
 								continue;
 
 							}
-							printf("Model set\n");
 							//glGetUniformLocation()
 						}
 						else
@@ -338,9 +331,8 @@ void hotload_shaders(ShaderManager* manager,CONTAINER::MemoryBlock* workingMem)
 								success = false;
 								continue;
 							}
-							printf("Normal uni set\n");
 						}
-                        glCheckError();
+						glCheckError();
 					}
 					if(BIT_CHECK(i->globalUniformFlags,GlobalUniforms::MVP) && success)
 					{
@@ -365,14 +357,14 @@ void hotload_shaders(ShaderManager* manager,CONTAINER::MemoryBlock* workingMem)
 
 					if(success)
 					{
-						printf("loading succeed \n");
+						LOG("loading succeed ");
 						glDeleteProgram(manager->shaderProgramIds[index]);
 						manager->shaderProgramIds[index] = tempShaderID;
 						memcpy(i->uniforms,tempArray,sizeof(UniformInfo) * i->numUniforms);
 					}
 					else{
 						glDeleteProgram(tempShaderID);
-						printf("loading failed \n");
+						LOG("loading failed ");
 					}
 
 				}
@@ -422,7 +414,7 @@ void hotload_shaders(ShaderManager* manager,CONTAINER::MemoryBlock* workingMem)
 			if(!compare_file_times(i->vertexFileWriteTime,handleVert) || 
 					!compare_file_times(i->fragmentFileWriteTime,handleFrag))
 			{
-				printf("HOT RELOADING %s and %s \n",i->vertexPath,i->fragmentPath);
+				LOG("HOT RELOADING %s and %s ",i->vertexPath,i->fragmentPath);
 				fflush(stdout);
 
 				vertFile = SHADER::load_shader(i->vertexPath,workingMem);
