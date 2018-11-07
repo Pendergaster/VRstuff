@@ -10,6 +10,14 @@
 #include <imgui/imgui_widgets.cpp>
 #include "sound.h"
 
+#define MIKA 1
+#if MIKA 
+
+#include <Raknet-Shared/ClientInformation.h>
+#include <Raknet-Shared/MessageCodes.h>
+#include <Raknet-Client/Client.h>
+#include <Raknet-Client/Client.cpp>
+#endif
 
 #define MATERIALS(MODE)\
 	MODE(PlanetMat)\
@@ -153,14 +161,19 @@ struct Game
 	SoundContext		soundContext;
 	Camera				camera;
 	RenderDataHandle	planet;
+	Client				client;
+
 };
 
 EXPORT void init_game(void* p)
 {
 	//Game game;
 	GameHook* hook = (GameHook*)p;
+	//Game tempGame;
 	Game* game = (Game*)CONTAINER::get_next_memory_block(hook->gameMemory);//(Game*)hook->userData;
 	memset(game,0,sizeof(Game));
+	//*game = tempGame;
+	new(&game->client)Client;
 	CONTAINER::increase_memory_block(&hook->gameMemory,sizeof(Game));
 	hook->userData = game;
 	hook->materials = (Material*)CONTAINER::get_next_memory_block(hook->gameMemory);
@@ -222,6 +235,9 @@ EXPORT void init_game(void* p)
 
 	ImGui::SetCurrentContext(hook->imguiContext);
 	set_input_context(&hook->inputs);
+#if MIKA
+	//game->client.init_client();
+#endif
 }
 
 EXPORT void on_game_reload(void* p)
@@ -249,6 +265,14 @@ static void update_camera(Camera* cam,MATH::mat4* view)
 	if(cam->pitch < -89.0f)
 		cam->pitch = -89.0f;
 
+
+
+	//c->cameraDir.x = cosf(deg_to_rad(c->pitch))*cosf(deg_to_rad(c->yaw));
+	//c->cameraDir.y = sinf(deg_to_rad(c->pitch));
+	//c->cameraDir.z = sinf(deg_to_rad(c->yaw))*cosf(deg_to_rad(c->pitch));
+
+
+
 	cam->direction.x = cosf(MATH::deg_to_rad * cam->yaw) * 
 		cosf(MATH::deg_to_rad * cam->pitch);
 	cam->direction.y = sinf(MATH::deg_to_rad * cam->pitch);
@@ -260,6 +284,18 @@ static void update_camera(Camera* cam,MATH::mat4* view)
 	MATH::normalize(&cam->up);
 	cam->up = MATH::cross_product(cam->up, cam->direction);
 	MATH::normalize(&cam->up);
+
+
+
+	//vec3 front = { 0 };
+	//add_vec3(&front, &c->cameraPos, &c->cameraDir);
+
+	//cross_product(&c->camUp, &c->cameraDir, &worldUP);
+	//normalize_vec3(&c->camUp);
+	//cross_product(&c->camUp, &c->camUp, &c->cameraDir);
+	//normalize_vec3(&c->camUp);
+
+
 	//	normalize_vec3(&c->camUp);
 	//	cross_product(&c->camUp, &c->camUp, &c->cameraDir);
 	//	normalize_vec3(&c->camUp);
@@ -267,6 +303,8 @@ static void update_camera(Camera* cam,MATH::mat4* view)
 	printf("%.3f %.3f %.3f \n",cam->up.x,cam->up.y,cam->up.z);
 	MATH::create_lookat_mat4(view,cam->position,
 			cam->position + cam->direction, cam->up);
+
+
 }
 
 

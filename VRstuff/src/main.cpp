@@ -654,7 +654,8 @@ void render(const RenderCommands& commands)
 				case UniformType::SAMPLER2D:
 					{
 						glActiveTexture(GL_TEXTURE0 + info->glTexLocation);
-						glBindTexture(GL_TEXTURE_2D, commands.textureIds[uniToSet->_textureCacheId]);
+						glBindTexture(GL_TEXTURE_2D,
+							   	commands.textureIds[uniToSet->_textureCacheId]);
 					}break;
 				case UniformType::MODEL:
 					{
