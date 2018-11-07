@@ -1,7 +1,5 @@
 #define _CRT_SECURE_NO_WARNINGS
-//#define _ITERATOR_DEBUG_LEVEL 0
 #define STB_IMAGE_IMPLEMENTATION
-
 
 #include <assert.h>
 #include<stb_image.h>
@@ -439,6 +437,7 @@ int main()
 		glCheckError();
 	}
 #endif
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); 
 	while (!glfwWindowShouldClose(window))
 	{
 #if VR
@@ -509,8 +508,8 @@ int main()
 
 			ImGui::EndFrame();
 		}
-#if VR
-		glClearColor(1.f, 0.f, 0.f, 1.0f);
+#if !VR
+		glClearColor(0.f, 0.f, 0.f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_MULTISAMPLE);
@@ -540,7 +539,6 @@ int main()
 #if VR
 		render_vr(rend);
 #endif
-		glCheckError();
 		glCheckError();
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glfwGetFramebufferSize(window, &display_w, &display_h);
@@ -572,15 +570,14 @@ int main()
 			if(!dispose_game){
 				ABORT_MESSAGE("Failed to load dispose_game game \n");
 			}
-
 			on_game_reload(&hook);
-
 		}
 #endif
 	}
 	dispose_game(&hook);
 	PROFILER::show_timers(&timers);
 	glfwTerminate();
+	printf("Bye \n");
 	return 0;
 }
 
@@ -672,10 +669,13 @@ void render(const RenderCommands& commands)
 
 		glCheckError();
 		//set mesh
-		Mesh* currentMesh = &commands.meshes->meshArray[currentRenderData->meshID];
-		MeshInfo* currentMeshInfo = &commands.meshes->meshInfos[currentRenderData->meshID];
+		Mesh* currentMesh = 
+			&commands.meshes->meshArray[currentRenderData->meshID];
+		MeshInfo* currentMeshInfo = 
+			&commands.meshes->meshInfos[currentRenderData->meshID];
 		glBindVertexArray(currentMesh->vao);
-		glDrawElements(GL_TRIANGLES,currentMeshInfo->numIndexes, GL_UNSIGNED_INT,0);
+		glDrawElements(GL_TRIANGLES,currentMeshInfo->numIndexes,
+				GL_UNSIGNED_INT,0);
 		glCheckError();
 	}
 	//render skybox

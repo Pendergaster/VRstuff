@@ -92,5 +92,23 @@ static void set_input_context(Input* inputs)
 	g_inputs = inputs;
 }
 
+static MATH::vec2 get_mouse_position()
+{
+	return g_inputs->mpos;
+}
+
+static MATH::vec2 get_last_mouse_position()
+{
+	return g_inputs->lastmpos;
+}
+
+static MATH::vec2 get_mouse_movement()
+{
+	return g_inputs->mpos - g_inputs->lastmpos;
+}
+
+
+
+
 
 #endif
