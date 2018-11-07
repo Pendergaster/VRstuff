@@ -27,6 +27,8 @@ void Client::init_client(string IP, int Port,const char* username)
 	string title = "Raknet-Client";
 	this->Connected = false;
 	this->LoggedIn = false; 
+	Peer = RakNet::RakPeerInterface::GetInstance();
+	SD = new RakNet::SocketDescriptor(0,0);
 }
 
 Client::~Client()

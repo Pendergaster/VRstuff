@@ -2,8 +2,10 @@
 
 #include <iostream>
 #include <string>
-//#include <WinSock2.h>
-//#include <Windows.h>
+#if 1
+#include <WinSock2.h>
+#include <Windows.h>
+#endif// WINDOWS
 #include <sstream>
 #include <thread>
 #include <vector>
