@@ -128,9 +128,6 @@ SoundLoadInfo load_wav(const char* path,unsigned char** buf,CONTAINER::MemoryBlo
 	}
 
 	fread(&info.size,sizeof(info.size),1,fp);
-	printf("sizeof unsigned long %lu \n",sizeof(info.size));
-	printf("sizeof char %lu \n",sizeof(char));
-	printf("sizeof char %lu \n",sizeof(int));
 	fread(type,sizeof(char),4,fp);
 	if(type[0] != 'W' || type[1] != 'A' || type[2] != 'V' || type[3] != 'E')
 	{

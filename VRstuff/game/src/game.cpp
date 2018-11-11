@@ -1,6 +1,6 @@
 
 #define _CRT_SECURE_NO_WARNINGS
-#define MIKA 1
+#define MIKA 0
 #if MIKA 
 #include <Raknet-Shared/ClientInformation.h>
 #include <Raknet-Shared/MessageCodes.h>
@@ -22,7 +22,6 @@
 #include <imgui/imgui_draw.cpp>
 #include <imgui/imgui_widgets.cpp>
 #include "sound.h"
-
 
 #define MATERIALS(MODE)\
 	MODE(PlanetMat)\
@@ -269,8 +268,8 @@ static void update_camera(Camera* cam,MATH::mat4* view)
 	scale(&movement,sensitivity);
 
 	//printf("%.3f %.3f \n",cam->yaw, cam->pitch);
-	cam->yaw   -= movement.x;
-	cam->pitch += movement.y;  
+	cam->yaw   += movement.x;
+	cam->pitch -= movement.y;  
 
 	if(cam->pitch > 89.0f)
 		cam->pitch =  89.0f;
@@ -278,45 +277,26 @@ static void update_camera(Camera* cam,MATH::mat4* view)
 		cam->pitch = -89.0f;
 
 
-
-	//c->cameraDir.x = cosf(deg_to_rad(c->pitch))*cosf(deg_to_rad(c->yaw));
-	//c->cameraDir.y = sinf(deg_to_rad(c->pitch));
-	//c->cameraDir.z = sinf(deg_to_rad(c->yaw))*cosf(deg_to_rad(c->pitch));
-
-
-
 	cam->direction.x = cosf(MATH::deg_to_rad * cam->yaw) * 
 		cosf(MATH::deg_to_rad * cam->pitch);
 	cam->direction.y = sinf(MATH::deg_to_rad * cam->pitch);
 	cam->direction.z = sinf(MATH::deg_to_rad * cam->yaw) * 
 		cosf(MATH::deg_to_rad * cam->pitch);
+
+
+
 	MATH::normalize(&cam->direction);
+
+	printf("%.3f %.3f %.3f \n",cam->direction.x, cam->direction.y, cam->direction.z);
+	printf("lenght %.3f \n",MATH::lenght(cam->direction));
 
 	cam->up = MATH::cross_product(cam->direction, worldUp);
 	MATH::normalize(&cam->up);
 	cam->up = MATH::cross_product(cam->up, cam->direction);
 	MATH::normalize(&cam->up);
 
-
-
-	//vec3 front = { 0 };
-	//add_vec3(&front, &c->cameraPos, &c->cameraDir);
-
-	//cross_product(&c->camUp, &c->cameraDir, &worldUP);
-	//normalize_vec3(&c->camUp);
-	//cross_product(&c->camUp, &c->camUp, &c->cameraDir);
-	//normalize_vec3(&c->camUp);
-
-
-	//	normalize_vec3(&c->camUp);
-	//	cross_product(&c->camUp, &c->camUp, &c->cameraDir);
-	//	normalize_vec3(&c->camUp);
-
-	//printf("%.3f %.3f %.3f \n",cam->up.x,cam->up.y,cam->up.z);
 	MATH::create_lookat_mat4(view,cam->position,
 			cam->position + cam->direction, cam->up);
-
-
 }
 
 
@@ -356,28 +336,28 @@ EXPORT void update_game(void* p)
 	{
 		RenderData* data = get_render_data(game->planet,game->renderData,hook->renderables);
 		data->position.y += 0.1f;
-		//game->camera.position  += MATH::normalized(MATH::cross_product(game->camera.direction,
-		//			game->camera.up)) * cameraSpeed;
 	}
 	if (key_down(Key::KEY_J))
 	{
 		RenderData* data = get_render_data(game->planet,game->renderData,hook->renderables);
 		data->position.y -= 0.1f;
-		//game->camera.position  += MATH::normalized(MATH::cross_product(game->camera.direction,
-		//			game->camera.up)) * cameraSpeed;
 	}
 
 	update_camera(&game->camera,&hook->viewMatrix);
+#if MIKA
 	game->client.Update();
+#endif
 }
 
 EXPORT void dispose_game(void* p)
 {
+	printf("disposing game \n");
 	GameHook* hook = (GameHook*)p;
 	Game* game = (Game*)hook->userData;
 	alcMakeContextCurrent(NULL);
 	alcDestroyContext(game->soundContext.context);
 	alcCloseDevice(game->soundContext.device);
+	printf("game disposed\n");
 }
 
 

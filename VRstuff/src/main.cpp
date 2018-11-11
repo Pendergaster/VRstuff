@@ -574,6 +574,7 @@ int main()
 		}
 #endif
 	}
+	printf("trying to dispose game \n");
 	dispose_game(&hook);
 	PROFILER::show_timers(&timers);
 	glfwTerminate();
