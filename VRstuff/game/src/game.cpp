@@ -1,4 +1,17 @@
+
 #define _CRT_SECURE_NO_WARNINGS
+#define MIKA 1
+#if MIKA 
+#include <Raknet-Shared/ClientInformation.h>
+#include <Raknet-Shared/MessageCodes.h>
+
+#include <Raknet-Client/Client.h>
+#include <Raknet-Client/Client.cpp>
+#endif
+
+
+
+
 #include <stdio.h>
 #include <Containers.h>
 #include <gameDefs.h>
@@ -10,14 +23,6 @@
 #include <imgui/imgui_widgets.cpp>
 #include "sound.h"
 
-#define MIKA 1
-#if MIKA 
-
-#include <Raknet-Shared/ClientInformation.h>
-#include <Raknet-Shared/MessageCodes.h>
-#include <Raknet-Client/Client.h>
-#include <Raknet-Client/Client.cpp>
-#endif
 
 #define MATERIALS(MODE)\
 	MODE(PlanetMat)\
@@ -161,7 +166,10 @@ struct Game
 	SoundContext		soundContext;
 	Camera				camera;
 	RenderDataHandle	planet;
+	RenderDataHandle	enemy;
+#if MIKA
 	Client				client;
+#endif
 
 };
 
@@ -173,7 +181,9 @@ EXPORT void init_game(void* p)
 	Game* game = (Game*)CONTAINER::get_next_memory_block(hook->gameMemory);//(Game*)hook->userData;
 	memset(game,0,sizeof(Game));
 	//*game = tempGame;
+#if MIKA
 	new(&game->client)Client;
+#endif
 	CONTAINER::increase_memory_block(&hook->gameMemory,sizeof(Game));
 	hook->userData = game;
 	hook->materials = (Material*)CONTAINER::get_next_memory_block(hook->gameMemory);
@@ -218,8 +228,8 @@ EXPORT void init_game(void* p)
 	game->planet = insert_renderdata(planetData,
 			&game->renderData,hook->renderables);
 
-	planetData.position = MATH::vec3(0,-3.f,4.f);
-	insert_renderdata(planetData,&game->renderData,hook->renderables);
+	planetData.position = MATH::vec3(0,-1.f,0.f);
+	game->enemy = insert_renderdata(planetData,&game->renderData,hook->renderables);
 
 
 
@@ -236,7 +246,9 @@ EXPORT void init_game(void* p)
 	ImGui::SetCurrentContext(hook->imguiContext);
 	set_input_context(&hook->inputs);
 #if MIKA
-	//game->client.init_client();
+	game->client.init_client("172.31.16.152",60000,"Nilkki");
+	game->client.OpenConnection();
+	printf("connected \n");
 #endif
 }
 
@@ -256,7 +268,7 @@ static void update_camera(Camera* cam,MATH::mat4* view)
 	float sensitivity = 0.05f;
 	scale(&movement,sensitivity);
 
-	printf("%.3f %.3f \n",cam->yaw, cam->pitch);
+	//printf("%.3f %.3f \n",cam->yaw, cam->pitch);
 	cam->yaw   -= movement.x;
 	cam->pitch += movement.y;  
 
@@ -300,7 +312,7 @@ static void update_camera(Camera* cam,MATH::mat4* view)
 	//	cross_product(&c->camUp, &c->camUp, &c->cameraDir);
 	//	normalize_vec3(&c->camUp);
 
-	printf("%.3f %.3f %.3f \n",cam->up.x,cam->up.y,cam->up.z);
+	//printf("%.3f %.3f %.3f \n",cam->up.x,cam->up.y,cam->up.z);
 	MATH::create_lookat_mat4(view,cam->position,
 			cam->position + cam->direction, cam->up);
 
@@ -340,8 +352,23 @@ EXPORT void update_game(void* p)
 		game->camera.position  += MATH::normalized(MATH::cross_product(game->camera.direction,
 					game->camera.up)) * cameraSpeed;
 	}
+	if (key_down(Key::KEY_U))
+	{
+		RenderData* data = get_render_data(game->planet,game->renderData,hook->renderables);
+		data->position.y += 0.1f;
+		//game->camera.position  += MATH::normalized(MATH::cross_product(game->camera.direction,
+		//			game->camera.up)) * cameraSpeed;
+	}
+	if (key_down(Key::KEY_J))
+	{
+		RenderData* data = get_render_data(game->planet,game->renderData,hook->renderables);
+		data->position.y -= 0.1f;
+		//game->camera.position  += MATH::normalized(MATH::cross_product(game->camera.direction,
+		//			game->camera.up)) * cameraSpeed;
+	}
 
 	update_camera(&game->camera,&hook->viewMatrix);
+	game->client.Update();
 }
 
 EXPORT void dispose_game(void* p)
