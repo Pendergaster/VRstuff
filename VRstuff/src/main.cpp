@@ -119,6 +119,7 @@ static inline FrameTexture create_depth_texture(uint width,uint height)
 	glDrawBuffer(GL_NONE);
 	glReadBuffer(GL_NONE);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);  
+    return ret;
 }
 static inline FrameTexture create_new_frameTexture(uint width,uint height,GLenum attachment,int type)
 {
@@ -628,7 +629,8 @@ int main()
 		glBindTexture(GL_TEXTURE_2D, depthMap);
 		RenderScene();
 #endif
-
+        rend.view = hook.viewMatrix;
+		rend.projection = hook.projectionMatrix;
 		set_and_clear_frameTexture(offscreen);
 		render(rend);
 		//int display_w, display_h;
