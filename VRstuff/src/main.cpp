@@ -636,7 +636,7 @@ int main()
 		//glBindTexture(GL_TEXTURE_2D, depthMap);
 		//RenderScene();
 #endif
-#if 0
+#if 1
 		rend.view = hook.viewMatrix;
 		rend.projection = hook.projectionMatrix;
 		set_and_clear_frameTexture(offscreen);
@@ -651,7 +651,7 @@ int main()
 #endif
 		glCheckError();
 #if 1
-		//blit_frameTexture(offscreen,postProcessCanvas);
+		blit_frameTexture(offscreen,postProcessCanvas);
 		//blit_frameTexture(postProcessCanvas,0);
 		glBindFramebuffer(GL_FRAMEBUFFER,0);
 
@@ -662,8 +662,8 @@ int main()
 		glActiveTexture(GL_TEXTURE0);
 		glCheckError();
 		glBindTexture(GL_TEXTURE_2D,
-				depthMap.texture);
-				//postProcessCanvas.texture);
+				//depthMap.texture);
+				postProcessCanvas.texture);
 		glCheckError();
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); 
 #else

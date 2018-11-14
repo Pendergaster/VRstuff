@@ -9,9 +9,6 @@
 #include <Raknet-Client/Client.cpp>
 #endif
 
-
-
-
 #include <stdio.h>
 #include <Containers.h>
 #include <gameDefs.h>
@@ -25,6 +22,7 @@
 
 #define MATERIALS(MODE)\
 	MODE(PlanetMat)\
+	MODE(Lattia)\
 
 
 enum MaterialType : int
@@ -213,6 +211,7 @@ EXPORT void init_game(void* p)
 	game->renderData.freeListIndex = 0;
 
 	Material planetMat = create_new_material(hook->shaders,"MainProg");
+	Material lattiaMat = create_new_material(hook->shaders,"MainProg");
 
 	RenderData planetData = create_new_renderdata
 		(
@@ -231,11 +230,23 @@ EXPORT void init_game(void* p)
 	game->enemy = insert_renderdata(planetData,&game->renderData,hook->renderables);
 
 
+	RenderData lattia = create_new_renderdata
+		(
+		 MaterialType::Lattia,
+		 get_mesh(hook->meshes,"Lattia"),
+		 MATH::vec3(0.f,0,0),
+		 MATH::quaternion(),
+		 MATH::vec3(0.5f,0.5f,0.5f)
+		);
+
+	insert_renderdata(lattia,&game->renderData,hook->renderables);
 
 	hook->numRenderables = 2;
 	TextureID moonTex = get_texture(*hook->textures,"MoonTexture");
 	set_material_texture(hook->shaders,&planetMat,0,moonTex);
+	set_material_texture(hook->shaders,&lattiaMat,0,get_texture(*hook->textures,"Lattia"));
 	hook->materials[0] = planetMat;
+	hook->materials[1] = lattiaMat;
 	init_sound_device(&game->soundContext,&hook->workingMemory,&hook->gameMemory);
 
 	init_camera(&game->camera,&hook->viewMatrix,&hook->projectionMatrix,
