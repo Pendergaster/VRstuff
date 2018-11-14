@@ -197,51 +197,56 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 #endif
 
 		//currentShaderProg
-		JsonToken* uniformToken = (*currentToken)["Uniforms"].GetToken();
-		ASSERT_MESSAGE(uniformToken,"SHADER HAS NOT DEFINED UNIFORMS :: %s \n",currentName);
-		uniformToken->GetKeys(&uniformNames);
-		defer{uniformNames.numobj = 0;};
-		currentShaderProg.numUniforms = uniformNames.numobj;
 		currentShaderProg.uniforms = &manager->uniformInfos[manager->numSystemUniforms];
-		ASSERT_MESSAGE(manager->numSystemUniforms + currentShaderProg.numUniforms < MAX_SYSTEM_UNIFORMS,"SYSTEM UNIFORMS IS EXEEDED");
-		manager->numSystemUniforms += currentShaderProg.numUniforms;
-
-		for(uint i2 = 0; i2 < uniformNames.numobj;i2++)
+		currentShaderProg.numUniforms = 0;
+		JsonToken* uniformToken = (*currentToken)["Uniforms"].GetToken();
+		if(uniformToken) // if uniforms exist
 		{
-			char* uniformName = uniformNames.buffer[i2];
-			char* uniformTypeName = (*uniformToken)[uniformName].GetString();
-			ASSERT_MESSAGE(uniformName,"UNIFORM IS NOT STRING TYPE %s in %s \n",uniformName,currentName);
-			UniformInfo uniformInfo;
-			uniformInfo.name = (char*)CONTAINER::get_next_memory_block(*staticMem);
-			CONTAINER::increase_memory_block_aligned(staticMem,(int)strlen(uniformName) + 1);
-			strcpy(uniformInfo.name,uniformName);
-			uniformInfo.hashedID = CONTAINER::hash(uniformInfo.name);
-			//TODO kipase location
-			for(int i3 = 0; i3 < UniformType::MaxTypes; i3++)
+			uniformToken->GetKeys(&uniformNames);
+			defer{uniformNames.numobj = 0;};
+			currentShaderProg.numUniforms = uniformNames.numobj;
+			ASSERT_MESSAGE(manager->numSystemUniforms + currentShaderProg.numUniforms < MAX_SYSTEM_UNIFORMS,"SYSTEM UNIFORMS IS EXEEDED");
+			manager->numSystemUniforms += currentShaderProg.numUniforms;
+
+			for(uint i2 = 0; i2 < uniformNames.numobj;i2++)
 			{
-				if(!strcmp(uniformTypeName,UNIFORM_TYPE_NAMES[i3]))		
+				char* uniformName = uniformNames.buffer[i2];
+				char* uniformTypeName = (*uniformToken)[uniformName].GetString();
+				ASSERT_MESSAGE(uniformName,"UNIFORM IS NOT STRING TYPE %s in %s \n",uniformName,currentName);
+				UniformInfo uniformInfo;
+				uniformInfo.name = (char*)CONTAINER::get_next_memory_block(*staticMem);
+				CONTAINER::increase_memory_block_aligned(staticMem,(int)strlen(uniformName) + 1);
+				strcpy(uniformInfo.name,uniformName);
+				uniformInfo.hashedID = CONTAINER::hash(uniformInfo.name);
+				//TODO kipase location
+				for(int i3 = 0; i3 < UniformType::MaxTypes; i3++)
 				{
-					uniformInfo.type = i3;
-					break;
+					if(!strcmp(uniformTypeName,UNIFORM_TYPE_NAMES[i3]))		
+					{
+						uniformInfo.type = i3;
+						break;
+					}
 				}
-			}
-			ASSERT_MESSAGE(uniformInfo.type != UniformType::INVALID,
-					"UNIFORM %s NOT VALID TYPE IN %s",uniformName,currentName);
-			if (uniformInfo.type == UniformType::SAMPLER2D ||
-					uniformInfo.type == UniformType::SAMPLERCUBE)
-			{
-				if(!setup_uniform_sampler2D(&uniformInfo,
-							manager->shaderProgramIds[i],currentShaderProg.numTextures++))
+				ASSERT_MESSAGE(uniformInfo.type != UniformType::INVALID,
+						"UNIFORM %s NOT VALID TYPE IN %s",uniformName,currentName);
+				if (uniformInfo.type == UniformType::SAMPLER2D ||
+						uniformInfo.type == UniformType::SAMPLERCUBE)
+				{
+					if(!setup_uniform_sampler2D(&uniformInfo,
+								manager->shaderProgramIds[i],currentShaderProg.numTextures++))
+					{
+						ABORT_MESSAGE("FAILED TO SET UP UNIFORM \n");
+					}
+				}
+				else if(!setup_uniform(&uniformInfo,manager->shaderProgramIds[i]))
 				{
 					ABORT_MESSAGE("FAILED TO SET UP UNIFORM \n");
 				}
+				currentShaderProg.uniforms[i2] = uniformInfo;
 			}
-			else if(!setup_uniform(&uniformInfo,manager->shaderProgramIds[i]))
-			{
-				ABORT_MESSAGE("FAILED TO SET UP UNIFORM \n");
-			}
-			currentShaderProg.uniforms[i2] = uniformInfo;
+
 		}
+		//ASSERT_MESSAGE(uniformToken,"SHADER HAS NOT DEFINED UNIFORMS :: %s \n",currentName);
 		if(BIT_CHECK(currentShaderProg.globalUniformFlags,GlobalUniforms::MVP))
 		{
 			UniformInfo uniformInfo;

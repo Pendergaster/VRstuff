@@ -74,11 +74,9 @@ struct RenderCommands
 	MATH::mat4		projection;
 	ShaderManager*	shaders = NULL;
 	uint*			textureIds = NULL;
-	FrameTexture*	frameTextures = NULL;
-	uint*           eyeVaos = NULL;
 	SystemUniforms* uniforms = NULL;
-	Material		vrProgram;
 	MeshData*		meshes = NULL;
+	FrameTexture	offscreen;
 };
 
 static uint skyvao = 0;
@@ -98,60 +96,127 @@ enum FrameBufferAttacment : int
 	None = 1 << 0,
 	Color = 1 << 1,
 	Depth = 1 << 2,
+	Multisample = 1 << 3
 };
 
+static inline FrameTexture create_depth_texture(uint width,uint height)
+{
+	FrameTexture ret;
+	glGenFramebuffers(1, &ret.buffer);  
+	glBindFramebuffer(GL_FRAMEBUFFER,ret.buffer);
+
+	glGenTextures(1, &ret.texture);
+	glBindTexture(GL_TEXTURE_2D, ret.texture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, 
+			width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);  
+
+	glBindFramebuffer(GL_FRAMEBUFFER, ret.buffer);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, ret.texture, 0);
+	glDrawBuffer(GL_NONE);
+	glReadBuffer(GL_NONE);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);  
+}
 static inline FrameTexture create_new_frameTexture(uint width,uint height,GLenum attachment,int type)
 {
+
 	FrameTexture ret;
 	ret.textureWidth = width;
 	ret.textureHeight = height;
 	glGenFramebuffers(1,&ret.buffer);
 	glBindFramebuffer(GL_FRAMEBUFFER,ret.buffer);
 	glGenTextures(1,&ret.texture);
-	glBindTexture(GL_TEXTURE_2D,ret.texture);
-	//TODO dimensiot oculucselta
-	//call glViewport before rendering to new size of the oculus!!!
-	glTexImage2D(GL_TEXTURE_2D,0,GL_RGB,width,height,0,GL_RGB,GL_UNSIGNED_BYTE,NULL);
+	GLenum texturetype = 0;
+	texturetype = BIT_CHECK(type,FrameBufferAttacment::Multisample) ? 
+		GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D; 
+	glBindTexture(texturetype,ret.texture);
+	if(BIT_CHECK(type,FrameBufferAttacment::Multisample))
+	{
+		glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGB, width, height, GL_TRUE);
+	}
+	else
+	{
+		glTexImage2D(GL_TEXTURE_2D,0,GL_RGB,width,height,0,GL_RGB,GL_UNSIGNED_BYTE,NULL);
+	}
 	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
-	glBindTexture(GL_TEXTURE_2D,0);
-	glFramebufferTexture2D(GL_FRAMEBUFFER,attachment,GL_TEXTURE_2D,ret.texture,0);
-	glCheckError();
-	if(BIT_CHECK(type,FrameBufferAttacment::Depth))
+	glBindTexture(texturetype,0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER,attachment,texturetype,ret.texture,0);
+	if(type != FrameBufferAttacment::Depth && BIT_CHECK(type,FrameBufferAttacment::Depth))
 	{
 		uint rbo = 0;
 		glGenRenderbuffers(1,&rbo);
 		glBindRenderbuffer(GL_RENDERBUFFER,rbo);
 		//TODO tähän vr dimensiot
-		glRenderbufferStorage(GL_RENDERBUFFER,GL_DEPTH24_STENCIL8,ret.textureWidth,ret.textureHeight);
+		if(BIT_CHECK(type,FrameBufferAttacment::Multisample))
+		{
+			glRenderbufferStorageMultisample(GL_RENDERBUFFER, 4,
+					GL_DEPTH24_STENCIL8, width, height);  
+		}
+		else
+		{
+
+			glRenderbufferStorage(GL_RENDERBUFFER,GL_DEPTH24_STENCIL8,
+					ret.textureWidth,ret.textureHeight);
+		}
 		glBindRenderbuffer(GL_RENDERBUFFER,0);
-		glFramebufferRenderbuffer(GL_FRAMEBUFFER,GL_DEPTH_STENCIL_ATTACHMENT,GL_RENDERBUFFER,rbo);
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER,GL_DEPTH_STENCIL_ATTACHMENT,
+				GL_RENDERBUFFER,rbo);
 	}
-	glCheckError();
 	if(!(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE)){
 		ABORT_MESSAGE("FAILED TO SET FRAMEBUFFER \n");
 	}
 	glBindFramebuffer(GL_FRAMEBUFFER,0);
 	ret.attachments = type;
+	glCheckError();
 	return ret;
 }
 static inline void set_and_clear_frameTexture(const FrameTexture& frameTex)
 {
 	glCheckError();
 	glBindFramebuffer(GL_FRAMEBUFFER,frameTex.buffer);
+	glViewport(0, 0, frameTex.textureWidth, frameTex.textureHeight);
 	glClearColor(0.f,0.f,0.f,1.f);
 	if(BIT_CHECK(frameTex.attachments,FrameBufferAttacment::Depth) && BIT_CHECK(frameTex.attachments,FrameBufferAttacment::Color)  ) {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
-	else if BIT_CHECK(frameTex.attachments,FrameBufferAttacment::Depth) {
+	else if ( FrameBufferAttacment::Depth == frameTex.attachments ) {
 		glClear(GL_DEPTH_BUFFER_BIT);
 	}
-	else if BIT_CHECK(frameTex.attachments,FrameBufferAttacment::Color) {
+	else if ( FrameBufferAttacment::Color == frameTex.attachments) {
 		glClear(GL_COLOR_BUFFER_BIT);
 	}
-	glViewport(0, 0, frameTex.textureWidth, frameTex.textureHeight);
+	else
+	{
+		ABORT_MESSAGE("Error with frametexturetype !!");
+	}
 	glCheckError();
 }
+
+static void inline blit_frameTexture(FrameTexture from,FrameTexture to)
+{
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, from.buffer);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, to.buffer);
+	glBlitFramebuffer(0, 0, from.textureWidth, from.textureHeight, 0, 0,
+			to.textureWidth, to.textureHeight, GL_COLOR_BUFFER_BIT, GL_NEAREST); 
+
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+	glCheckError();
+}
+
+static void inline blit_frameTexture(FrameTexture from,uint to)
+{
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, from.buffer);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, to);
+	glBlitFramebuffer(0, 0, from.textureWidth, from.textureHeight, 0, 0,
+			SCREENWIDHT, SCREENHEIGHT, GL_COLOR_BUFFER_BIT, GL_NEAREST); 
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+	glCheckError();
+}
+
 
 GLFWwindow* window = NULL;
 
@@ -194,6 +259,7 @@ bool hotload_dll(DLLHotloadHandle* dll)
 	return false;
 }
 void render(const RenderCommands& commands);
+void render_depth(const RenderCommands& commands);
 int main()
 {
 	PROFILER::TimerCache timers;
@@ -203,6 +269,7 @@ int main()
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 	glfwWindowHint(GLFW_SAMPLES, 4);
 	glfwSwapInterval(0);
 	window = glfwCreateWindow(SCREENWIDHT,SCREENHEIGHT, "Tabula Rasa", NULL, NULL);
@@ -254,58 +321,47 @@ int main()
 	const double dt = 1.0 / 60.0;
 	double currentTime = glfwGetTime();
 	double accumulator = 0.0;
-
-	uint vrVaos[2];
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	uint canvasVao = 0;
+	Material postCanvas;
 	{
-		float verticesLeft[] = {
-			0.0f,  1.f,  1.f , 1.f,		// top right
-			0.0f, -1.f,  1.f , 0.f,		// bottom right
-			-1.0f, -1.0f, 0.f , 0.f,		// bottom left
-			-1.0f,  1.0f, 0.f , 1.f		// top left
-		};
-		float verticesRight[] = {
-			1.f,  1.f,  1.f , 1.f,		// top right
-			1.f, -1.f,  1.f , 0.f,		// bottom right
-			0.0f, -1.f, 0.f , 0.f,		// bottom left
-			0.0f,  1.f,  0.f , 1.f		// top left 
-		};
-
-		unsigned int indices[] = {  // note that we start from 0!
-			0, 1, 3,				// first triangle
-			1, 2, 3					// second triangle
-		};  
-
-		uint buffers[4];
-		glGenBuffers(4,buffers);
-		glGenVertexArrays(2,vrVaos);
-		float* verts[2] = {verticesLeft,verticesRight};
-		for(int i = 0; i < 2; i++)
+		float canvasVerts[] = 
 		{
-			glBindVertexArray(vrVaos[i]);
+			// positions          // colors           // texture coords
+			1.f,  1.f,   1.0f, 1.0f,   // top right
+			1.f, -1.f,   1.0f, 0.0f,   // bottom right
+			-1.f, -1.f,  0.0f, 0.0f,   // bottom left
+			-1.f,  1.f,  0.0f, 1.0f    // top left 
+		};
 
-			glBindBuffer(GL_ARRAY_BUFFER,buffers[i * 2]);
-			glVertexAttribPointer(0,2,GL_FLOAT,GL_FALSE,
-					2 * sizeof(float) + 2* sizeof(float),(void*)0);
-			glEnableVertexAttribArray(0);
-			glVertexAttribPointer(1,2,GL_FLOAT,GL_FALSE,
-					2 * sizeof(float) + 2* sizeof(float),(void*)(2 * sizeof(float)));
-			glEnableVertexAttribArray(1);
-			glBufferData(GL_ARRAY_BUFFER,sizeof(float)*(4*4),NULL,GL_STATIC_DRAW);
-			glBufferSubData(GL_ARRAY_BUFFER,0,sizeof(float)*(4 * 4),verts[i]);
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,buffers[i * 2 + 1]);
-			glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(uint), nullptr, GL_DYNAMIC_DRAW);
-			glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, 6 * sizeof(uint), indices);
+		unsigned int canvasInds[] =
+		{  // note that we start from 0!
+			3, 1, 0,				// first triangle
+			3, 2, 1					// second triangle
+		}; 
 
-		}
-		glCheckError();
+		uint buffers[2];
+		glGenBuffers(2,buffers);
+		glGenVertexArrays(1,&canvasVao);
+		glBindVertexArray(canvasVao);
+
+		glBindBuffer(GL_ARRAY_BUFFER,buffers[0]);
+		glVertexAttribPointer(0,2,GL_FLOAT,GL_FALSE,
+				sizeof(float) * 4,(void*)0);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(1,2,GL_FLOAT,GL_FALSE,
+				sizeof(float) * 4,(void*)(2 * sizeof(float)));
+		glEnableVertexAttribArray(1);
+		glBufferData(GL_ARRAY_BUFFER,sizeof(canvasVerts),NULL,GL_STATIC_DRAW);
+		glBufferSubData(GL_ARRAY_BUFFER,0,sizeof(canvasVerts),canvasVerts);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,buffers[1]);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(canvasInds), nullptr, GL_STATIC_DRAW);
+		glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, sizeof(canvasInds), canvasInds);
+		glBindVertexArray(0);
+		postCanvas = create_new_material(&shaders,"PostPro");
 	}
 
-	Material vrMaterial = create_new_material(&shaders,"EyeProg");
-	set_material_texture(&shaders,&vrMaterial,0,0);
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
 #if VR
-
 	init_vr_platform();
 	glBindFramebuffer(GL_FRAMEBUFFER,0);
 	defer{dispose_vr_platform();};
@@ -438,6 +494,19 @@ int main()
 	}
 #endif
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); 
+
+	glEnable(GL_MULTISAMPLE);
+	FrameTexture offscreen = create_new_frameTexture(SCREENWIDHT,
+			SCREENHEIGHT, GL_COLOR_ATTACHMENT0, 
+			FrameBufferAttacment::Color | FrameBufferAttacment::Depth 
+			| FrameBufferAttacment::Multisample  );
+	FrameTexture postProcessCanvas = create_new_frameTexture(SCREENWIDHT,
+			SCREENHEIGHT, GL_COLOR_ATTACHMENT0, 
+			FrameBufferAttacment::Color );
+
+	FrameTexture depthMap = create_depth_texture(1024,1024);
+
+
 	while (!glfwWindowShouldClose(window))
 	{
 #if VR
@@ -508,16 +577,19 @@ int main()
 
 			ImGui::EndFrame();
 		}
-#if !VR
+
+		glBindFramebuffer(GL_FRAMEBUFFER,0);
 		glClearColor(0.f, 0.f, 0.f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_MULTISAMPLE);
 		glEnable(GL_CULL_FACE);  
-#endif
+		glCullFace(GL_BACK);  
+
 		RenderCommands rend;
-		rend.projection = hook.projectionMatrix;
-		rend.view = hook.viewMatrix;
+		//rend.projection = hook.projectionMatrix;
+		//rend.view = hook.viewMatrix;
+		rend.offscreen = offscreen;
 #if VR
 		rend.frameTextures = eyes;
 #endif
@@ -528,24 +600,68 @@ int main()
 		rend.textureIds = textures.textureIds;
 		rend.materials = hook.materials;
 		rend.uniforms = &sysUniforms;
-		rend.vrProgram = vrMaterial;
-		rend.eyeVaos = vrVaos;
 
+#if 0
+		set_and_clear_frameTexture(depthMap);
+		// 1. first render to depth map
+		//ConfigureShaderAndMatrices();
+		MATH::mat4 shadowOrtho;
+		MATH::mat4 shadowLookat;
+		MATH::orthomat(&shadowOrtho,-10.f, 10.f,-10.f,10.f,1.f, 7.5f);
+		MATH::create_lookat_mat4(&shadowLookat,
+				MATH::vec3(-2.0f, 4.0f, -1.0f),
+				MATH::vec3(0.0f, 0.0f, 0.0f),
+				MATH::vec3(0.0f, 1.0f, 0.0f));
+
+		//MATH::mat4 lightSpaceMatrix = shadowOrtho * shadowLookat; 
+		rend.projection = shadowOrtho;
+		rend.view = shadowLookat;
+
+		render_depth(rend);
+
+		RenderScene();
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		// 2. then render scene as normal with shadow mapping (using depth map)
+		glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		ConfigureShaderAndMatrices();
+		glBindTexture(GL_TEXTURE_2D, depthMap);
+		RenderScene();
+#endif
+
+		set_and_clear_frameTexture(offscreen);
 		render(rend);
-		int display_w, display_h;
-		glfwGetFramebufferSize(window, &display_w, &display_h);
-		glViewport(0, 0, display_w, display_h);
+		//int display_w, display_h;
+		//glfwGetFramebufferSize(window, &display_w, &display_h);
+		//glViewport(0, 0, display_w, display_h);
 		glCheckError();
 #if VR
 		render_vr(rend);
 #endif
 		glCheckError();
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glfwGetFramebufferSize(window, &display_w, &display_h);
-		glViewport(0, 0, display_w, display_h);
+#if 1
+		blit_frameTexture(offscreen,postProcessCanvas);
+		//blit_frameTexture(postProcessCanvas,0);
+		glBindFramebuffer(GL_FRAMEBUFFER,0);
+
+
+		glUseProgram( shaders.shaderProgramIds[postCanvas.shaderProgram]);
+		glBindVertexArray(canvasVao);
+		glCheckError();
+		glActiveTexture(GL_TEXTURE0);
+		glCheckError();
+		glBindTexture(GL_TEXTURE_2D,
+				postProcessCanvas.texture);
+		glCheckError();
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); 
+#else
+		blit_frameTexture(offscreen,0);
+#endif
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
+		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		//glfwGetFramebufferSize(window, &display_w, &display_h);
+		//glViewport(0, 0, display_w, display_h);
 		glCheckError();
 
 		glfwSwapBuffers(window);
@@ -581,16 +697,17 @@ int main()
 	printf("Bye \n");
 	return 0;
 }
+void render_depth(const RenderCommands& commands)
+{
 
+}
 void render(const RenderCommands& commands)
 {
-#if !VR
 	glBindBuffer(GL_UNIFORM_BUFFER,commands.
 			uniforms->matrixUniformBufferObject);
 	glBufferSubData(GL_UNIFORM_BUFFER,
 			0,sizeof(MATH::mat4) * 2, (void*)&commands.view);
 	glBindBuffer(GL_UNIFORM_BUFFER,0);
-#endif
 
 	struct lightutil{
 		MATH::vec4 dir;
@@ -656,7 +773,7 @@ void render(const RenderCommands& commands)
 					{
 						glActiveTexture(GL_TEXTURE0 + info->glTexLocation);
 						glBindTexture(GL_TEXTURE_2D,
-							   	commands.textureIds[uniToSet->_textureCacheId]);
+								commands.textureIds[uniToSet->_textureCacheId]);
 					}break;
 				case UniformType::MODEL:
 					{

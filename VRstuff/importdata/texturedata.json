@@ -3,7 +3,7 @@
 	{
 		"Path" : "assets/MoonTexture.png",
 		"Mipmap" : false,
-		"SRGB" : false,
+		"SRGB" : true,
 		"Wrap" : "Repeat",
 		"TextureType":"Texture2D"
 	},

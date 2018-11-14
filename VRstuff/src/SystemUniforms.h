@@ -22,6 +22,7 @@ bool set_global_uniform_to_program(uint program,const char* name,uint location)
 		return false;
 	}
 	glUniformBlockBinding(program, index, location);
+	printf("%s \n",name);
 	glCheckError();
 	return true;
 }

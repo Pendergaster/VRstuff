@@ -10,6 +10,14 @@
 			"tex" : "SAMPLER2D" 
 		}
 	},
+	"Shadowprog" : 
+	{
+		"VertexPath" : "shaders/shadow.vert",
+		"FragmentPath" : "shaders/shadow.frag",
+		"RenderGroup" : "Model",
+		"GlobalUniforms" : ["MVP"]
+	},
+
 	"EyeProg" : 
 	{
 		"CombinedPath" : "shaders/eyeShader.glsl",
@@ -18,8 +26,18 @@
 		{
 			"tex" : "SAMPLER2D" 
 		}
+	},
+	"PostPro" : 
+	{
+		"CombinedPath" : "shaders/postprocess.glsl",
+		"RenderGroup" : "PostProcess",
+		"Uniforms" : 
+		{
+			"frametex" : "SAMPLER2D" 
+		}
 
 	},
+
 	"SkyProg" : 
 	{
 		"CombinedPath" : "shaders/skyboxshader.glsl",
