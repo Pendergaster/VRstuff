@@ -10,7 +10,7 @@
 			"tex" : "SAMPLER2D" 
 		}
 	},
-	"Shadowprog" : 
+	"ShadowProg" : 
 	{
 		"VertexPath" : "shaders/shadow.vert",
 		"FragmentPath" : "shaders/shadow.frag",

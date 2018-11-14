@@ -102,6 +102,9 @@ enum FrameBufferAttacment : int
 static inline FrameTexture create_depth_texture(uint width,uint height)
 {
 	FrameTexture ret;
+	ret.attachments = FrameBufferAttacment::Depth;
+	ret.textureHeight = height;
+	ret.textureWidth = width;
 	glGenFramebuffers(1, &ret.buffer);  
 	glBindFramebuffer(GL_FRAMEBUFFER,ret.buffer);
 
@@ -119,7 +122,7 @@ static inline FrameTexture create_depth_texture(uint width,uint height)
 	glDrawBuffer(GL_NONE);
 	glReadBuffer(GL_NONE);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);  
-    return ret;
+	return ret;
 }
 static inline FrameTexture create_new_frameTexture(uint width,uint height,GLenum attachment,int type)
 {
@@ -260,7 +263,7 @@ bool hotload_dll(DLLHotloadHandle* dll)
 	return false;
 }
 void render(const RenderCommands& commands);
-void render_depth(const RenderCommands& commands);
+void render_depth(const RenderCommands& commands,Material shadowMat);
 int main()
 {
 	PROFILER::TimerCache timers;
@@ -506,6 +509,7 @@ int main()
 			FrameBufferAttacment::Color );
 
 	FrameTexture depthMap = create_depth_texture(1024,1024);
+	Material shadowMaterial = create_new_material(&shaders,"ShadowProg");
 
 
 	while (!glfwWindowShouldClose(window))
@@ -555,6 +559,7 @@ int main()
 			update_keys();
 			accumulator -= dt;
 			{
+#if 0
 				ImGui::Begin("Hello, world!");                          
 
 				ImGui::Text("This is some useful text.");              
@@ -574,7 +579,9 @@ int main()
 						show = false;
 					ImGui::End();
 				}
+#endif
 			}
+
 
 			ImGui::EndFrame();
 		}
@@ -602,7 +609,7 @@ int main()
 		rend.materials = hook.materials;
 		rend.uniforms = &sysUniforms;
 
-#if 0
+#if 1
 		set_and_clear_frameTexture(depthMap);
 		// 1. first render to depth map
 		//ConfigureShaderAndMatrices();
@@ -618,18 +625,19 @@ int main()
 		rend.projection = shadowOrtho;
 		rend.view = shadowLookat;
 
-		render_depth(rend);
+		render_depth(rend,shadowMaterial);
 
-		RenderScene();
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		//RenderScene();
+		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		// 2. then render scene as normal with shadow mapping (using depth map)
-		glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		ConfigureShaderAndMatrices();
-		glBindTexture(GL_TEXTURE_2D, depthMap);
-		RenderScene();
+		//glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		//ConfigureShaderAndMatrices();
+		//glBindTexture(GL_TEXTURE_2D, depthMap);
+		//RenderScene();
 #endif
-        rend.view = hook.viewMatrix;
+#if 0
+		rend.view = hook.viewMatrix;
 		rend.projection = hook.projectionMatrix;
 		set_and_clear_frameTexture(offscreen);
 		render(rend);
@@ -637,12 +645,13 @@ int main()
 		//glfwGetFramebufferSize(window, &display_w, &display_h);
 		//glViewport(0, 0, display_w, display_h);
 		glCheckError();
+#endif
 #if VR
 		render_vr(rend);
 #endif
 		glCheckError();
 #if 1
-		blit_frameTexture(offscreen,postProcessCanvas);
+		//blit_frameTexture(offscreen,postProcessCanvas);
 		//blit_frameTexture(postProcessCanvas,0);
 		glBindFramebuffer(GL_FRAMEBUFFER,0);
 
@@ -653,7 +662,8 @@ int main()
 		glActiveTexture(GL_TEXTURE0);
 		glCheckError();
 		glBindTexture(GL_TEXTURE_2D,
-				postProcessCanvas.texture);
+				depthMap.texture);
+				//postProcessCanvas.texture);
 		glCheckError();
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); 
 #else
@@ -699,9 +709,46 @@ int main()
 	printf("Bye \n");
 	return 0;
 }
-void render_depth(const RenderCommands& commands)
+void render_depth(const RenderCommands& commands,Material shadowMat)
 {
+	glBindBuffer(GL_UNIFORM_BUFFER,commands.
+			uniforms->matrixUniformBufferObject);
+	glBufferSubData(GL_UNIFORM_BUFFER,
+			0,sizeof(MATH::mat4) * 2, (void*)&commands.view);
+	glBindBuffer(GL_UNIFORM_BUFFER,0);
 
+
+	ShaderProgram* prog = &commands.shaders->shaderPrograms[shadowMat.shaderProgram];
+	uint glID = commands.shaders->shaderProgramIds[shadowMat.shaderProgram];
+	glUseProgram(glID);
+
+	ASSERT_MESSAGE(prog->uniforms[0].type == UniformType::MODEL,"SHADOW PROG INVALID UNIFORM");
+	uint modelPos =  prog->uniforms[0].location;
+	
+
+	for(int i = 0; i < commands.numRenderables; i++)
+	{
+		int currentIndex = i; //commands.renderIndexes[i];
+		RenderData* currentRenderData = &commands.renderables[currentIndex];
+
+		MATH::mat4 model(currentRenderData->orientation);
+		MATH::translate(&model,currentRenderData->position);
+		MATH::scale_mat4(&model,currentRenderData->scale);
+		glCheckError();
+
+		glUniformMatrix4fv(modelPos, 1, GL_FALSE, (GLfloat*)&model);//.mat);
+
+		glCheckError();
+		//set mesh
+		Mesh* currentMesh = 
+			&commands.meshes->meshArray[currentRenderData->meshID];
+		MeshInfo* currentMeshInfo = 
+			&commands.meshes->meshInfos[currentRenderData->meshID];
+		glBindVertexArray(currentMesh->vao);
+		glDrawElements(GL_TRIANGLES,currentMeshInfo->numIndexes,
+				GL_UNSIGNED_INT,0);
+		glCheckError();
+	}
 }
 void render(const RenderCommands& commands)
 {
