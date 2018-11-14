@@ -7,15 +7,6 @@
 		"Wrap" : "Repeat",
 		"TextureType":"Texture2D"
 	},
-	"SpaceShip" : 
-	{
-		"Path" : "assets/SpaceshipTexture.png",
-		"Mipmap" : false,
-		"SRGB" : false,
-		"Wrap" : "Repeat",
-		"TextureType":"Texture2D"
-
-	},
 	"Lattia" : 
 	{
 		"Path" : "assets/wood.png",

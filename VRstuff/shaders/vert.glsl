@@ -8,6 +8,7 @@ out DATA
 	vec3 normal;
 	vec3 fragPos;
 	vec3 viewPos;
+    vec4 fragPosLightSpace;
 } vs_out;
 
 
@@ -21,6 +22,7 @@ void main()
 	//vs_out.normal = normalize(normal); //TODO transpose inverse juttu pojalle
 	vs_out.normal = normalize(mat3(transpose(inverse(model))) * normal);  
 	vs_out.viewPos = vec3(view[3][0], view[3][1], view[3][2]);
+	vs_out.fragPosLightSpace = shadowMatrix * vec4(vs_out.fragPos, 1.0);
 }
 
 

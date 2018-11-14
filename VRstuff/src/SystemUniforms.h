@@ -85,13 +85,13 @@ void init_systemuniforms(SystemUniforms* rend,ShaderProgram* programs,
 		glBindBuffer(GL_UNIFORM_BUFFER, rend->matrixUniformBufferObject);
 
 		glCheckError();
-		glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(MATH::mat4),
+		glBufferData(GL_UNIFORM_BUFFER, 3 * sizeof(MATH::mat4),
 				NULL, GL_STATIC_DRAW); 
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 		glCheckError();
 		glBindBufferRange(GL_UNIFORM_BUFFER, MATRIXES_UNIFORM_LOC, 
-				rend->matrixUniformBufferObject, 0, 2 * sizeof(MATH::mat4)); 
+				rend->matrixUniformBufferObject, 0, 3 * sizeof(MATH::mat4)); 
 
 		glCheckError();
 	}

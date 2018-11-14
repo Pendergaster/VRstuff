@@ -8,6 +8,7 @@ in DATA
 	vec3 normal;
 	vec3 fragPos;
 	vec3 viewPos;
+    vec4 fragPosLightSpace;
 } frag_in;
 
 uniform sampler2D tex;

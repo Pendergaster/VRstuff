@@ -72,6 +72,7 @@ struct RenderCommands
 	Material*		materials = NULL;
 	MATH::mat4		view;
 	MATH::mat4		projection;
+	MATH::mat4		shadowMatrix;
 	ShaderManager*	shaders = NULL;
 	uint*			textureIds = NULL;
 	SystemUniforms* uniforms = NULL;
@@ -640,6 +641,7 @@ int main()
 		rend.view = hook.viewMatrix;
 		rend.projection = hook.projectionMatrix;
 		set_and_clear_frameTexture(offscreen);
+		rend.shadowMatrix = shadowOrtho * shadowLookat;
 		render(rend);
 		//int display_w, display_h;
 		//glfwGetFramebufferSize(window, &display_w, &display_h);
@@ -755,7 +757,7 @@ void render(const RenderCommands& commands)
 	glBindBuffer(GL_UNIFORM_BUFFER,commands.
 			uniforms->matrixUniformBufferObject);
 	glBufferSubData(GL_UNIFORM_BUFFER,
-			0,sizeof(MATH::mat4) * 2, (void*)&commands.view);
+			0,sizeof(MATH::mat4) * 3, (void*)&commands.view);
 	glBindBuffer(GL_UNIFORM_BUFFER,0);
 
 	struct lightutil{

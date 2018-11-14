@@ -184,41 +184,41 @@ static void init_textures_from_metadata(TextureData* textureData,
             ASSERT_MESSAGE(tempName, "TEXTURE PATH IS NOT VALID :: %s \n", currentName);
             info.frontPath = (char*)CONTAINER::get_next_memory_block(*staticMem);
             strcpy(info.frontPath, tempName);
-            CONTAINER::increase_memory_block_aligned(staticMem, (int)strlen(info.path) + 1);
+            CONTAINER::increase_memory_block_aligned(staticMem, (int)strlen(info.frontPath) + 1);
 
             tempName = (*currentToken)["SkyBack"].GetString();
             ASSERT_MESSAGE(tempName, "TEXTURE PATH IS NOT VALID :: %s \n", currentName);
             info.backPath = (char*)CONTAINER::get_next_memory_block(*staticMem);
             strcpy(info.backPath, tempName);
-            CONTAINER::increase_memory_block_aligned(staticMem, (int)strlen(info.path) + 1);
+            CONTAINER::increase_memory_block_aligned(staticMem, (int)strlen(info.backPath) + 1);
 
 
             tempName = (*currentToken)["SkyUp"].GetString();
             ASSERT_MESSAGE(tempName, "TEXTURE PATH IS NOT VALID :: %s \n", currentName);
             info.topPath = (char*)CONTAINER::get_next_memory_block(*staticMem);
             strcpy(info.topPath, tempName);
-            CONTAINER::increase_memory_block_aligned(staticMem, (int)strlen(info.path) + 1);
+            CONTAINER::increase_memory_block_aligned(staticMem, (int)strlen(info.topPath) + 1);
 
 
             tempName = (*currentToken)["SkyDown"].GetString();
             ASSERT_MESSAGE(tempName, "TEXTURE PATH IS NOT VALID :: %s \n", currentName);
             info.downPath = (char*)CONTAINER::get_next_memory_block(*staticMem);
             strcpy(info.downPath, tempName);
-            CONTAINER::increase_memory_block_aligned(staticMem, (int)strlen(info.path) + 1);
+            CONTAINER::increase_memory_block_aligned(staticMem, (int)strlen(info.downPath) + 1);
 
 
             tempName = (*currentToken)["SkyRight"].GetString();
             ASSERT_MESSAGE(tempName, "TEXTURE PATH IS NOT VALID :: %s \n", currentName);
             info.rightPath = (char*)CONTAINER::get_next_memory_block(*staticMem);
             strcpy(info.rightPath, tempName);
-            CONTAINER::increase_memory_block_aligned(staticMem, (int)strlen(info.path) + 1);
+            CONTAINER::increase_memory_block_aligned(staticMem, (int)strlen(info.rightPath) + 1);
 
 
             tempName = (*currentToken)["SkyLeft"].GetString();
             ASSERT_MESSAGE(tempName, "TEXTURE PATH IS NOT VALID :: %s \n", currentName);
             info.leftPath = (char*)CONTAINER::get_next_memory_block(*staticMem);
             strcpy(info.leftPath, tempName);
-            CONTAINER::increase_memory_block_aligned(staticMem, (int)strlen(info.path) + 1);
+            CONTAINER::increase_memory_block_aligned(staticMem, (int)strlen(info.leftPath) + 1);
 
         }
         if (!load_texture(&info, textureData->textureIds[i]))

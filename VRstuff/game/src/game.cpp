@@ -234,14 +234,14 @@ EXPORT void init_game(void* p)
 		(
 		 MaterialType::Lattia,
 		 get_mesh(hook->meshes,"Lattia"),
-		 MATH::vec3(0.f,0,0),
+		 MATH::vec3(0.f,-3.f,0.f),
 		 MATH::quaternion(),
-		 MATH::vec3(0.5f,0.5f,0.5f)
+		 MATH::vec3(1.0f,0.5f,1.0f)
 		);
 
 	insert_renderdata(lattia,&game->renderData,hook->renderables);
 
-	hook->numRenderables = 2;
+	hook->numRenderables = 3;
 	TextureID moonTex = get_texture(*hook->textures,"MoonTexture");
 	set_material_texture(hook->shaders,&planetMat,0,moonTex);
 	set_material_texture(hook->shaders,&lattiaMat,0,get_texture(*hook->textures,"Lattia"));
