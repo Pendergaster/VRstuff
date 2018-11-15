@@ -270,7 +270,10 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 			//ASSERT_MESSAGE(location != GL_INVALID_VALUE,
 			//		"SHADOW MAP COULD NOT BE FOUND IN :: %s \n",currentName);
 			//uniformInfo.location = location;
-			setup_uniform_sampler2D(&uniformInfo,manager->shaderProgramIds[i],SHADOW_MAP_INDEXES);
+            if (!setup_uniform_sampler2D(&uniformInfo, manager->shaderProgramIds[i], SHADOW_MAP_INDEXES))
+            {
+                ABORT_MESSAGE("SHADOW SAMPLER NOT FOUND");
+            }
 			uniformInfo.type = UniformType::SHADOW;
 			currentShaderProg.uniforms[currentShaderProg.numUniforms] = uniformInfo;
 			++manager->numSystemUniforms; 

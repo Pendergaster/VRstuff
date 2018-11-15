@@ -25,9 +25,12 @@ void main()
 		vec3(texture(tex,frag_in.uv)),
 		vec3(0.0007f,0.7f,0.00007f),
 		32.f);
-
+	vec3 lightPos = vec3(-3.0f, 8.0f, -1.0f);
+	 vec3 lightDir = normalize(lightPos - frag_in.fragPos);
 	float shadow = shadow_calculation(frag_in.fragPosLightSpace,
-		shadowMap);
+		shadowSampler,
+		calculate_shadow_bias(normalize( frag_in.normal),lightDir));
 
-	_color = vec4(vec3(lightColor.x ,lightColor.y ,lightColor.z) * shadow,1);
+	_color = vec4(lightColor.x ,lightColor.y ,lightColor.z ,1)* (1.f - shadow);
+	_color.w = 1;
 }

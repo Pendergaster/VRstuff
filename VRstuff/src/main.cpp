@@ -116,8 +116,10 @@ static inline FrameTexture create_depth_texture(uint width,uint height)
 			width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);  
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, ret.buffer);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, ret.texture, 0);
@@ -617,18 +619,25 @@ int main()
 		//ConfigureShaderAndMatrices();
 		MATH::mat4 shadowOrtho;
 		MATH::mat4 shadowLookat;
-		MATH::orthomat(&shadowOrtho,-10.f, 10.f,-10.f,10.f,1.f, 7.5f);
-		MATH::create_lookat_mat4(&shadowLookat,
-				MATH::vec3(-2.0f, 4.0f, -1.0f),
-				MATH::vec3(0.0f, 0.0f, 0.0f),
-				MATH::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 lightView = glm::lookAt(glm::vec3(-3.0f, 8.0f, -1.0f),
+            glm::vec3(0.0f, 0.0f, 0.0f),
+            glm::vec3(0.0f, 1.0f, 0.0f));
+        shadowLookat = *(MATH::mat4*)&lightView;
+        float near_plane = 1.0f, far_plane = 17.5f;
+        glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
+        shadowOrtho =  *(MATH::mat4*)&lightProjection;
+		//MATH::orthomat(&shadowOrtho,-10.f, 10.f,-10.f,10.f,1.f, 7.5f);
+		//MATH::create_lookat_mat4(&shadowLookat,
+			//	MATH::vec3(-2.0f, 4.0f, -1.0f),
+				//MATH::vec3(0.0f, 0.0f, 0.0f),
+			//	MATH::vec3(0.0f, 1.0f, 0.0f));
 
 		//MATH::mat4 lightSpaceMatrix = shadowOrtho * shadowLookat; 
 		rend.projection = shadowOrtho;
 		rend.view = shadowLookat;
-
+        glCullFace(GL_FRONT);
 		render_depth(rend,shadowMaterial);
-
+        glCullFace(GL_BACK);
 		//RenderScene();
 		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		// 2. then render scene as normal with shadow mapping (using depth map)
@@ -642,7 +651,8 @@ int main()
 		rend.view = hook.viewMatrix;
 		rend.projection = hook.projectionMatrix;
 		set_and_clear_frameTexture(offscreen);
-		rend.shadowMatrix = shadowOrtho * shadowLookat;
+        glm::mat4 lightSpaceMatrix = lightProjection * lightView;
+		rend.shadowMatrix =*(MATH::mat4*)&lightSpaceMatrix;// shadowOrtho * shadowLookat;
 		rend.shadowMap = depthMap.texture;
 		render(rend);
 		//int display_w, display_h;
