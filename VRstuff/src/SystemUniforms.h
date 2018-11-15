@@ -10,6 +10,7 @@ struct SystemUniforms
 	uint matrixUniformBufferObject = 0;
 	uint globalLightBufferObject = 0;
 	uint cameraBlockBufferObject = 0;
+	uint shadowBlockBufferObject = 0;
 };
 #define MATRIXES_UNIFORM_LOC 0
 #define GLOBALLIGHT_UNIFORM_LOC 1
@@ -60,22 +61,23 @@ void init_systemuniforms(SystemUniforms* rend,ShaderProgram* programs,
 				ABORT_MESSAGE("Failed to set GlobalLight \n");
 			}
 		}
+	}
+
 #if 0
-		if(BIT_CHECK(i->globalUniformFlags,GlobalUniforms::CameraBlock))
+	if(BIT_CHECK(i->globalUniformFlags,GlobalUniforms::CameraBlock))
+	{
+		//printf("SET LIGHTS");
+		//uint lightIndex = glGetUniformBlockIndex(*idIter, "GlobalLight");   
+		//glUniformBlockBinding(*idIter, lightIndex, GLOBALLIGHT_UNIFORM_LOC);
+		//glCheckError();
+		if(!set_global_uniform_to_program(*idIter,"CameraBlock",
+					CAMERABLOCK_BUFFER_LOC))
 		{
-			//printf("SET LIGHTS");
-			//uint lightIndex = glGetUniformBlockIndex(*idIter, "GlobalLight");   
-			//glUniformBlockBinding(*idIter, lightIndex, GLOBALLIGHT_UNIFORM_LOC);
-			//glCheckError();
-			if(!set_global_uniform_to_program(*idIter,"CameraBlock",
-						CAMERABLOCK_BUFFER_LOC))
-			{
-				ABORT_MESSAGE("Failed to set camera buffer loc \n");
-			}
+			ABORT_MESSAGE("Failed to set camera buffer loc \n");
 		}
+	}
 #endif
 
-	}
 
 	{
 		glCheckError();
@@ -113,6 +115,7 @@ void init_systemuniforms(SystemUniforms* rend,ShaderProgram* programs,
 
 		glCheckError();
 	}
+
 #if 0
 	{
 		glCheckError();

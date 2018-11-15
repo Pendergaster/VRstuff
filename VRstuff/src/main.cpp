@@ -78,6 +78,7 @@ struct RenderCommands
 	SystemUniforms* uniforms = NULL;
 	MeshData*		meshes = NULL;
 	FrameTexture	offscreen;
+	uint			shadowMap;
 };
 
 static uint skyvao = 0;
@@ -642,6 +643,7 @@ int main()
 		rend.projection = hook.projectionMatrix;
 		set_and_clear_frameTexture(offscreen);
 		rend.shadowMatrix = shadowOrtho * shadowLookat;
+		rend.shadowMap = depthMap.texture;
 		render(rend);
 		//int display_w, display_h;
 		//glfwGetFramebufferSize(window, &display_w, &display_h);
@@ -665,7 +667,7 @@ int main()
 		glCheckError();
 		glBindTexture(GL_TEXTURE_2D,
 				//depthMap.texture);
-				postProcessCanvas.texture);
+			postProcessCanvas.texture);
 		glCheckError();
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); 
 #else
@@ -726,7 +728,7 @@ void render_depth(const RenderCommands& commands,Material shadowMat)
 
 	ASSERT_MESSAGE(prog->uniforms[0].type == UniformType::MODEL,"SHADOW PROG INVALID UNIFORM");
 	uint modelPos =  prog->uniforms[0].location;
-	
+
 
 	for(int i = 0; i < commands.numRenderables; i++)
 	{
@@ -830,13 +832,18 @@ void render(const RenderCommands& commands)
 					{
 						glUniformMatrix4fv(info->location, 1, GL_FALSE, (GLfloat*)&model);//.mat);
 					}break;
+				case UniformType::SHADOW:
+					{
+						glActiveTexture(GL_TEXTURE0 + info->glTexLocation);
+						glBindTexture(GL_TEXTURE_2D,
+								commands.shadowMap);
+					}break;
 				case UniformType::INVALID: default:
 					{
 						ABORT_MESSAGE("INVALID UNIFORM TYPE /n");
 					}break;
 			}
 		}
-
 		glCheckError();
 		//set mesh
 		Mesh* currentMesh = 

@@ -1,6 +1,7 @@
 #version 330 core
 
 #include "shaders/GlobalLight.inc"
+#include "shaders/shadowData.inc"
 
 in DATA
 {
@@ -25,5 +26,8 @@ void main()
 		vec3(0.0007f,0.7f,0.00007f),
 		32.f);
 
-	_color = vec4(lightColor.x ,lightColor.y     ,lightColor.z  ,1);
+	float shadow = shadow_calculation(frag_in.fragPosLightSpace,
+		shadowMap);
+
+	_color = vec4(vec3(lightColor.x ,lightColor.y ,lightColor.z) * shadow,1);
 }

@@ -57,6 +57,7 @@ static bool compile_program(const ShaderProgram& prog,uint* shaderID, char* vert
 
 }
 char* modelName = (char*)"model";
+char* shadowname = (char*)"shadowSampler";
 static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* workingMem,CONTAINER::MemoryBlock* staticMem)
 	//	ShaderProgram* programs,uint* shaderIds,int* numIds,
 	//	CONTAINER::DynamicArray<char*> names,CONTAINER::StringTable<int> shaderTable,
@@ -160,12 +161,11 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 					//currentShaderProg.globalUniformFlags = 
 					BIT_SET(currentShaderProg.globalUniformFlags,GlobalUniforms::GlobalLight);
 				}
-				else if(!strcmp(glUniName,"CameraBlock")){
-					LOG("DETECTED CameraBlock ");
+				else if(!strcmp(glUniName,"ShadowBlock")){
+					LOG("DETECTED ShadowBlock ");
 					//currentShaderProg.globalUniformFlags = 
-					BIT_SET(currentShaderProg.globalUniformFlags,GlobalUniforms::GlobalLight);
+					BIT_SET(currentShaderProg.globalUniformFlags,GlobalUniforms::ShadowBlock);
 				}
-
 				else{
 					ABORT_MESSAGE("GLOBALUNIFORM NOT DEFINED %s \n",currentName);
 				}
@@ -260,9 +260,22 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 			currentShaderProg.uniforms[currentShaderProg.numUniforms] = uniformInfo;
 			++manager->numSystemUniforms; 
 			++currentShaderProg.numUniforms;
-
 		}
-
+		if(BIT_CHECK(currentShaderProg.globalUniformFlags,GlobalUniforms::ShadowBlock))
+		{
+			UniformInfo uniformInfo;
+			uniformInfo.name = shadowname;
+			uniformInfo.hashedID = CONTAINER::hash(uniformInfo.name);
+			//int location = glGetUniformLocation(manager->shaderProgramIds[i],"shadowMap");
+			//ASSERT_MESSAGE(location != GL_INVALID_VALUE,
+			//		"SHADOW MAP COULD NOT BE FOUND IN :: %s \n",currentName);
+			//uniformInfo.location = location;
+			setup_uniform_sampler2D(&uniformInfo,manager->shaderProgramIds[i],SHADOW_MAP_INDEXES);
+			uniformInfo.type = UniformType::SHADOW;
+			currentShaderProg.uniforms[currentShaderProg.numUniforms] = uniformInfo;
+			++manager->numSystemUniforms; 
+			++currentShaderProg.numUniforms;
+		}
 		manager->shaderPrograms[i] = currentShaderProg;
 		*workingMem = prevMemState;
 		glUseProgram(0);
@@ -359,7 +372,6 @@ void hotload_shaders(ShaderManager* manager,CONTAINER::MemoryBlock* workingMem)
 							success = false;
 						}
 					}
-
 					if(success)
 					{
 						LOG("loading succeed ");

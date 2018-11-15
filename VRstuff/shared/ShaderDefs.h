@@ -14,13 +14,15 @@
 	MODE(SAMPLER2D)\
 	MODE(SAMPLERCUBE)\
 	MODE(MODEL)\
+	MODE(SHADOW)\
 
 #define RENDERGROUPS(MODE)\
 	MODE(INVALID)\
 	MODE(Model)\
 	MODE(PostProcess)\
 
-
+#define SHADOW_MAP_INDEXES 20
+#define MAX_SHADOW_MAPS 10
 enum UniformType : int
 {
 	UNIFORMTYPES(GENERATE_ENUM)
@@ -48,7 +50,7 @@ enum GlobalUniforms
 	Invalid = 1 << 0,
 	MVP = 1 << 2,
 	GlobalLight = 1 << 3,
-	CameraBlock = 1 << 4,
+	ShadowBlock = 1 << 5,
 };
 
 struct Uniform

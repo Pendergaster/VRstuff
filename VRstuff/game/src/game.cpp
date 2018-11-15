@@ -298,8 +298,6 @@ static void update_camera(Camera* cam,MATH::mat4* view)
 
 	MATH::normalize(&cam->direction);
 
-	printf("%.3f %.3f %.3f \n",cam->direction.x, cam->direction.y, cam->direction.z);
-	printf("lenght %.3f \n",MATH::lenght(cam->direction));
 
 	cam->up = MATH::cross_product(cam->direction, worldUp);
 	MATH::normalize(&cam->up);
