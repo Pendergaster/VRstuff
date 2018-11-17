@@ -19,18 +19,21 @@ void main()
 {
 	vec3 viewPos = frag_in.viewPos;
 	vec3 viewDir = normalize(viewPos - frag_in.fragPos);
-	vec3 lightColor = CalculateGlobalLighting(
+	vec3 lightColor[3];
+	CalculateGlobalLighting(
+		lightColor,
 		frag_in.normal,
 		viewDir,
 		vec3(texture(tex,frag_in.uv)),
 		vec3(0.0007f,0.7f,0.00007f),
 		32.f);
 	vec3 lightPos = vec3(-3.0f, 8.0f, -1.0f);
-	 vec3 lightDir = normalize(lightPos - frag_in.fragPos);
+	vec3 lightDir = normalize(lightPos - frag_in.fragPos);
 	float shadow = shadow_calculation(frag_in.fragPosLightSpace,
 		shadowSampler,
 		calculate_shadow_bias(normalize( frag_in.normal),lightDir));
 
-	_color = vec4(lightColor.x ,lightColor.y ,lightColor.z ,1)* (1.f - shadow);
+	vec3 finalColor = lightColor[0] + lightColor[1]*(1 -shadow) + lightColor[2]*(1 -shadow);  
+	_color = vec4(finalColor.x ,finalColor.y ,finalColor.z ,1);
 	_color.w = 1;
 }

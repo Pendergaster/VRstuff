@@ -8,14 +8,14 @@ layout(std140) uniform GlobalLight
 } globalLight;
 
 
-vec3 CalculateGlobalLighting(vec3 normal, vec3 viewDir,
+void CalculateGlobalLighting(inout vec3 colors[3],vec3 normal, vec3 viewDir,
 	vec3 diffuse,vec3 specular,float shininess)
 {
     vec3 lightDir = normalize(-(globalLight.directionGL.xyz));
     // diffuse shading
     float diff = max(dot(normal, lightDir), 0.0);
     // specular shading
-    vec3 reflectDir = reflect(lightDir, normal);
+    vec3 reflectDir = reflect(-lightDir, normal);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
     // combine results
     vec3 ambientRet = globalLight.ambientGL.xyz * diffuse;
@@ -23,6 +23,10 @@ vec3 CalculateGlobalLighting(vec3 normal, vec3 viewDir,
 						diffuse;
     vec3 specularRet = globalLight.specularGL.xyz * spec * 
 	specular;
-    return (ambientRet + diffuseRet + specularRet);
+
+	colors[0] = ambientRet;
+	colors[1] = diffuseRet;
+	colors[2] = specularRet;
+    //return {ambientRet , diffuseRet , specularRet};
 }
 

@@ -1,6 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define STB_IMAGE_IMPLEMENTATION
 
+#include<limits.h>
 #include <assert.h>
 #include<stb_image.h>
 #undef STB_IMAGE_IMPLEMENTATION
@@ -66,19 +67,20 @@ struct FrameTexture
 };
 struct RenderCommands
 {
-	RenderData*		renderables;
-	//int*			renderIndexes = NULL;
-	int				numRenderables = 0;
-	Material*		materials = NULL;
-	MATH::mat4		view;
-	MATH::mat4		projection;
-	MATH::mat4		shadowMatrix;
-	ShaderManager*	shaders = NULL;
-	uint*			textureIds = NULL;
-	SystemUniforms* uniforms = NULL;
-	MeshData*		meshes = NULL;
-	FrameTexture	offscreen;
-	uint			shadowMap;
+	RenderData*			renderables;
+	//int*				renderIndexes = NULL;
+	int					numRenderables = 0;
+	Material*			materials = NULL;
+	MATH::mat4			view;
+	MATH::mat4			projection;
+	MATH::mat4			shadowMatrix;
+	ShaderManager*		shaders = NULL;
+	uint*				textureIds = NULL;
+	SystemUniforms*		uniforms = NULL;
+	MeshData*			meshes = NULL;
+	FrameTexture		offscreen;
+	uint				shadowMap;
+	struct GlobalLight*	globalLight;
 };
 
 static uint skyvao = 0;
@@ -118,8 +120,8 @@ static inline FrameTexture create_depth_texture(uint width,uint height)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-    float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+	float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, ret.buffer);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, ret.texture, 0);
@@ -421,6 +423,11 @@ int main()
 	hook.shaders = &shaders;
 	hook.meshes = &meshes;
 	hook.textures = &textures;
+	hook.globalLight.dir = MATH::vec4(1.f, -1.0f, 0.f,1.f);
+	hook.globalLight.ambient = MATH::vec4(0.05f, 0.05f, 0.05f,1.f);
+	hook.globalLight.diffuse = MATH::vec4(0.8f, 0.8f, 0.8f,1.f);
+	hook.globalLight.specular = MATH::vec4( 0.5f, 0.5f, 0.5f,1.f);
+
 	hook.imguiContext = imguiContext;
 	CONTAINER::init_memory_block(&hook.gameMemory,GAME_MEMORY_SIZE);
 	CONTAINER::init_memory_block(&hook.workingMemory,GAME_WORKING_MEMORY);
@@ -512,7 +519,14 @@ int main()
 			SCREENHEIGHT, GL_COLOR_ATTACHMENT0, 
 			FrameBufferAttacment::Color );
 
-	FrameTexture depthMap = create_depth_texture(1024,1024);
+#define NUM_CASCADES 4
+	FrameTexture cascades[NUM_CASCADES];
+	for(uint i = 0; i < NUM_CASCADES;i++)
+	{
+		cascades[i] = create_depth_texture(2048,2048);
+	}
+
+	FrameTexture depthMap = create_depth_texture(2048,2048);
 	Material shadowMaterial = create_new_material(&shaders,"ShadowProg");
 
 
@@ -563,26 +577,127 @@ int main()
 			update_keys();
 			accumulator -= dt;
 			{
-#if 0
+#if 1
 				ImGui::Begin("Hello, world!");                          
+#define NUM_FRUSTRUM_CORNERS 8
 
-				ImGui::Text("This is some useful text.");              
-				static bool show = false;
-				static bool show2 = false;
-				ImGui::Checkbox("Demo Window", &show);      
-				ImGui::Checkbox("Another Window", &show2);
+				float x1 = tanf((MATH::deg_to_rad * 45.f) / 2.f );
+				float x2 =  tanf((MATH::deg_to_rad * 45.f) / 2.f );
 
+				glm::mat4 inv = glm::inverse(*(glm::mat4*)&hook.viewMatrix);
+#define print_vec(vec,name) ImGui::Text(name " %.3f %.3f %.3f ", vec.x,vec.y,vec.z);
+				glm::vec4 xFRU(x2,x2,100.f,1);
+				glm::vec4 xFLD(-x2,-x2,100.f,1);
+				glm::vec4 xFRD(x2,-x2,100.f,1);
+				glm::vec4 xFLU(-x2,x2,100.f,1);
 
-				ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-				ImGui::End();
-				if (show)
+				glm::vec4 xNRU(x1,x1,0.1f,1);
+				glm::vec4 xNRD(x1,-x1,0.1f,1);
+				glm::vec4 xNLD(-x1,-x1,0.1f,1);
+				glm::vec4 xNLU(-x1,x1,0.1f,1);
+
+				glm::vec3 _camPos(inv[3][0], inv[3][1], inv[3][2]);
+				glm::vec3 _camLook(inv[2][0], inv[2][1], inv[2][2]);
+				glm::vec3 lightDir = (*(glm::vec3*)&hook.globalLight.dir);
+				float cascadeEnds[4 +1] = {
+					0.1f, 25.f, 50.f,75.f , 100.f
+				};
+				struct OrthoInfo{
+
+					float r,l,b,t,n,f;
+				} orthoInfo[NUM_CASCADES];
+				for (uint i = 0;i < NUM_CASCADES; i ++)
 				{
-					ImGui::Begin("Another Window", &show);   
-					ImGui::Text("Hello from another window!");
-					if (ImGui::Button("Close Me"))
-						show = false;
-					ImGui::End();
+					float xn = cascadeEnds[i] * x1;
+					float xf = cascadeEnds[i + 1] * x1;
+					float yn = cascadeEnds[i] * x1;
+					float yf = cascadeEnds[i + 1] * x1;
+					glm::vec4 corners[NUM_FRUSTRUM_CORNERS] = 
+					{
+						glm::vec4 (xn,yn,cascadeEnds[i] ,1),
+						glm::vec4 (-xn,yn,cascadeEnds[i] ,1),
+						glm::vec4 (xn,-yn,cascadeEnds[i] ,1),
+						glm::vec4 (-xn,-yn,cascadeEnds[i] ,1),
+
+						glm::vec4 (xf,yf,cascadeEnds[i + 1] ,1),
+						glm::vec4 (-xf,yf,cascadeEnds[i + 1] ,1),
+						glm::vec4 (xf,-yf,cascadeEnds[i + 1] ,1),
+						glm::vec4 (-xf,-yf,cascadeEnds[i + 1] ,1)
+					};
+
+					glm::vec4 cornersL[NUM_FRUSTRUM_CORNERS];
+					float minX = std::numeric_limits<float>::max();
+					float maxX = std::numeric_limits<float>::min();
+					float minY = std::numeric_limits<float>::max();
+					float maxY = std::numeric_limits<float>::min();
+					float minZ = std::numeric_limits<float>::max();
+					float maxZ = std::numeric_limits<float>::min();
+
+
+					for(int j = 0; j < NUM_FRUSTRUM_CORNERS; j++)
+					{
+						glm::vec4 vW = inv * corners[j];
+						cornersL[j] = *(glm::mat4*)&hook.viewMatrix * vW;
+
+						minX = MATH::min_val(minX,cornersL[j].x);
+						maxX = MATH::max_val(minX,cornersL[j].x);
+						minY = MATH::min_val(minX,cornersL[j].y);
+						maxY = MATH::max_val(minX,cornersL[j].y);
+						minZ = MATH::min_val(minX,cornersL[j].z);
+						maxZ = MATH::max_val(minX,cornersL[j].z);
+					}
+
+					orthoInfo[i].t = maxX;
+					orthoInfo[i].l = minX;
+					orthoInfo[i].b = minY;
+					orthoInfo[i].t = maxY;
+					orthoInfo[i].n = minZ;
+					orthoInfo[i].f = maxZ;
 				}
+
+				glm::mat4 lightView = glm::lookAt(
+					glm::vec3(0,0,0),
+					lightDir,
+					glm::vec3(0.0f, 1.0f, 0.0f));
+
+
+				glm::mat4 lightProjection = glm::ortho(-30.0f, 30.0f, -30.0f, 30.0f,
+						near_plane, far_plane);
+				// lenght cascade
+				glm::vec4 cascadeClipPosition[4]
+				{
+					*(glm::mat4*)&hook.projectionMatrix * glm::vec4(0,0,cascadeEnds[1],1),
+					*(glm::mat4*)&hook.projectionMatrix * glm::vec4(0,0,cascadeEnds[2],1),
+					*(glm::mat4*)&hook.projectionMatrix * glm::vec4(0,0,cascadeEnds[3],1),
+					*(glm::mat4*)&hook.projectionMatrix * glm::vec4(0,0,cascadeEnds[4],1)
+				};
+
+				xFRU = inv * xFRU;
+				xFLD = inv * xFLD;
+				xFRD = inv * xFRD;
+				xFLU = inv * xFLU;
+
+
+				xNRU = inv * xNRU;
+				xNRD = inv * xNRD;
+				xNLD = inv * xNLD;
+				xNLU = inv * xNLU;
+
+				ImGui::Text("x1  %.3f ", x1);
+				ImGui::Text("x2  %.3f ", x2);
+				ImGui::Text("cam pos %.3f %.3f %.3f ", _camPos.x,_camPos.y,_camPos.z);
+				ImGui::Text("cam look %.3f %.3f %.3f ", _camLook.x,_camLook.y,_camLook.z);
+				print_vec(xFRU,"FRU");
+				print_vec(xFRD,"FRD");
+				print_vec(xFLU,"FLU");
+				print_vec(xFLD,"FLD");
+
+				print_vec(xNRU,"NRU");
+				print_vec(xNRD,"NRD");
+				print_vec(xNLU,"NLU");
+				print_vec(xNLD,"NLD");
+
+				ImGui::End();
 #endif
 			}
 
@@ -602,6 +717,7 @@ int main()
 		//rend.projection = hook.projectionMatrix;
 		//rend.view = hook.viewMatrix;
 		rend.offscreen = offscreen;
+		rend.globalLight = &hook.globalLight;
 #if VR
 		rend.frameTextures = eyes;
 #endif
@@ -612,32 +728,47 @@ int main()
 		rend.textureIds = textures.textureIds;
 		rend.materials = hook.materials;
 		rend.uniforms = &sysUniforms;
-
 #if 1
 		set_and_clear_frameTexture(depthMap);
 		// 1. first render to depth map
 		//ConfigureShaderAndMatrices();
 		MATH::mat4 shadowOrtho;
 		MATH::mat4 shadowLookat;
-        glm::mat4 lightView = glm::lookAt(glm::vec3(-3.0f, 8.0f, -1.0f),
-            glm::vec3(0.0f, 0.0f, 0.0f),
-            glm::vec3(0.0f, 1.0f, 0.0f));
-        shadowLookat = *(MATH::mat4*)&lightView;
-        float near_plane = 1.0f, far_plane = 17.5f;
-        glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
-        shadowOrtho =  *(MATH::mat4*)&lightProjection;
+		glm::mat4 inv = glm::inverse(*(glm::mat4*)&hook.viewMatrix);
+		glm::vec3 _camPos(inv[3][0], inv[3][1], inv[3][2]);
+		glm::vec3 _camLook(inv[2][0], inv[2][1], inv[2][2]);
+		_camLook *= -1.f;
+
+		printf("%.3f  %.3f  %.3f \n",_camPos.x,_camPos.y,_camPos.z);
+
+		float near_plane = 0.5f, far_plane = 40.f;
+		glm::vec3 lightDir = (*(glm::vec3*)&hook.globalLight.dir);
+		MATH::normalize((MATH::vec3*)&lightDir);
+		MATH::normalize((MATH::vec3*)&_camLook);
+		MATH::scale((MATH::vec3*)&_camLook , 10000.f/ 2.f);
+		MATH::scale((MATH::vec3*)&lightDir , far_plane / 2.f);
+
+		glm::mat4 lightView = glm::lookAt(
+				(_camPos + _camLook) - lightDir,//glm::vec3(-3.0f, 8.0f, -1.0f),
+				_camPos + _camLook,
+				//glm::vec3(0.0f, 0.0f, 0.0f),
+				glm::vec3(0.0f, 1.0f, 0.0f));
+		shadowLookat = *(MATH::mat4*)&lightView;
+		glm::mat4 lightProjection = glm::ortho(-30.0f, 30.0f, -30.0f, 30.0f,
+				near_plane, far_plane);
+		shadowOrtho =  *(MATH::mat4*)&lightProjection;
 		//MATH::orthomat(&shadowOrtho,-10.f, 10.f,-10.f,10.f,1.f, 7.5f);
 		//MATH::create_lookat_mat4(&shadowLookat,
-			//	MATH::vec3(-2.0f, 4.0f, -1.0f),
-				//MATH::vec3(0.0f, 0.0f, 0.0f),
-			//	MATH::vec3(0.0f, 1.0f, 0.0f));
+		//	MATH::vec3(-2.0f, 4.0f, -1.0f),
+		//MATH::vec3(0.0f, 0.0f, 0.0f),
+		//	MATH::vec3(0.0f, 1.0f, 0.0f));
 
 		//MATH::mat4 lightSpaceMatrix = shadowOrtho * shadowLookat; 
 		rend.projection = shadowOrtho;
 		rend.view = shadowLookat;
-        glCullFace(GL_FRONT);
+		glCullFace(GL_FRONT);
 		render_depth(rend,shadowMaterial);
-        glCullFace(GL_BACK);
+		glCullFace(GL_BACK);
 		//RenderScene();
 		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		// 2. then render scene as normal with shadow mapping (using depth map)
@@ -651,7 +782,7 @@ int main()
 		rend.view = hook.viewMatrix;
 		rend.projection = hook.projectionMatrix;
 		set_and_clear_frameTexture(offscreen);
-        glm::mat4 lightSpaceMatrix = lightProjection * lightView;
+		glm::mat4 lightSpaceMatrix = lightProjection * lightView;
 		rend.shadowMatrix =*(MATH::mat4*)&lightSpaceMatrix;// shadowOrtho * shadowLookat;
 		rend.shadowMap = depthMap.texture;
 		render(rend);
@@ -685,6 +816,7 @@ int main()
 #endif
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
 		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		//glfwGetFramebufferSize(window, &display_w, &display_h);
 		//glViewport(0, 0, display_w, display_h);
@@ -723,6 +855,14 @@ int main()
 	printf("Bye \n");
 	return 0;
 }
+
+struct PointLight
+{
+	MATH::vec3 pos;
+	FrameTexture depthMap;
+	//todo vals and stuff
+};
+
 void render_depth(const RenderCommands& commands,Material shadowMat)
 {
 	glBindBuffer(GL_UNIFORM_BUFFER,commands.
@@ -772,20 +912,10 @@ void render(const RenderCommands& commands)
 			0,sizeof(MATH::mat4) * 3, (void*)&commands.view);
 	glBindBuffer(GL_UNIFORM_BUFFER,0);
 
-	struct lightutil{
-		MATH::vec4 dir;
-		MATH::vec4 ambient;
-		MATH::vec4 diffuse;
-		MATH::vec4 specular;
-	} light;
 	glCheckError();
-	light.dir = MATH::vec4(1.f, -1.0f, 0.f,1.f);
-	light.ambient = MATH::vec4(0.3f, 0.3f, 0.3f,1.f);
-	light.diffuse = MATH::vec4(0.8f, 0.8f, 0.8f,1.f);
-	light.specular = MATH::vec4( 0.5f, 0.5f, 0.5f,1.f);
 	glBindBuffer(GL_UNIFORM_BUFFER,commands.uniforms->globalLightBufferObject);
 	glCheckError();
-	glBufferSubData(GL_UNIFORM_BUFFER,0,sizeof(MATH::vec4) * 4, &light);
+	glBufferSubData(GL_UNIFORM_BUFFER,0,sizeof(MATH::vec4) * 4, commands.globalLight);
 	glCheckError();
 	glBindBuffer(GL_UNIFORM_BUFFER,0);
 

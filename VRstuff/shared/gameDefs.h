@@ -23,6 +23,13 @@ struct RenderData
 	MATH::quaternion	orientation;
 	MATH::vec3			scale;
 };
+struct GlobalLight
+{
+	MATH::vec4 dir;
+	MATH::vec4 ambient;
+	MATH::vec4 diffuse;
+	MATH::vec4 specular;
+};
 
 
 struct GameHook
@@ -43,6 +50,7 @@ struct GameHook
 	Input					inputs;
 	MATH::mat4				viewMatrix;
 	MATH::mat4				projectionMatrix;
+	struct GlobalLight		globalLight;
 };
 
 

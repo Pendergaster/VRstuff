@@ -21,7 +21,8 @@ void main()
 	vs_out.uv = vec2(uv.x , 1 - uv.y);
 	//vs_out.normal = normalize(normal); //TODO transpose inverse juttu pojalle
 	vs_out.normal = normalize(mat3(transpose(inverse(model))) * normal);  
-	vs_out.viewPos = vec3(view[3][0], view[3][1], view[3][2]);
+	mat4 inv = inverse(view);
+	vs_out.viewPos = vec3(inv[3][0], inv[3][1], inv[3][2]);
 	vs_out.fragPosLightSpace = shadowMatrix * vec4(vs_out.fragPos, 1.0);
 }
 
