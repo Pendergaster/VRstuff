@@ -15,6 +15,12 @@ struct SystemUniforms
 #define MATRIXES_UNIFORM_LOC 0
 #define GLOBALLIGHT_UNIFORM_LOC 1
 #define CAMERABLOCK_BUFFER_LOC 2
+#define SHADOW_BUFFER_LOC 3
+
+static const uint sizeOfShadowBlock = NUM_CASCADES * (sizeof(MATH::mat4) + sizeof(float));
+static const uint sizeOfMatrixBlock = 3 * sizeof(MATH::mat4);
+static const uint sizeOfGlobalLightBlock = 4 * sizeof(MATH::vec4);
+
 bool set_global_uniform_to_program(uint program,const char* name,uint location)
 {
 	uint index = glGetUniformBlockIndex(program,name); 
@@ -37,10 +43,6 @@ void init_systemuniforms(SystemUniforms* rend,ShaderProgram* programs,
 
 		if(BIT_CHECK(i->globalUniformFlags,GlobalUniforms::MVP)) 
 		{
-			//printf("SET MVP");
-			//uint matrixIndex = glGetUniformBlockIndex(*idIter, "MatrixBlock");   
-			//glUniformBlockBinding(*idIter, matrixIndex, MATRIXES_UNIFORM_LOC);
-			//glCheckError();
 			if(!set_global_uniform_to_program(*idIter,"MatrixBlock",
 						MATRIXES_UNIFORM_LOC))
 			{
@@ -51,32 +53,22 @@ void init_systemuniforms(SystemUniforms* rend,ShaderProgram* programs,
 
 		if(BIT_CHECK(i->globalUniformFlags,GlobalUniforms::GlobalLight))
 		{
-			//printf("SET LIGHTS");
-			//uint lightIndex = glGetUniformBlockIndex(*idIter, "GlobalLight");   
-			//glUniformBlockBinding(*idIter, lightIndex, GLOBALLIGHT_UNIFORM_LOC);
-			//glCheckError();
 			if(!set_global_uniform_to_program(*idIter,"GlobalLight",
 						GLOBALLIGHT_UNIFORM_LOC))
 			{
 				ABORT_MESSAGE("Failed to set GlobalLight \n");
 			}
 		}
-	}
-
-#if 0
-	if(BIT_CHECK(i->globalUniformFlags,GlobalUniforms::CameraBlock))
-	{
-		//printf("SET LIGHTS");
-		//uint lightIndex = glGetUniformBlockIndex(*idIter, "GlobalLight");   
-		//glUniformBlockBinding(*idIter, lightIndex, GLOBALLIGHT_UNIFORM_LOC);
-		//glCheckError();
-		if(!set_global_uniform_to_program(*idIter,"CameraBlock",
-					CAMERABLOCK_BUFFER_LOC))
+		if(BIT_CHECK(i->globalUniformFlags,GlobalUniforms::ShadowBlock))
 		{
-			ABORT_MESSAGE("Failed to set camera buffer loc \n");
+			if(!set_global_uniform_to_program(*idIter,"ShadowBlock",
+						SHADOW_BUFFER_LOC))
+			{
+				ABORT_MESSAGE("Failed to set shadowblock \n");
+			}
 		}
 	}
-#endif
+
 
 
 	{
@@ -87,13 +79,13 @@ void init_systemuniforms(SystemUniforms* rend,ShaderProgram* programs,
 		glBindBuffer(GL_UNIFORM_BUFFER, rend->matrixUniformBufferObject);
 
 		glCheckError();
-		glBufferData(GL_UNIFORM_BUFFER, 3 * sizeof(MATH::mat4),
+		glBufferData(GL_UNIFORM_BUFFER, sizeOfMatrixBlock,
 				NULL, GL_STATIC_DRAW); 
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 		glCheckError();
 		glBindBufferRange(GL_UNIFORM_BUFFER, MATRIXES_UNIFORM_LOC, 
-				rend->matrixUniformBufferObject, 0, 3 * sizeof(MATH::mat4)); 
+				rend->matrixUniformBufferObject, 0, sizeOfMatrixBlock);
 
 		glCheckError();
 	}
@@ -105,37 +97,36 @@ void init_systemuniforms(SystemUniforms* rend,ShaderProgram* programs,
 		glBindBuffer(GL_UNIFORM_BUFFER, rend->globalLightBufferObject);
 
 		glCheckError();
-		glBufferData(GL_UNIFORM_BUFFER, 4 * sizeof(MATH::vec4),
+		glBufferData(GL_UNIFORM_BUFFER, sizeOfGlobalLightBlock,
 				NULL, GL_STATIC_DRAW); 
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 		glCheckError();
 		glBindBufferRange(GL_UNIFORM_BUFFER, GLOBALLIGHT_UNIFORM_LOC, 
-				rend->globalLightBufferObject, 0,4 * sizeof(MATH::vec4)); 
-
+				rend->globalLightBufferObject, 0,
+				sizeOfGlobalLightBlock);
 		glCheckError();
 	}
 
-#if 0
 	{
 		glCheckError();
-		glGenBuffers(1, &rend->cameraBlockBufferObject);
+		glGenBuffers(1, &rend->shadowBlockBufferObject);
 
 		glCheckError();
-		glBindBuffer(GL_UNIFORM_BUFFER, rend->cameraBlockBufferObject);
+		glBindBuffer(GL_UNIFORM_BUFFER, rend->shadowBlockBufferObject);
 
 		glCheckError();
-		glBufferData(GL_UNIFORM_BUFFER, sizeof(MATH::vec4),
+		glBufferData(GL_UNIFORM_BUFFER, 
+				sizeOfShadowBlock,
 				NULL, GL_STATIC_DRAW); 
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 		glCheckError();
-		glBindBufferRange(GL_UNIFORM_BUFFER, CAMERABLOCK_BUFFER_LOC, 
-				rend->cameraBlockBufferObject, 0, sizeof(MATH::vec4)); 
+		glBindBufferRange(GL_UNIFORM_BUFFER, SHADOW_BUFFER_LOC, 
+				rend->shadowBlockBufferObject, 0,sizeOfShadowBlock); 
 
 		glCheckError();
 	}
-#endif
 	//TODO POJAT SAMAAN BUFFERIIN!
 	//glUniformBlockBinding(defaultRendererID, matrixIndex, 2);
 }

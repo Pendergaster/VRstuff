@@ -21,8 +21,8 @@
 	MODE(Model)\
 	MODE(PostProcess)\
 
+#define NUM_CASCADES 4
 #define SHADOW_MAP_INDEXES 20
-#define MAX_SHADOW_MAPS 10
 enum UniformType : int
 {
 	UNIFORMTYPES(GENERATE_ENUM)

@@ -147,7 +147,7 @@ static void init_camera(Camera* cam,MATH::mat4* view,MATH::mat4* projection,
 
 	MATH::vec3 cameraDirection = MATH::normalized(at -cam->position);
 	cam->direction = cameraDirection;
-	const float fov = 45.f;
+	const float fov = 90.f;
 #if !VR
 	MATH::perspective(projection,MATH::deg_to_rad * fov, 
 			(float)SCREENWIDHT / (float) SCREENHEIGHT,0.1f, 100.f);

@@ -30,6 +30,26 @@ static inline bool setup_uniform_sampler2D(UniformInfo* uniform,uint id,int numT
 	glUniform1i(location, numTex); 
 	return true;
 }
+static inline bool setup_uniform_shadowMap(UniformInfo* uniform,uint id)
+{
+	//printf("%s\n",uniform->name);
+	int location1 = glGetUniformLocation(id,"shadowSampler[0]");
+	if(location1 == -1) return false;
+	int location2 = glGetUniformLocation(id,"shadowSampler[1]");
+	if(location2 == -1) return false;
+	int location3 = glGetUniformLocation(id,"shadowSampler[2]");
+	if(location3 == -1) return false;
+	int location4 = glGetUniformLocation(id,"shadowSampler[3]");
+	if(location4 == -1) return false;
+
+	uniform->glTexLocation = SHADOW_MAP_INDEXES;
+	glUniform1i(location1,SHADOW_MAP_INDEXES); 
+	glUniform1i(location2,SHADOW_MAP_INDEXES + 1); 
+	glUniform1i(location3,SHADOW_MAP_INDEXES + 2); 
+	glUniform1i(location4,SHADOW_MAP_INDEXES + 3); 
+	return true;
+}
+
 static bool compile_program(const ShaderProgram& prog,uint* shaderID, char* vertSource, char* fragSource)
 {
 
@@ -266,11 +286,8 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 			UniformInfo uniformInfo;
 			uniformInfo.name = shadowname;
 			uniformInfo.hashedID = CONTAINER::hash(uniformInfo.name);
-			//int location = glGetUniformLocation(manager->shaderProgramIds[i],"shadowMap");
-			//ASSERT_MESSAGE(location != GL_INVALID_VALUE,
-			//		"SHADOW MAP COULD NOT BE FOUND IN :: %s \n",currentName);
-			//uniformInfo.location = location;
-            if (!setup_uniform_sampler2D(&uniformInfo, manager->shaderProgramIds[i], SHADOW_MAP_INDEXES))
+
+            if (!setup_uniform_shadowMap(&uniformInfo, manager->shaderProgramIds[i]))
             {
                 ABORT_MESSAGE("SHADOW SAMPLER NOT FOUND");
             }
