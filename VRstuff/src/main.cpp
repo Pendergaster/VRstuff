@@ -514,7 +514,7 @@ int main()
 		glCheckError();
 	}
 #endif
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); 
+	//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); 
 
 	glEnable(GL_MULTISAMPLE);
 	FrameTexture offscreen = create_new_frameTexture(SCREENWIDHT,
@@ -534,7 +534,7 @@ int main()
 	//FrameTexture depthMap = create_depth_texture(2048,2048);
 	Material shadowMaterial = create_new_material(&shaders,"ShadowProg");
 
-
+	static float cascadeSplitLambda = 0.95f;
 	while (!glfwWindowShouldClose(window))
 	{
 #if VR
@@ -583,7 +583,8 @@ int main()
 			accumulator -= dt;
 			{
 #if 1
-				ImGui::Begin("Hello, world!");                          
+				ImGui::Begin("Hello, world!");       
+				ImGui::SliderFloat("cascade",&cascadeSplitLambda,0.f,1.f);
 #define NUM_FRUSTRUM_CORNERS 8
 
 #if 0
@@ -864,14 +865,15 @@ int main()
 
 #else 
 		/**shasha boy***/
-		float near = 0.1f;
-		float far  = 100.f;
-		float clipRange = far - near;
-		float minz = near;
-		float maxz  = near + clipRange;
+	
+		float nearS = 0.1f;
+		float farS  = 100.f - 50.f;
+		float clipRange = farS - nearS;
+		float minz = nearS;
+		float maxz  = nearS + clipRange;
 		float range = maxz - minz;
 		float ratio = maxz / minz;
-		static float cascadeSplitLambda = 0.95f;
+	
 
 		float cascadeSplits[NUM_CASCADES];
 
@@ -885,7 +887,7 @@ int main()
 			float log = minz * std::pow(ratio,p);
 			float uniform = minz + range * p;
 			float d = cascadeSplitLambda * (log - uniform) + uniform;
-			cascadeSplits[i] = (d / near) / clipRange;
+			cascadeSplits[i] = (d - nearS) / clipRange;
 		}
 
 		//orthos
@@ -914,7 +916,7 @@ int main()
 			}
 			for(uint i2 = 0; i2 < 4; i2++)
 			{
-				glm::vec3 dist = corners[i2 + 4] - corners[i];
+				glm::vec3 dist = corners[i2 + 4] - corners[i2];
 				corners[i2 + 4] = corners[i2] + (dist * splitDist);
 				corners[i2] = corners[i2] + (dist * lastSplitDist);
 			}
@@ -944,7 +946,7 @@ int main()
 					minExtents.y,maxExtents.y,
 					0.f, maxExtents.z - minExtents.z);
 
-			splitDepths[i] = (near + splitDist * clipRange) * -1.0f;
+			splitDepths[i] = (nearS + splitDist * clipRange) * -1.0f;
 			lightViews[i] = lightViewMatrix;
 			shadowOrthos[i] = lightOrthoMatrix;
 			lastSplitDist = splitDepths[i];

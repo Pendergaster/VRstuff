@@ -27,7 +27,7 @@ IF /I "%1"=="build_engine" (
 		set CLAGS= -Od
 		REM -LD -> buildaa .dll -MD jälkee
 		REM 
-		cl %CLAGS% -Z7 -nologo  -W4 -wd4201 /EHsc /DEBUG ..\src\main.cpp   %includes% /MD /link %libs% -LIBPATH:../libraries 
+		cl %CLAGS% -Z7 -nologo  -W4 -wd4201 /EHsc /DEBUG /fp:fast ..\src\main.cpp   %includes% /MD /link %libs% -LIBPATH:../libraries 
 		popd
 		)
 
