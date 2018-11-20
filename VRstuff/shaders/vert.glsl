@@ -39,7 +39,7 @@ void main()
 #endif
 
 
-	vs_out.lightSpacePos[0] = cascadeMatrix[0] *vec4(vs_out.fragPos,1.0); 
+	vs_out.lightSpacePos[0] = cascadeMatrix[0] * vec4(vs_out.fragPos,1.0); 
 												//vec4(vertexPosition, 1.0);
 	vs_out.lightSpacePos[1] = cascadeMatrix[1] *vec4(vs_out.fragPos,1.0);
 												// vec4(vertexPosition, 1.0);

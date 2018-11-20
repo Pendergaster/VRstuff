@@ -217,7 +217,7 @@ EXPORT void init_game(void* p)
 		(
 		 MaterialType::PlanetMat,
 		 get_mesh(hook->meshes,"Planet"),
-		 MATH::vec3(0.f,0,0),
+		 MATH::vec3(0.f,0,-10.f),
 		 MATH::quaternion(),
 		 MATH::vec3(0.5f,0.5f,0.5f)
 		);
@@ -226,7 +226,7 @@ EXPORT void init_game(void* p)
 	game->planet = insert_renderdata(planetData,
 			&game->renderData,hook->renderables);
 
-	planetData.position = MATH::vec3(0,-1.f,0.f);
+	planetData.position = MATH::vec3(0,-1.f,-10.f);
 	game->enemy = insert_renderdata(planetData,&game->renderData,hook->renderables);
 
 
@@ -234,7 +234,7 @@ EXPORT void init_game(void* p)
 		(
 		 MaterialType::Lattia,
 		 get_mesh(hook->meshes,"Lattia"),
-		 MATH::vec3(0.f,-3.f,0.f),
+		 MATH::vec3(0.f,-3.f,-10.f),
 		 MATH::quaternion(),
 		 MATH::vec3(1.0f,0.5f,1.0f)
 		);
@@ -250,7 +250,7 @@ EXPORT void init_game(void* p)
 	init_sound_device(&game->soundContext,&hook->workingMemory,&hook->gameMemory);
 
 	init_camera(&game->camera,&hook->viewMatrix,&hook->projectionMatrix,
-			MATH::vec3(0,0,6.f),MATH::vec3(0,0,5.f));
+			MATH::vec3(0,0,0.f),MATH::vec3(0,0,-1.f));
 
 
 	ImGui::SetCurrentContext(hook->imguiContext);
@@ -356,6 +356,29 @@ EXPORT void update_game(void* p)
 		RenderData* data = get_render_data(game->planet,game->renderData,hook->renderables);
 		data->position.y -= 0.1f;
 	}
+	if (key_down(Key::KEY_K))
+	{
+		RenderData* data = get_render_data(game->planet,game->renderData,hook->renderables);
+		data->position.x -= 0.1f;
+	}
+	if (key_down(Key::KEY_H))
+	{
+		RenderData* data = get_render_data(game->planet,game->renderData,hook->renderables);
+		data->position.x += 0.1f;
+	}
+	if (key_down(Key::KEY_Y))
+	{
+		RenderData* data = get_render_data(game->planet,game->renderData,hook->renderables);
+		data->position.z -= 0.1f;
+	}
+	if (key_down(Key::KEY_I))
+	{
+		RenderData* data = get_render_data(game->planet,game->renderData,hook->renderables);
+		data->position.z += 0.1f;
+	}
+
+
+
 
 	update_camera(&game->camera,&hook->viewMatrix);
 #if MIKA

@@ -429,7 +429,7 @@ int main()
 	hook.shaders = &shaders;
 	hook.meshes = &meshes;
 	hook.textures = &textures;
-	hook.globalLight.dir = MATH::vec4(1.f, -1.0f, 0.f,1.f);
+	hook.globalLight.dir = MATH::vec4(0.5f, -1.0f, 0.f,1.f);
 	hook.globalLight.ambient = MATH::vec4(0.05f, 0.05f, 0.05f,1.f);
 	hook.globalLight.diffuse = MATH::vec4(0.8f, 0.8f, 0.8f,1.f);
 	hook.globalLight.specular = MATH::vec4( 0.5f, 0.5f, 0.5f,1.f);
@@ -732,7 +732,7 @@ int main()
 		glm::mat4 lightView = glm::lookAt(glm::vec3(0,0,0),lightDir,glm::vec3(0,1,0));
 		//lookAt (detail::tvec3< T > const &eye, detail::tvec3< T > const &center, detail::tvec3< T > const &up)
 		float cascadeEnds[4 +1] = {
-			0.1f, 25.f, 50.f,75.f , 100.f
+			0.1f, 10.f, 40.f,60.f , 100.f
 		};
 		struct OrthoInfo{
 
@@ -849,6 +849,18 @@ int main()
 				glCheckError();
 			}
 		}
+		float x = orthoInfo[0].r - orthoInfo[0].l;
+		float y = orthoInfo[0].t - orthoInfo[0].b;
+		float z = orthoInfo[0].f - orthoInfo[0].n;
+		x = x < 0 ? -x : x;
+		y = y < 0 ? -y : y;
+		z = z < 0 ? -z : z;
+		printf(" volume %.3f \n", x * y * z);
+
+		printf("%.3f %.3f %.3f %.3f %.3f %.3f \n",orthoInfo->n,
+				orthoInfo->f, orthoInfo->r,orthoInfo->l  , orthoInfo->b,orthoInfo->t);
+
+
 #endif
 #if 1
 		rend.view = hook.viewMatrix;
@@ -875,7 +887,12 @@ int main()
 		glBindFramebuffer(GL_FRAMEBUFFER,0);
 
 
+		glDisable(GL_DEPTH_TEST);
 		glUseProgram( shaders.shaderProgramIds[postCanvas.shaderProgram]);
+		SHADER::set_vec2_name( shaders.shaderProgramIds[postCanvas.shaderProgram],"pos"
+				,MATH::vec2(0,0));
+		SHADER::set_vec2_name( shaders.shaderProgramIds[postCanvas.shaderProgram],"scale"
+				,MATH::vec2(1,1));
 		glBindVertexArray(canvasVao);
 		glCheckError();
 		glActiveTexture(GL_TEXTURE0);
@@ -885,6 +902,40 @@ int main()
 			postProcessCanvas.texture);
 		glCheckError();
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); 
+
+
+		SHADER::set_vec2_name( shaders.shaderProgramIds[postCanvas.shaderProgram],"pos"
+				,MATH::vec2(-0.75,-0.75));
+		SHADER::set_vec2_name( shaders.shaderProgramIds[postCanvas.shaderProgram],"scale"
+				,MATH::vec2(0.25,0.25));
+		glBindVertexArray(canvasVao);
+		glCheckError();
+		glActiveTexture(GL_TEXTURE0);
+		glCheckError();
+		glBindTexture(GL_TEXTURE_2D,
+				cascades->texture);
+		//postProcessCanvas.texture);
+		glCheckError();
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); 
+
+		SHADER::set_vec2_name( shaders.shaderProgramIds[postCanvas.shaderProgram],"pos"
+				,MATH::vec2(0.75,-0.75));
+		SHADER::set_vec2_name( shaders.shaderProgramIds[postCanvas.shaderProgram],"scale"
+				,MATH::vec2(0.25,0.25));
+		glBindVertexArray(canvasVao);
+		glCheckError();
+		glActiveTexture(GL_TEXTURE0);
+		glCheckError();
+		glBindTexture(GL_TEXTURE_2D,
+				cascades[2].texture);
+		//postProcessCanvas.texture);
+		glCheckError();
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); 
+
+
+
+		glEnable(GL_DEPTH_TEST);
+
 #else
 		blit_frameTexture(offscreen,0);
 #endif
@@ -1016,9 +1067,6 @@ void render(const RenderCommands& commands)
 	glCheckError();
 	glBindBuffer(GL_UNIFORM_BUFFER,0);
 	glCheckError();
-	printf("%.3f %.3f %.3f %.3f \n",commands.clipPositions[0],
-			commands.clipPositions[1], commands.clipPositions[2],commands.clipPositions[3]);
-
 
 	for(int i = 0; i < NUM_CASCADES; i++)
 	{
