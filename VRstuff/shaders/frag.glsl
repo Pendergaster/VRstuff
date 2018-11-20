@@ -4,6 +4,9 @@
 
 #include "shaders/shadowData.inc"
 
+#line 0
+
+
 in DATA
 {
 	vec2 uv;
@@ -22,7 +25,7 @@ void main()
 {
 	vec3 viewPos = frag_in.viewPos;
 	vec3 viewDir = normalize(viewPos - frag_in.fragPos);
-	vec3 lightColor[3];
+	vec3 lightColor[3] = vec3[3](vec3(0,0,0),vec3(0,0,0),vec3(0,0,0));
 	CalculateGlobalLighting(
 			lightColor,
 			frag_in.normal,
@@ -39,25 +42,26 @@ void main()
 	float bias = calculate_shadow_bias(normalize( frag_in.normal),lightDir);
 	int i = 0;
 	vec4 cas = vec4(0,0,0,0);
-	for (; i < 4 ; i++) {
-		if (frag_in.clipSpace <= frag_in.clipPositions[i]) {
-			shadow = shadow_calculation(frag_in.lightSpacePos[i],shadowSampler[i],bias);
 
-			if (i == 0) 
-				cas = vec4(0.1, 0.0, 0.0, 0.0);
-			else if (i == 1)
-				cas = vec4(0.0, 0.1, 0.0, 0.0);
-			else if (i == 2)
-				cas = vec4(0.0, 0.0, 0.1, 0.0);
+	do{
+		if (frag_in.clipSpace <= frag_in.clipPositions[0]) {
+			shadow = shadow_calculation(frag_in.lightSpacePos[0],shadowSampler[0],bias);
+			cas = vec4(0.1, 0.0, 0.0, 0.0);
+			break;}
+		if (frag_in.clipSpace <= frag_in.clipPositions[1]) {
+			shadow = shadow_calculation(frag_in.lightSpacePos[1],shadowSampler[1],bias);
+			cas = vec4(0.0, 0.1, 0.0, 0.0);
+			break;}
+		if (frag_in.clipSpace <= frag_in.clipPositions[2]) {
+			shadow = shadow_calculation(frag_in.lightSpacePos[2],shadowSampler[2],bias);
+			cas = vec4(0.0, 0.0, 0.1, 0.0);
+			break;}
+		if (frag_in.clipSpace <= frag_in.clipPositions[3]) {
+			shadow = shadow_calculation(frag_in.lightSpacePos[3],shadowSampler[3],bias);
+			break;}
+	}while(false);
 
-			break;
-		}
-	}
-	if(i == 4)
-	{
-		_color = vec4(0.1,0.1,0.1,1.0);
-		return;
-	}
+
 	vec3 finalColor = lightColor[0] + lightColor[1]*(1 -shadow) + lightColor[2]*(1 -shadow);  
 	_color = vec4(finalColor.x ,finalColor.y ,finalColor.z ,1) + cas;
 	_color.w = 1;

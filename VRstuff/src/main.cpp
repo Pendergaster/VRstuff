@@ -720,7 +720,8 @@ int main()
 		//ConfigureShaderAndMatrices();
 		//glBindTexture(GL_TEXTURE_2D, depthMap);
 		//RenderScene();
-#else
+#endif
+#if 0
 		float x1 = tanf((MATH::deg_to_rad * 90.f) / 2.f );
 		glm::mat4 inv = glm::inverse(*(glm::mat4*)&hook.viewMatrix);
 #define print_vec(vec,name) ImGui::Text(name " %.3f %.3f %.3f ", vec.x,vec.y,vec.z)
@@ -812,6 +813,7 @@ int main()
 
 		//glm::mat4 shadowMatrixes[NUM_CASCADES]; 
 		//render every cascade
+
 		for(uint i = 0; i < NUM_CASCADES; i++)
 		{
 			set_and_clear_frameTexture(cascades[i]);
@@ -859,6 +861,147 @@ int main()
 
 		printf("%.3f %.3f %.3f %.3f %.3f %.3f \n",orthoInfo->n,
 				orthoInfo->f, orthoInfo->r,orthoInfo->l  , orthoInfo->b,orthoInfo->t);
+
+#else 
+		/**shasha boy***/
+		float near = 0.1f;
+		float far  = 100.f;
+		float clipRange = far - near;
+		float minz = near;
+		float maxz  = near + clipRange;
+		float range = maxz - minz;
+		float ratio = maxz / minz;
+		static float cascadeSplitLambda = 0.95f;
+
+		float cascadeSplits[NUM_CASCADES];
+
+		glm::mat4 lightViews[NUM_CASCADES];
+		glm::mat4 shadowOrthos[NUM_CASCADES];
+		float splitDepths[NUM_CASCADES];
+
+		for(uint i = 0; i < NUM_CASCADES;i++)
+		{
+			float p = (i + 1) / (float)NUM_CASCADES;
+			float log = minz * std::pow(ratio,p);
+			float uniform = minz + range * p;
+			float d = cascadeSplitLambda * (log - uniform) + uniform;
+			cascadeSplits[i] = (d / near) / clipRange;
+		}
+
+		//orthos
+		float lastSplitDist = 0;
+
+		for(uint i = 0; i < NUM_CASCADES;i++)
+		{
+			float splitDist = cascadeSplits[i];
+			glm::vec3 corners[8] = {
+				glm::vec3(-1, 1, -1),
+				glm::vec3( 1, 1, -1),
+				glm::vec3( 1,-1, -1),
+				glm::vec3(-1,-1, -1),
+				glm::vec3(-1, 1,  1),
+				glm::vec3( 1, 1,  1),
+				glm::vec3( 1,-1,  1),
+				glm::vec3(-1,-1,  1),
+			};
+			glm::mat4 invCam = glm::inverse((*(glm::mat4*)&hook.projectionMatrix) *
+					(*(glm::mat4*)&hook.viewMatrix)  );
+			//project corners to worldspace
+			for(uint i2 = 0; i2 < 8; i2++)
+			{
+				glm::vec4 invCorner = invCam * glm::vec4(corners[i2],1.0f);
+				corners[i2] = invCorner  /invCorner.w;
+			}
+			for(uint i2 = 0; i2 < 4; i2++)
+			{
+				glm::vec3 dist = corners[i2 + 4] - corners[i];
+				corners[i2 + 4] = corners[i2] + (dist * splitDist);
+				corners[i2] = corners[i2] + (dist * lastSplitDist);
+			}
+
+			//frustum center
+			glm::vec3 frustumCenter = glm::vec3(0.f);
+			for(uint i2 = 0; i2 < 8; i2++)
+			{
+				frustumCenter += corners[i2];
+			}
+			frustumCenter /= 8.f;
+			float radius = 0;
+			for(uint i2 = 0; i2 < 8; i2++)
+			{
+				float dist = glm::length(corners[i2] - frustumCenter);
+				radius = glm::max(dist,dist);
+			}
+			radius = std::ceil(radius * 16.f) / 16.f;
+			glm::vec3 maxExtents = glm::vec3(radius);
+			glm::vec3 minExtents = -maxExtents;
+			glm::vec3 lDir = glm::normalize(*(glm::vec3*)&hook.globalLight.dir);
+			glm::mat4 lightViewMatrix = glm::lookAt(frustumCenter - lDir * -minExtents.z,
+					frustumCenter,
+					glm::vec3(0,1.f,0));
+			glm::mat4 lightOrthoMatrix = glm::ortho(
+					minExtents.x,maxExtents.x,
+					minExtents.y,maxExtents.y,
+					0.f, maxExtents.z - minExtents.z);
+
+			splitDepths[i] = (near + splitDist * clipRange) * -1.0f;
+			lightViews[i] = lightViewMatrix;
+			shadowOrthos[i] = lightOrthoMatrix;
+			lastSplitDist = splitDepths[i];
+		}
+		for(int i = 0; i < 4; i ++)
+		{
+			rend.clipPositions[i] = splitDepths[i];
+		}
+		struct bindableMatrix{
+			glm::mat4 view,ortho;
+		} bind;
+
+		ShaderProgram* prog = 
+			&shaders.shaderPrograms[shadowMaterial.shaderProgram];
+		uint glID = shaders.shaderProgramIds[shadowMaterial.shaderProgram];
+		glUseProgram(glID);
+		ASSERT_MESSAGE(prog->uniforms[0].type == UniformType::MODEL,"SHADOW PROG INVALID UNIFORM");
+		uint modelPos =  prog->uniforms[0].location;
+
+
+
+
+		for(uint i = 0; i < NUM_CASCADES; i++)
+		{
+			set_and_clear_frameTexture(cascades[i]);
+			bind.ortho = shadowOrthos[i]; 
+			bind.view = lightViews[i]; 
+			rend.shadowMatrixes[i] = bind.ortho * bind.view;
+			glBindBuffer(GL_UNIFORM_BUFFER,
+					sysUniforms.matrixUniformBufferObject);
+			glBufferSubData(GL_UNIFORM_BUFFER,
+					0,sizeof(bindableMatrix), (void*)&bind);
+			glBindBuffer(GL_UNIFORM_BUFFER,0);
+			for(int j = 0; j < hook.numRenderables; j++)
+			{
+				RenderData* currentRenderData = 
+					&hook.renderables[j];
+				MATH::mat4 model(currentRenderData->orientation);
+				MATH::translate(&model,currentRenderData->position);
+				MATH::scale_mat4(&model,currentRenderData->scale);
+				glCheckError();
+
+				glUniformMatrix4fv(modelPos, 1, 
+						GL_FALSE, (GLfloat*)&model);//.mat);
+				glCheckError();
+				//set mesh
+				Mesh* currentMesh = 
+					&meshes.meshArray[currentRenderData->meshID];
+				MeshInfo* currentMeshInfo = 
+					&meshes.meshInfos[currentRenderData->meshID];
+				glBindVertexArray(currentMesh->vao);
+				glDrawElements(GL_TRIANGLES,currentMeshInfo->numIndexes,
+						GL_UNSIGNED_INT,0);
+				glCheckError();
+			}
+		}
+
 
 
 #endif

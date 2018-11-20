@@ -2,7 +2,7 @@
 
 #define NUM_CASCADES 4
 #ifdef FRAGMENT
-uniform sampler2D shadowSampler[NUM_CASCADES];
+uniform sampler2D shadowSampler[4];
 #endif
 
 
