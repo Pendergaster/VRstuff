@@ -150,7 +150,7 @@ static void init_camera(Camera* cam,MATH::mat4* view,MATH::mat4* projection,
 	const float fov = 90.f;
 #if !VR
 	MATH::perspective(projection,MATH::deg_to_rad * fov, 
-			(float)SCREENWIDHT / (float) SCREENHEIGHT,0.1f, 100.f);
+			(float)SCREENWIDHT / (float) SCREENHEIGHT,0.1f, 50.f);
 #else 
 	MATH::perspective(projection,MATH::deg_to_rad * fov, 
 			(float)(SCREENWIDHT/2) / (float) SCREENHEIGHT,0.1f, 10000.f);
@@ -309,8 +309,8 @@ static void update_camera(Camera* cam,MATH::mat4* view)
 
 	MATH::mat4 inv;
 	MATH::inverse_mat4(&inv,view);
-	printf(" view pos%.3f  %.3f  %.3f \n",inv.mat[3][0],inv.mat[3][1],inv.mat[3][2]);
-	printf(" cam pos%.3f  %.3f  %.3f \n",cam->position.x,cam->position.y,cam->position.z);
+	//printf(" view pos%.3f  %.3f  %.3f \n",inv.mat[3][0],inv.mat[3][1],inv.mat[3][2]);
+	//printf(" cam pos%.3f  %.3f  %.3f \n",cam->position.x,cam->position.y,cam->position.z);
 }
 
 

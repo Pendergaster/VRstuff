@@ -50,7 +50,7 @@ void main()
 			break;}
 		if (frag_in.clipSpace <= frag_in.clipPositions[1]) {
 			shadow = shadow_calculation(frag_in.lightSpacePos[1],shadowSampler[1],bias);
-			cas = vec4(0.0, 0.1, 0.0, 0.0);
+			//cas = vec4(0.0, 0.1, 0.0, 0.0);
 			break;}
 		if (frag_in.clipSpace <= frag_in.clipPositions[2]) {
 			shadow = shadow_calculation(frag_in.lightSpacePos[2],shadowSampler[2],bias);

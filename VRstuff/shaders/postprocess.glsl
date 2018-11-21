@@ -27,9 +27,9 @@ const float gamma = 2.2;
 
 void main()
 {
-	float depthValue =  texture(frametex,_uv).r;    
-    color = vec4(vec3(depthValue), 1.0);
-	return;
+	//float depthValue =  texture(frametex,_uv).r;    
+    //color = vec4(vec3(depthValue), 1.0);
+	//return;
 
 	color = vec4(texture2D(frametex,_uv));
     color.rgb = pow(color.rgb, vec3(1.0/gamma));

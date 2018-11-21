@@ -54,10 +54,11 @@ void main()
 
 
 	//vs_out.clipSpace = gl_Position.z;
-	vs_out.clipSpace = (view * vec4(vertexPosition.xyz, 1.0)).z;
+	vs_out.clipSpace = gl_Position.z;
+	//vs_out.clipSpace = (view * vec4(vertexPosition, 1.0)).z;
+//(view * vec4(vertexPosition.xyz, 1.0)).z;
 	//vs_out.fragPosLightSpace = shadowMatrix * vec4(vs_out.fragPos, 1.0);
 }
-
 
 
 

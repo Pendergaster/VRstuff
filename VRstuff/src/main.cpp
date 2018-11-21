@@ -528,7 +528,7 @@ int main()
 	FrameTexture cascades[NUM_CASCADES];
 	for(uint i = 0; i < NUM_CASCADES;i++)
 	{
-		cascades[i] = create_depth_texture(2048,2048);
+		cascades[i] = create_depth_texture(4096,4096);
 	}
 
 	//FrameTexture depthMap = create_depth_texture(2048,2048);
@@ -865,15 +865,15 @@ int main()
 
 #else 
 		/**shasha boy***/
-	
+
 		float nearS = 0.1f;
-		float farS  = 100.f - 50.f;
+		float farS  = 50.f;
 		float clipRange = farS - nearS;
 		float minz = nearS;
 		float maxz  = nearS + clipRange;
 		float range = maxz - minz;
 		float ratio = maxz / minz;
-	
+
 
 		float cascadeSplits[NUM_CASCADES];
 
@@ -932,7 +932,7 @@ int main()
 			for(uint i2 = 0; i2 < 8; i2++)
 			{
 				float dist = glm::length(corners[i2] - frustumCenter);
-				radius = glm::max(dist,dist);
+				radius = glm::max(radius,dist);
 			}
 			radius = std::ceil(radius * 16.f) / 16.f;
 			glm::vec3 maxExtents = glm::vec3(radius);
@@ -949,12 +949,13 @@ int main()
 			splitDepths[i] = (nearS + splitDist * clipRange) * -1.0f;
 			lightViews[i] = lightViewMatrix;
 			shadowOrthos[i] = lightOrthoMatrix;
-			lastSplitDist = splitDepths[i];
+			lastSplitDist = cascadeSplits[i];//splitDepths[i];
 		}
 		for(int i = 0; i < 4; i ++)
 		{
 			rend.clipPositions[i] = splitDepths[i];
 		}
+		printf("%.3f %.3f %.3f %.3f \n",splitDepths[0],splitDepths[1],splitDepths[2],splitDepths[3]);
 		struct bindableMatrix{
 			glm::mat4 view,ortho;
 		} bind;
@@ -1072,10 +1073,40 @@ int main()
 		glActiveTexture(GL_TEXTURE0);
 		glCheckError();
 		glBindTexture(GL_TEXTURE_2D,
+				cascades[1].texture);
+		//postProcessCanvas.texture);
+		glCheckError();
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); 
+
+		SHADER::set_vec2_name( shaders.shaderProgramIds[postCanvas.shaderProgram],"pos"
+				,MATH::vec2(0.75,0.75));
+		SHADER::set_vec2_name( shaders.shaderProgramIds[postCanvas.shaderProgram],"scale"
+				,MATH::vec2(0.25,0.25));
+		glBindVertexArray(canvasVao);
+		glCheckError();
+		glActiveTexture(GL_TEXTURE0);
+		glCheckError();
+		glBindTexture(GL_TEXTURE_2D,
 				cascades[2].texture);
 		//postProcessCanvas.texture);
 		glCheckError();
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); 
+
+		SHADER::set_vec2_name( shaders.shaderProgramIds[postCanvas.shaderProgram],"pos"
+				,MATH::vec2(-0.75,0.75));
+		SHADER::set_vec2_name( shaders.shaderProgramIds[postCanvas.shaderProgram],"scale"
+				,MATH::vec2(0.25,0.25));
+		glBindVertexArray(canvasVao);
+		glCheckError();
+		glActiveTexture(GL_TEXTURE0);
+		glCheckError();
+		glBindTexture(GL_TEXTURE_2D,
+				cascades[3].texture);
+		//postProcessCanvas.texture);
+		glCheckError();
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); 
+
+
 
 
 
