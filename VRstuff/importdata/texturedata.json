@@ -18,8 +18,8 @@
 	"sky_box" : 
 	{
 		"Path" : "assets/sky_right.tga",
-		"Mipmap" : false,
-		"SRGB" : false,
+		"Mipmap" : true,
+		"SRGB" : true,
 		"Wrap" : "ClampToEdge",
 		"TextureType":"CubeMap",
 		"SkyFront" : "assets/sky_front.tga",
