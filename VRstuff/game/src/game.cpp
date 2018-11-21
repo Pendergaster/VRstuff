@@ -216,7 +216,7 @@ EXPORT void init_game(void* p)
 	RenderData planetData = create_new_renderdata
 		(
 		 MaterialType::PlanetMat,
-		 get_mesh(hook->meshes,"Planet"),
+		 get_mesh(hook->meshes,"Skeleton"),
 		 MATH::vec3(0.f,0,-10.f),
 		 MATH::quaternion(),
 		 MATH::vec3(0.5f,0.5f,0.5f)
@@ -233,7 +233,7 @@ EXPORT void init_game(void* p)
 	RenderData lattia = create_new_renderdata
 		(
 		 MaterialType::Lattia,
-		 get_mesh(hook->meshes,"Lattia"),
+		 get_mesh(hook->meshes,"Skeleton"),
 		 MATH::vec3(0.f,-3.f,-10.f),
 		 MATH::quaternion(),
 		 MATH::vec3(1.0f,0.5f,1.0f)

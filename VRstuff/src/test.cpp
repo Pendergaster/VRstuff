@@ -9,16 +9,162 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #define MAX_VERT_AMOUNT 30000
-
+#include <string>
+#include <vector>
 struct objIndex
 {
 	int vertIndex = 0;
 	int normIndex = 0;
 	int texIndex = 0;
 };
+#undef calloc
+
+
+void load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,bool end,char* path,char* nameBuffer)
+{	
+	MATH::vec3* pos = (MATH::vec3*)CONTAINER::get_next_memory_block(*block);
+	CONTAINER::increase_memory_block(block, mesh->mNumVertices * sizeof(MATH::vec3));
+	MATH::vec3* normal = (MATH::vec3*)CONTAINER::get_next_memory_block(*block);
+	CONTAINER::increase_memory_block(block, mesh->mNumVertices * sizeof(MATH::vec3));
+	MATH::vec2* uv = (MATH::vec2*)CONTAINER::get_next_memory_block(*block);
+	CONTAINER::increase_memory_block(block, mesh->mNumVertices * sizeof(MATH::vec2));
+	int* index = (int*)CONTAINER::get_next_memory_block(*block);
+	int maxIndexSize = block->size - block->currentIndex;
+	//CONTAINER::increase_memory_block(&block, mesh->mNumVertices * sizeof(float));
+
+	ASSERT_MESSAGE(mesh->mTextureCoords[0],"NO TEXTURE COORDINATES IN :: %s \n",path);
+	for (unsigned int i2 = 0; i2 < mesh->mNumVertices; i2++)
+	{
+		pos[i2].x = mesh->mVertices[i2].x;
+		pos[i2].y = mesh->mVertices[i2].y;
+		pos[i2].z = mesh->mVertices[i2].z;
+
+		normal[i2].x = mesh->mNormals[i2].x;
+		normal[i2].y = mesh->mNormals[i2].y;
+		normal[i2].z = mesh->mNormals[i2].z;
+
+		uv[i2].x = mesh->mTextureCoords[0][i2].x;
+		uv[i2].y = mesh->mTextureCoords[0][i2].y;
+			
+				
+		uint indexIndex = 0;
+		std::string modelName;
+		for (unsigned int i2 = 0; i2 < mesh->mNumFaces; i2++)
+		{
+			aiFace face = mesh->mFaces[i2];
+			for (unsigned int i3 = 0; i3 < face.mNumIndices; i3++)
+			{
+				CONTAINER::ensure_memory_block(block, indexIndex * sizeof(int));
+				index[indexIndex++] = face.mIndices[i3];
+			}
+		}
+		if(numMesh == 0)
+		{	
+			modelName = path;
+		}
+		else
+		{		
+			modelName = path + std::to_string(numMesh);
+
+		}
+		ModelAligment aligment;
+		aligment.numVerts = mesh->mNumVertices;
+		aligment.numNormals = mesh->mNumVertices;
+		aligment.numTextureCoords = mesh->mNumVertices;
+		aligment.numIndexes = indexIndex;
+
+		FILE* metaFile = fopen(modelName.data(), "wb");
+		defer{ fclose(metaFile); };
+		fwrite(&aligment, sizeof(ModelAligment), 1, metaFile);
+		fwrite(pos, sizeof(MATH::vec3), aligment.numVerts, metaFile);
+		fwrite(normal, sizeof(MATH::vec3), aligment.numNormals , metaFile);
+		fwrite(uv, sizeof(MATH::vec2), aligment.numTextureCoords, metaFile);
+		fwrite(index, sizeof(int), aligment.numIndexes, metaFile);
+		if(!end)
+		{
+			strcpy(nameBuffer,modelName.data());			
+		}
+		else
+		{
+			memset(nameBuffer,0,MAX_NAME_SIZE);
+		}
+		fwrite((void*)nameBuffer, sizeof(char),MAX_NAME_SIZE, metaFile); // nextFile
+		block->currentIndex = 0;
+		printf("Parsed :: %s file %s with %d Vertexes and %d Indexes \n", path ,modelName.data() , aligment.numVerts, aligment.numIndexes);
+#if 0
+		for(int i2 = 0; i2 < aligment.numVerts;i2++)
+		{
+			printf("verts %f , %f , %f \n",pos[i2].x, pos[i2].y, pos[i2].z);
+			printf("norms %f , %f , %f \n", normal[i2].x, normal[i2].y, normal[i2].z);
+			printf("texs %f , %f \n", uv[i2].x, uv[i2].y);
+		}  
+#endif	
+	}
+}
+
+
 
 int main()
 {
+    JsonToken modelToken;
+    modelToken.ParseFile("importdata/meshdata.json");
+    CONTAINER::DynamicArray<char*> modelNames;
+    CONTAINER::init_dynamic_array(&modelNames);
+    defer{ CONTAINER::dispose_dynamic_array(&modelNames); };;
+    modelToken.GetKeys(&modelNames);
+
+    Assimp::Importer importer;
+    CONTAINER::MemoryBlock block;
+    CONTAINER::init_memory_block(&block, 6000000);
+	char* nameBuffer = (char*)calloc(MAX_NAME_SIZE,sizeof(char));
+    for (uint i = 0; i < modelNames.numobj; i++)
+    {
+        char* currentName = modelNames.buffer[i];;
+        
+        JsonToken* currentToken = modelToken[currentName].GetToken();
+		ASSERT_MESSAGE(currentToken,"MODELDATA IS NOT VALID ::  %s \n",currentName);
+		char* path = (*currentToken)["rawPath"].GetString();
+		ASSERT_MESSAGE(path,"RAWPATH IS NOT FOUND ::  %s \n",currentName);
+        const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices);
+        //const char * error = importer.GetErrorString();
+        ASSERT_MESSAGE(scene && !(scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) && scene->mRootNode, "FAILED TO PARSE :: %s ERROR :: %s \n", currentName, importer.GetErrorString());
+
+        
+		std::string myName;
+		int meshNum = 0;
+		int childIndex = 0;
+		int maxMeshes = scene->mNumMeshes;
+		printf("Parsing model %d/%d :: %s \n Num meshes %d \n", i, modelNames.numobj, currentName, maxMeshes);
+		std::vector<aiNode*> nodes;
+		nodes.push_back(scene->mRootNode);
+		while(!nodes.empty()) // 
+		{
+			aiNode* current = nodes.back();
+			nodes.pop_back();
+			for(int childIndex = 0;childIndex < current->mNumChildren; childIndex++)
+			{
+				nodes.push_back(current->mChildren[childIndex]);
+			}
+			//m_Entries meshData;
+			for(int meshIndex = 0; meshIndex < current->mNumMeshes; meshIndex++)
+			{			
+				//void load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,bool,char* path,char* nameBuffer)
+				load_mesh(scene->mMeshes[current->mMeshes[meshIndex]],&block,meshNum,
+				nodes.empty() && (meshIndex +1 >= current->mNumMeshes),path,nameBuffer);
+				meshNum++;
+			}
+		}
+	}
+	return 0;
+}
+
+
+
+
+
+
+
+
 #if 0
 	printf("hello world %d \n",(int)sizeof(int));
 	FILE* fp = fopen("testData","wb");
@@ -186,104 +332,3 @@ int main()
 
 	//}
 #endif
-#if 1
-
-    JsonToken modelToken;
-    modelToken.ParseFile("importdata/meshdata.json");
-    CONTAINER::DynamicArray<char*> modelNames;
-    CONTAINER::init_dynamic_array(&modelNames);
-    defer{ CONTAINER::dispose_dynamic_array(&modelNames); };;
-    modelToken.GetKeys(&modelNames);
-
-    Assimp::Importer importer;
-    CONTAINER::MemoryBlock block;
-    CONTAINER::init_memory_block(&block, 100000);
-    for (uint i = 0; i < modelNames.numobj; i++)
-    {
-        char* currentName = modelNames.buffer[i];;
-        printf("Parsing model %d/%d :: %s \n", i, modelNames.numobj, currentName);
-        JsonToken* currentToken = modelToken[currentName].GetToken();
-		ASSERT_MESSAGE(currentToken,"MODELDATA IS NOT VALID ::  %s \n",currentName);
-		char* path = (*currentToken)["rawPath"].GetString();
-		ASSERT_MESSAGE(path,"RAWPATH IS NOT FOUND ::  %s \n",currentName);
-        const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices);
-        //const char * error = importer.GetErrorString();
-        ASSERT_MESSAGE(scene && !(scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) && scene->mRootNode, "FAILED TO PARSE :: %s ERROR :: %s \n", currentName, importer.GetErrorString());
-
-        aiNode* current = scene->mRootNode;
-       
-        //m_Entries meshData;
-        const aiMesh* mesh = scene->mMeshes[0];
-       // for (;;)
-        
-            MATH::vec3* pos = (MATH::vec3*)CONTAINER::get_next_memory_block(block);
-            CONTAINER::increase_memory_block(&block, mesh->mNumVertices * sizeof(MATH::vec3));
-            MATH::vec3* normal = (MATH::vec3*)CONTAINER::get_next_memory_block(block);
-            CONTAINER::increase_memory_block(&block, mesh->mNumVertices * sizeof(MATH::vec3));
-            MATH::vec2* uv = (MATH::vec2*)CONTAINER::get_next_memory_block(block);
-            CONTAINER::increase_memory_block(&block, mesh->mNumVertices * sizeof(MATH::vec2));
-            int* index = (int*)CONTAINER::get_next_memory_block(block);
-            int maxIndexSize = block.size - block.currentIndex;
-            //CONTAINER::increase_memory_block(&block, mesh->mNumVertices * sizeof(float));
-
-            ASSERT_MESSAGE(mesh->mTextureCoords[0],"NO TEXTURE COORDINATES IN :: %s \n",currentName);
-            for (unsigned int i2 = 0; i2 < mesh->mNumVertices; i2++)
-            {
-                pos[i2].x = mesh->mVertices[i2].x;
-                pos[i2].y = mesh->mVertices[i2].y;
-                pos[i2].z = mesh->mVertices[i2].z;
-
-                normal[i2].x = mesh->mNormals[i2].x;
-                normal[i2].y = mesh->mNormals[i2].y;
-                normal[i2].z = mesh->mNormals[i2].z;
-
-                uv[i2].x = mesh->mTextureCoords[0][i2].x;
-                uv[i2].y = mesh->mTextureCoords[0][i2].y;
-            }
-            //memcpy(pos, mesh->mVertices, mesh->mNumVertices * sizeof(MATH::vec3));
-            //memcpy(normal, mesh->mNormals, mesh->mNumVertices * sizeof(MATH::vec3));
-            //memcpy(uv, mesh->mTextureCoords[0], mesh->mNumVertices * sizeof(MATH::vec2));
-            uint indexIndex = 0;
-            for (unsigned int i2 = 0; i2 < mesh->mNumFaces; i2++)
-            {
-                aiFace face = mesh->mFaces[i2];
-                for (unsigned int i3 = 0; i3 < face.mNumIndices; i3++)
-                {
-                    CONTAINER::ensure_memory_block(&block, indexIndex * sizeof(int));
-                    index[indexIndex++] = face.mIndices[i3];
-                }
-            }
-            char* metaDataPath = (*currentToken)["metaDataPath"].GetString();
-            ASSERT_MESSAGE(metaDataPath, "METADATA PATH NOT FOUND FOR :: %s \n", currentName);
-            ModelAligment aligment;
-            aligment.numVerts = mesh->mNumVertices;
-            aligment.numNormals = mesh->mNumVertices;
-            aligment.numTextureCoords = mesh->mNumVertices;
-            aligment.numIndexes = indexIndex;
-
-            FILE* metaFile = fopen(metaDataPath, "wb");
-            defer{ fclose(metaFile); };
-            fwrite(&aligment, sizeof(ModelAligment), 1, metaFile);
-            fwrite(pos, sizeof(MATH::vec3), aligment.numVerts, metaFile);
-            fwrite(normal, sizeof(MATH::vec3), aligment.numNormals , metaFile);
-            fwrite(uv, sizeof(MATH::vec2), aligment.numTextureCoords, metaFile);
-            fwrite(index, sizeof(int), aligment.numIndexes, metaFile);
-            block.currentIndex = 0;
-            printf("Parsed :: %s with %d Vertexes and %d Indexes \n", currentName, aligment.numVerts, aligment.numIndexes);
-#if 0
-            for(int i2 = 0; i2 < aligment.numVerts;i2++)
-            {
-            	printf("verts %f , %f , %f \n",pos[i2].x, pos[i2].y, pos[i2].z);
-           	    printf("norms %f , %f , %f \n", normal[i2].x, normal[i2].y, normal[i2].z);
-            	printf("texs %f , %f \n", uv[i2].x, uv[i2].y);
-            }  
-#endif
-    }
-
-
-
-#endif
-
-
-	return 0;
-}

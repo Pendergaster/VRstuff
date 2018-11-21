@@ -1,6 +1,8 @@
 #ifndef PAKKI_MODEL_DATA
 #define PAKKI_MODEL_DATA
 #include <MathUtil.h>
+#include <intTypes.h>
+#define MAX_NAME_SIZE 80
 
 struct ModelData
 {
@@ -8,6 +10,8 @@ struct ModelData
 	MATH::vec3*		normals = 0;
 	MATH::vec2*		texCoords = 0;
 	int*			indexes = 0;
+	uint32_t	    nextModel = 0;
+	//next model in line
 };
 
 struct ModelAligment

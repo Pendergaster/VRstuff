@@ -1,20 +1,7 @@
 {
-	"Cube" : 
+	"Skeleton" : 
 	{
-		"metaDataPath" : "metadata/cube.bin",
-		"rawPath" : "models/cube.dae"
-	},
-	"Lattia" : 
-	{
-		"metaDataPath" : "metadata/lattia.bin",
-		"rawPath" : "models/lattia.obj"
-	},
-	"Planet" : {
-		"metaDataPath" : "metadata/Planet1.bin",
-		"rawPath" : "models/Planet1.obj"
-	},
-	"SpaceShip" : {
-		"metaDataPath" : "metadata/SpaceShip.bin",
-		"rawPath" : "models/SpaceShip.obj"
+		"metaDataPath" : "metadata/model.bin",
+		"rawPath" : "models/model.dae"
 	}
 }
