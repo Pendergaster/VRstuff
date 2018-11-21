@@ -256,7 +256,7 @@ bool hotload_dll(DLLHotloadHandle* dll)
 			if(FILESYS::does_file_exist("./.lock"))
 #endif
 			{
-				printf("file locked %s \n",dll->dllname);
+				LOG("file locked %s",dll->dllname);
 				return false;
 			}
 		dll->fileHandle = tempHandle;
@@ -430,7 +430,7 @@ int main()
 	hook.meshes = &meshes;
 	hook.textures = &textures;
 	hook.globalLight.dir = MATH::vec4(0.5f, -1.0f, 0.f,1.f);
-	hook.globalLight.ambient = MATH::vec4(0.05f, 0.05f, 0.05f,1.f);
+	hook.globalLight.ambient = MATH::vec4(0.2f, 0.2f, 0.2f,1.f);
 	hook.globalLight.diffuse = MATH::vec4(0.8f, 0.8f, 0.8f,1.f);
 	hook.globalLight.specular = MATH::vec4( 0.5f, 0.5f, 0.5f,1.f);
 
@@ -514,7 +514,7 @@ int main()
 		glCheckError();
 	}
 #endif
-	//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); 
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); 
 
 	glEnable(GL_MULTISAMPLE);
 	FrameTexture offscreen = create_new_frameTexture(SCREENWIDHT,
@@ -534,7 +534,7 @@ int main()
 	//FrameTexture depthMap = create_depth_texture(2048,2048);
 	Material shadowMaterial = create_new_material(&shaders,"ShadowProg");
 
-	static float cascadeSplitLambda = 0.95f;
+	static float cascadeSplitLambda = 0.550f;
 	while (!glfwWindowShouldClose(window))
 	{
 #if VR
@@ -867,7 +867,7 @@ int main()
 		/**shasha boy***/
 
 		float nearS = 0.1f;
-		float farS  = 50.f;
+		float farS  = 75.f;
 		float clipRange = farS - nearS;
 		float minz = nearS;
 		float maxz  = nearS + clipRange;
@@ -955,7 +955,7 @@ int main()
 		{
 			rend.clipPositions[i] = splitDepths[i];
 		}
-		printf("%.3f %.3f %.3f %.3f \n",splitDepths[0],splitDepths[1],splitDepths[2],splitDepths[3]);
+		//printf("%.3f %.3f %.3f %.3f \n",splitDepths[0],splitDepths[1],splitDepths[2],splitDepths[3]);
 		struct bindableMatrix{
 			glm::mat4 view,ortho;
 		} bind;
@@ -1154,7 +1154,7 @@ int main()
 		}
 #endif
 	}
-	printf("trying to dispose game \n");
+	LOG("trying to dispose game");
 	dispose_game(&hook);
 	PROFILER::show_timers(&timers);
 	glfwTerminate();

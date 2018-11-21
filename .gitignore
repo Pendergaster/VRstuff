@@ -29,7 +29,7 @@ DebugBin/
 #glad/
 #KHR/
 TestBin/
-glad.c
+#glad.c
 temp.dll
 temp.lib
 *.out

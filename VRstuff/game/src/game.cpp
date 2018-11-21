@@ -150,10 +150,10 @@ static void init_camera(Camera* cam,MATH::mat4* view,MATH::mat4* projection,
 	const float fov = 90.f;
 #if !VR
 	MATH::perspective(projection,MATH::deg_to_rad * fov, 
-			(float)SCREENWIDHT / (float) SCREENHEIGHT,0.1f, 50.f);
+			(float)SCREENWIDHT / (float) SCREENHEIGHT,0.1f, 75.f);
 #else 
 	MATH::perspective(projection,MATH::deg_to_rad * fov, 
-			(float)(SCREENWIDHT/2) / (float) SCREENHEIGHT,0.1f, 10000.f);
+			(float)(SCREENWIDHT/2) / (float) SCREENHEIGHT,0.1f, 75.f);
 #endif
 }
 
@@ -274,6 +274,18 @@ EXPORT void on_game_reload(void* p)
 static void update_camera(Camera* cam,MATH::mat4* view)
 {
 	MATH::vec2 movement = get_mouse_movement();
+#if 0
+	if (key_down(Key::KEY_M))
+		movement.x += 6.1f;
+	if (key_down(Key::KEY_N))
+		movement.y += 6.1f;
+	if (key_down(Key::KEY_V))
+		movement.x -= 6.1f;
+	if (key_down(Key::KEY_B))
+		movement.y -= 6.1f;
+#endif
+
+
 
 	float sensitivity = 0.05f;
 	scale(&movement,sensitivity);
