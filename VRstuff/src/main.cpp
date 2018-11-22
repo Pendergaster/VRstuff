@@ -57,8 +57,8 @@
 #include <glm/common.hpp>
 #include <glm/gtc/quaternion.hpp>
 #endif
-#define STATIC_MEM_SIZE 100000
-#define WORKING_MEM_SIZE 100000
+#define STATIC_MEM_SIZE 1000000
+#define WORKING_MEM_SIZE 10000000
 struct FrameTexture
 {
 	uint texture;
