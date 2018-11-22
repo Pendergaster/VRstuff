@@ -22,7 +22,7 @@ struct objIndex
 #undef calloc
 
 
-void load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,bool end,char* path,char* nameBuffer)
+std::string load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,bool end,char* path)
 {	
 	MATH::vec3* pos = (MATH::vec3*)CONTAINER::get_next_memory_block(*block);
 	CONTAINER::increase_memory_block(block, mesh->mNumVertices * sizeof(MATH::vec3));
@@ -58,16 +58,10 @@ void load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,bool end,
 			index[indexIndex++] = face.mIndices[i3];
 		}
 	}
-	if(numMesh == 0)
-	{	
-		modelName = path;
-	}
-	else
-	{		
-		modelName = path + std::to_string(numMesh);
-
-	}
-	ModelAligment aligment;
+		
+	modelName = path + std::to_string(numMesh);
+	
+	meshAligment aligment;
 	aligment.numVerts = mesh->mNumVertices;
 	aligment.numNormals = mesh->mNumVertices;
 	aligment.numTextureCoords = mesh->mNumVertices;
@@ -75,20 +69,12 @@ void load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,bool end,
 
 	FILE* metaFile = fopen(modelName.data(), "wb");
 	defer{ fclose(metaFile); };
-	fwrite(&aligment, sizeof(ModelAligment), 1, metaFile);
+	fwrite(&aligment, sizeof(meshAligment), 1, metaFile);
 	fwrite(pos, sizeof(MATH::vec3), aligment.numVerts, metaFile);
 	fwrite(normal, sizeof(MATH::vec3), aligment.numNormals , metaFile);
 	fwrite(uv, sizeof(MATH::vec2), aligment.numTextureCoords, metaFile);
 	fwrite(index, sizeof(int), aligment.numIndexes, metaFile);
-	if(!end)
-	{
-		strcpy(nameBuffer,modelName.data());			
-	}
-	else
-	{
-		memset(nameBuffer,0,MAX_NAME_SIZE);
-	}
-	fwrite((void*)nameBuffer, sizeof(char),MAX_NAME_SIZE, metaFile); // nextFile
+	
 	block->currentIndex = 0;
 	printf("Parsed :: %s file %s with %d Vertexes and %d Indexes \n", path ,modelName.data() , aligment.numVerts, aligment.numIndexes);
 #if 0
@@ -99,9 +85,16 @@ void load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,bool end,
 		printf("texs %f , %f \n", uv[i2].x, uv[i2].y);
 	}  
 #endif	
+	return modelName;
 }
 
-
+struct Node
+{
+	Node(){};
+	Node(MATH::mat4 _matrix,aiNode*	_assimpNode){matrix = _matrix; assimpNode = _assimpNode;};
+	MATH::mat4 matrix;
+	aiNode*	   assimpNode;
+};
 
 int main()
 {
@@ -115,16 +108,21 @@ int main()
 	Assimp::Importer importer;
 	CONTAINER::MemoryBlock block;
 	CONTAINER::init_memory_block(&block, 6000000);
-	char* nameBuffer = (char*)calloc(MAX_NAME_SIZE,sizeof(char));
+	MATH::mat4 identity;
+	MATH::identify(&identity);
 	for (uint i = 0; i < modelNames.numobj; i++)
 	{
-		char* currentName = modelNames.buffer[i];;
+		std::vector<MeshPart> meshParts;
+		std::vector<std::string> meshNames;
+		char* currentName = modelNames.buffer[i];
 
 		JsonToken* currentToken = modelToken[currentName].GetToken();
 		ASSERT_MESSAGE(currentToken,"MODELDATA IS NOT VALID ::  %s \n",currentName);
 		char* path = (*currentToken)["rawPath"].GetString();
 		char* metaPath = (*currentToken)["metaDataPath"].GetString();
-		ASSERT_MESSAGE(path,"RAWPATH IS NOT FOUND ::  %s \n",currentName);
+		char* meshdatapath = (*currentToken)["meshDataName"].GetString();
+		char* meshpartpath = *currentToken)["meshPartFile"].GetString();
+		ASSERT_MESSAGE(path && metaPath && meshdatapath && meshpartpath,"RAWPATH IS NOT FOUND ::  %s \n",currentName);
 		const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices);
 		//const char * error = importer.GetErrorString();
 		ASSERT_MESSAGE(scene && !(scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) && scene->mRootNode, "FAILED TO PARSE :: %s ERROR :: %s \n", currentName, importer.GetErrorString());
@@ -132,25 +130,54 @@ int main()
 		int meshNum = 0;
 		int maxMeshes = scene->mNumMeshes;
 		printf("Parsing model %d/%d :: %s \n Num meshes %d \n", i, modelNames.numobj, currentName, maxMeshes);
-		std::vector<aiNode*> nodes;
-		nodes.push_back(scene->mRootNode);
-		while(!nodes.empty()) // 
-		{
-			aiNode* current = nodes.back();
-			nodes.pop_back();
-			for(int childIndex = 0;childIndex < (int)current->mNumChildren; childIndex++)
+		std::vector<Node*> nodes;
+		
+		nodes.emplace_back(identity,scene->mRootNode);
+		bool animated = (*currentToken)["Animated"].GetBool();
+#if 0
+		if(animated)
+		{			
+			for(uint animIter = 0; animIter < scene->mNumMeshes; animIter++)
 			{
-				nodes.push_back(current->mChildren[childIndex]);
-			}
-			//m_Entries meshData;
-			for(int meshIndex = 0; meshIndex < (int)current->mNumMeshes; meshIndex++)
-			{			
-				//void load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,bool,char* path,char* nameBuffer)
-				load_mesh(scene->mMeshes[current->mMeshes[meshIndex]],&block,meshNum,
-						meshIndex +1 >= (int)scene->mNumMeshes,metaPath,nameBuffer);
-				meshNum++;
+				
 			}
 		}
+#endif
+		for(int meshIndex = 0; meshIndex < scene->mNumMeshes; meshIndex++)
+		{
+			std::string name = load_mesh(scene->mMeshes[meshIndex],&block,meshIndex,
+						meshIndex +1 >= (int)scene->mNumMeshes,meshdatapath);	
+			meshNames.push_back(name);
+		}
+		FILE* infoFile = fopen(metaPath,"w");
+		defer {fclose(metaPath);};
+		ASSERT_MESSAGE(infoFile ,"INFO FILE IS NOT CREATED ::  %s \n",currentName);
+		fprintf(infoFile, "%d \n", scene->mNumMeshes);
+		for(int meshIndex = 0; meshIndex < scene->mNumMeshes; meshIndex++)
+		{
+			fprintf(infoFile, "%s \n", meshNames[meshIndex].data()); // frite vertex data files to info
+		}
+		fprintf(infoFile, "%s \n", meshpartpath);					//where parts of the mesh is
+		while(!nodes.empty()) // 
+		{
+			Node current = nodes.back();
+			nodes.pop_back();
+			for(int childIndex = 0;childIndex < (int)current.assimpNode->mNumChildren; childIndex++)
+			{
+				nodes.emplace_back(current.matrix * (*((MATH::mat4*)&current.assimpNode->mChildren[childIndex].mTransformation)),current.assimpNode->mChildren[childIndex]);
+			}
+			//m_Entries meshData;
+			for(int meshIndex = 0; meshIndex < (int)current.assimpNode->mNumMeshes; meshIndex++) // for every 
+			{
+				MeshPart currentPart;
+				
+				//void load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,bool,char* path,char* nameBuffer)
+				//load_mesh(scene->mMeshes[current->mMeshes[meshIndex]],&block,meshNum,
+				//		meshIndex +1 >= (int)scene->mNumMeshes,metaPath,nameBuffer);
+				//meshNum++;
+			}
+		}
+		
 	}
 	return 0;
 }
