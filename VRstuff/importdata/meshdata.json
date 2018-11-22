@@ -3,7 +3,7 @@
 	{
 		"metaDataPath" : "metadata/model.info",
 		"meshDataName" : "metadata/model.bin",
-		"meshPartsFile" : "metadata/model.parts",
+		"meshPartFile" : "metadata/model.part",
 		"rawPath" : "models/model.dae",
 		"Animated" : true,
 	}

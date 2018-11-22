@@ -22,7 +22,7 @@ struct objIndex
 #undef calloc
 
 
-std::string load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,bool end,char* path)
+std::string load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,char* path)
 {	
 	MATH::vec3* pos = (MATH::vec3*)CONTAINER::get_next_memory_block(*block);
 	CONTAINER::increase_memory_block(block, mesh->mNumVertices * sizeof(MATH::vec3));
@@ -91,7 +91,7 @@ std::string load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,bo
 struct Node
 {
 	Node(){};
-	Node(MATH::mat4 _matrix,aiNode*	_assimpNode){matrix = _matrix; assimpNode = _assimpNode;};
+	Node(MATH::mat4 _matrix,aiNode*	_assimpNode): matrix (_matrix), assimpNode (_assimpNode){}
 	MATH::mat4 matrix;
 	aiNode*	   assimpNode;
 };
@@ -111,8 +111,7 @@ int main()
 	MATH::mat4 identity;
 	MATH::identify(&identity);
 	for (uint i = 0; i < modelNames.numobj; i++)
-	{
-		std::vector<MeshPart> meshParts;
+	{		
 		std::vector<std::string> meshNames;
 		char* currentName = modelNames.buffer[i];
 
@@ -121,7 +120,7 @@ int main()
 		char* path = (*currentToken)["rawPath"].GetString();
 		char* metaPath = (*currentToken)["metaDataPath"].GetString();
 		char* meshdatapath = (*currentToken)["meshDataName"].GetString();
-		char* meshpartpath = *currentToken)["meshPartFile"].GetString();
+		char* meshpartpath = (*currentToken)["meshPartFile"].GetString();
 		ASSERT_MESSAGE(path && metaPath && meshdatapath && meshpartpath,"RAWPATH IS NOT FOUND ::  %s \n",currentName);
 		const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices);
 		//const char * error = importer.GetErrorString();
@@ -130,7 +129,7 @@ int main()
 		int meshNum = 0;
 		int maxMeshes = scene->mNumMeshes;
 		printf("Parsing model %d/%d :: %s \n Num meshes %d \n", i, modelNames.numobj, currentName, maxMeshes);
-		std::vector<Node*> nodes;
+		std::vector<Node> nodes;
 		
 		nodes.emplace_back(identity,scene->mRootNode);
 		bool animated = (*currentToken)["Animated"].GetBool();
@@ -145,12 +144,14 @@ int main()
 #endif
 		for(int meshIndex = 0; meshIndex < scene->mNumMeshes; meshIndex++)
 		{
-			std::string name = load_mesh(scene->mMeshes[meshIndex],&block,meshIndex,
-						meshIndex +1 >= (int)scene->mNumMeshes,meshdatapath);	
+			std::string name = load_mesh(
+				scene->mMeshes[meshIndex],
+				&block,meshIndex,
+				meshdatapath);	
 			meshNames.push_back(name);
 		}
 		FILE* infoFile = fopen(metaPath,"w");
-		defer {fclose(metaPath);};
+		defer {fclose(infoFile);};
 		ASSERT_MESSAGE(infoFile ,"INFO FILE IS NOT CREATED ::  %s \n",currentName);
 		fprintf(infoFile, "%d \n", scene->mNumMeshes);
 		for(int meshIndex = 0; meshIndex < scene->mNumMeshes; meshIndex++)
@@ -158,25 +159,38 @@ int main()
 			fprintf(infoFile, "%s \n", meshNames[meshIndex].data()); // frite vertex data files to info
 		}
 		fprintf(infoFile, "%s \n", meshpartpath);					//where parts of the mesh is
+		FILE* partFile = fopen(meshpartpath,"wb");
+		defer {fclose(partFile);};
+		std::vector<MeshPart> meshParts;
 		while(!nodes.empty()) // 
 		{
 			Node current = nodes.back();
 			nodes.pop_back();
 			for(int childIndex = 0;childIndex < (int)current.assimpNode->mNumChildren; childIndex++)
 			{
-				nodes.emplace_back(current.matrix * (*((MATH::mat4*)&current.assimpNode->mChildren[childIndex].mTransformation)),current.assimpNode->mChildren[childIndex]);
+				MATH::mat4 mTemp = current.matrix * (*((MATH::mat4*)&current.assimpNode->mChildren[childIndex]->mTransformation));
+				nodes.push_back
+				({
+					mTemp,
+					current.assimpNode->mChildren[childIndex]
+				});
 			}
-			//m_Entries meshData;
+			//write current mesh to parts list and file for it			
 			for(int meshIndex = 0; meshIndex < (int)current.assimpNode->mNumMeshes; meshIndex++) // for every 
 			{
 				MeshPart currentPart;
-				
-				//void load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,bool,char* path,char* nameBuffer)
-				//load_mesh(scene->mMeshes[current->mMeshes[meshIndex]],&block,meshNum,
-				//		meshIndex +1 >= (int)scene->mNumMeshes,metaPath,nameBuffer);
-				//meshNum++;
-			}
+				currentPart.localTranform = current.matrix;
+				currentPart.meshIndex = current.assimpNode->mMeshes[meshIndex];
+				meshParts.push_back(currentPart);
+			}			
 		}
+		int numParts = meshParts.size();
+		fwrite(&numParts, sizeof(int), 1, partFile);
+		//meshdata
+		for(const MeshPart& mp : meshParts)
+		{
+			fwrite(&mp, sizeof(MeshPart), 1, partFile);
+		}			
 		
 	}
 	return 0;

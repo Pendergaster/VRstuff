@@ -28,7 +28,7 @@ struct ModelData
 
 struct MeshPart
 {
-	MATH::mat4 	localTranform;
+	MATH::mat4 		localTranform;
 	uint32_t 		meshIndex;
 };
 

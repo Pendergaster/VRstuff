@@ -59,7 +59,8 @@ static inline bool load_mesh(MeshInfo* info,Mesh* data,CONTAINER::MemoryBlock* w
     glCheckError();
 	return true;
 }
-
+#define MAX_MESH_PARTS 50
+#define MAX_MESHES 50
 static void fill_mesh_cache(MeshData* meshData,CONTAINER::MemoryBlock* workingMem,
 		CONTAINER::MemoryBlock* staticAllocator)
 {
@@ -70,15 +71,30 @@ static void fill_mesh_cache(MeshData* meshData,CONTAINER::MemoryBlock* workingMe
 	defer{CONTAINER::dispose_dynamic_array(&names);};
 	token.GetKeys(&names);
 	//int num = 0;
-	meshData->numMeshes = names.numobj;
+	//meshData->numMeshes = names.numobj;
 	CONTAINER::init_table_with_block(&meshData->meshCache,staticAllocator,names.numobj);
+	
+	//meshData->meshArray = (Mesh*)CONTAINER::get_next_memory_block(*staticAllocator);
+	//CONTAINER::increase_memory_block(staticAllocator,names.numobj * sizeof(Mesh));
+
+	meshData->meshInfos = (ModelInfo*)CONTAINER::get_next_memory_block(*staticAllocator);
+	CONTAINER::increase_memory_block(staticAllocator,names.numobj * sizeof(ModelInfo));
+	
+	meshData->numParts = 0;
+	//meshData->meshParts = CONTAINER::get_next_memory_block(*workingMem);
+	//CONTAINER::increase_memory_block(workingMem,MAX_MESH_PARTS * sizeof(MeshPart));
+	
+	meshData->numMeshes = 0;
+	//meshData->meshParts = (Mesh*)CONTAINER::get_next_memory_block(*workingMem);
+	//CONTAINER::increase_memory_block(workingMem,MAX_MESH_PARTS * sizeof(MeshPart));
+	Mesh*		meshArray = (Mesh*)CONTAINER::get_next_memory_block(*workingMem);
+	CONTAINER::increase_memory_block(workingMem,MAX_MESH_PARTS * sizeof(MeshPart));
+	
+	MeshPart*	meshParts = NULL;
+	
+	
+	
 	CONTAINER::MemoryBlock lastStateOfMem = *workingMem;
-	meshData->meshArray = (Mesh*)CONTAINER::get_next_memory_block(*staticAllocator);
-	CONTAINER::increase_memory_block(staticAllocator,names.numobj * sizeof(Mesh));
-
-	meshData->meshInfos = (MeshInfo*)CONTAINER::get_next_memory_block(*staticAllocator);
-	CONTAINER::increase_memory_block(staticAllocator,names.numobj * sizeof(Mesh));
-
 	for(uint i = 0; i < names.numobj;i++)
 	{
 		char* currentName = names.buffer[i];

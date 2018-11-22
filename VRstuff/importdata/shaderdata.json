@@ -37,7 +37,6 @@
 		}
 
 	},
-
 	"SkyProg" : 
 	{
 		"CombinedPath" : "shaders/skyboxshader.glsl",
@@ -46,7 +45,5 @@
 		{
 			"skybox" : "SAMPLERCUBE" 
 		}
-
 	}
-
 }
