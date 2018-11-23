@@ -11,6 +11,7 @@ struct Mesh
 	uint texCoordBuffer = 0;
 	uint indexBuffer = 0;
 	uint vao = 0;
+	uint numIndexes = 0;
 };
 #if 0
 struct MeshInfo
@@ -56,6 +57,13 @@ struct MeshData
 	Mesh*							meshArray = NULL;
 	MeshPart*						meshParts = NULL;
 };
+
+static MeshId get_mesh(MeshData* meshData,const char* name)
+{
+	int* index = CONTAINER::access_table(meshData->meshCache,name);
+	ASSERT_MESSAGE(index,"MESH NOT FOUND :: %s \n",name);
+	return *index;
+}
 
 
 #endif

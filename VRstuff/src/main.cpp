@@ -985,23 +985,32 @@ int main()
 			{
 				RenderData* currentRenderData = 
 					&hook.renderables[j];
-				MATH::mat4 model(currentRenderData->orientation);
-				MATH::translate(&model,currentRenderData->position);
-				MATH::scale_mat4(&model,currentRenderData->scale);
-				glCheckError();
-
-				glUniformMatrix4fv(modelPos, 1, 
-						GL_FALSE, (GLfloat*)&model);//.mat);
-				glCheckError();
-				//set mesh
-				Mesh* currentMesh = 
-					&meshes.meshArray[currentRenderData->meshID];
-				MeshInfo* currentMeshInfo = 
+				ModelInfo* currentModelInfo = 
 					&meshes.meshInfos[currentRenderData->meshID];
-				glBindVertexArray(currentMesh->vao);
-				glDrawElements(GL_TRIANGLES,currentMeshInfo->numIndexes,
-						GL_UNSIGNED_INT,0);
-				glCheckError();
+				for(uint part = 0; part < currentModelInfo->numParts;part++)
+				{
+					MeshPart* currentPart = 
+						&meshes.meshParts[currentModelInfo->partsLoc + part];
+					MATH::mat4 model(currentRenderData->orientation);
+					MATH::translate(&model,currentRenderData->position);
+					model *= currentPart->localTranform;
+					MATH::scale_mat4(&model,currentRenderData->scale);
+					glCheckError();
+
+					glUniformMatrix4fv(modelPos, 1, 
+							GL_FALSE, (GLfloat*)&model);//.mat);
+					glCheckError();
+					//set mesh
+					Mesh* currentMesh = &meshes.meshArray[currentModelInfo->meshLoc +
+							currentPart->meshIndex];
+					glBindVertexArray(currentMesh->vao);
+							
+					glDrawElements(GL_TRIANGLES,
+							currentMesh->vao,	
+							GL_UNSIGNED_INT,0);
+					glCheckError();
+
+				}
 			}
 		}
 
@@ -1162,13 +1171,13 @@ int main()
 	return 0;
 }
 
+#if  0
 struct PointLight
 {
 	MATH::vec3 pos;
 	FrameTexture depthMap;
 	//todo vals and stuff
 };
-
 void render_depth(const RenderCommands& commands,Material shadowMat)
 {
 	glBindBuffer(GL_UNIFORM_BUFFER,commands.
@@ -1218,6 +1227,7 @@ void render_depth(const RenderCommands& commands,Material shadowMat)
 		glCheckError();
 	}
 }
+#endif
 void render(const RenderCommands& commands)
 {
 	//cameramatrixes
@@ -1262,11 +1272,9 @@ void render(const RenderCommands& commands)
 		uint glID = commands.shaders->shaderProgramIds[currentMaterial->shaderProgram];
 		glUseProgram(glID);
 
-		MATH::mat4 model(currentRenderData->orientation);
-		MATH::translate(&model,currentRenderData->position);
-		MATH::scale_mat4(&model,currentRenderData->scale);
 		glCheckError();
-
+		bool setModel = false;
+		uint modelLoc = 0;
 		//set uniforms
 		for(uint i2 = 0; i2 < currentMaterial->numUniforms;i2++)
 		{
@@ -1301,7 +1309,9 @@ void render(const RenderCommands& commands)
 					}break;
 				case UniformType::MODEL:
 					{
-						glUniformMatrix4fv(info->location, 1, GL_FALSE, (GLfloat*)&model);//.mat);
+						//glUniformMatrix4fv(info->location, 1, GL_FALSE, (GLfloat*)&model);//.mat);
+						setModel = true;
+						modelLoc = info->location;
 					}break;
 				case UniformType::SHADOW:
 					{
@@ -1316,7 +1326,29 @@ void render(const RenderCommands& commands)
 			}
 		}
 		glCheckError();
+		ModelInfo* currentModelInfo = &commands.meshes->meshInfos[currentRenderData->meshID];
+		for(uint part = 0; part < currentModelInfo->numParts;part++)
+		{
+			if(setModel)
+			{
+				MeshPart* currentPart = 
+					&commands.meshes->meshParts[currentModelInfo->partsLoc + part];
+				MATH::mat4 model(currentRenderData->orientation);
+				MATH::translate(&model,currentRenderData->position);
+				model *= currentPart->localTranform;
+				MATH::scale_mat4(&model,currentRenderData->scale);
+
+				glUniformMatrix4fv(modelLoc, 1, GL_FALSE, (GLfloat*)&model);//.mat);
+				Mesh* currentMesh = &commands.meshes->meshArray[currentModelInfo->meshLoc 
+						+ currentPart->meshIndex];
+				glBindVertexArray(currentMesh->vao);
+				glDrawElements(GL_TRIANGLES,currentMesh->numIndexes,
+						GL_UNSIGNED_INT,0);
+
+			}
+		}
 		//set mesh
+#if 0
 		Mesh* currentMesh = 
 			&commands.meshes->meshArray[currentRenderData->meshID];
 		MeshInfo* currentMeshInfo = 
@@ -1325,6 +1357,7 @@ void render(const RenderCommands& commands)
 		glDrawElements(GL_TRIANGLES,currentMeshInfo->numIndexes,
 				GL_UNSIGNED_INT,0);
 		glCheckError();
+#endif
 	}
 	//render skybox
 	glActiveTexture(GL_TEXTURE0);

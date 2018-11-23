@@ -1,7 +1,7 @@
 #ifndef PAKKI_MODEL_DATA
 #define PAKKI_MODEL_DATA
 #include <MathUtil.h>
-#include <intTypes.h>
+#include <stdint.h>
 #define MAX_NAME_SIZE 80
 
 struct meshData
