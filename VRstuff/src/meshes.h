@@ -11,8 +11,10 @@
 #include <meshdefs.h>
 //TODO free method for meshes? 
 //TODO generoi opengl meshit muualla? 
-static inline bool load_mesh(MeshInfo* info,Mesh* data,CONTAINER::MemoryBlock* workingMem)
+static inline bool load_mesh(ModelInfo* info,Mesh* data,CONTAINER::MemoryBlock* workingMem)
 {
+	FILE* infoFile = fopen(info->path);
+	defer{ fclose(infoFile); };
 	size_t sizeOfFile = 0;
 	void* modelDataDump = FILESYS::load_binary_file_to_block(info->path,workingMem,&sizeOfFile);
 	if(!modelDataDump) return false;
@@ -76,37 +78,45 @@ static void fill_mesh_cache(MeshData* meshData,CONTAINER::MemoryBlock* workingMe
 	
 	//meshData->meshArray = (Mesh*)CONTAINER::get_next_memory_block(*staticAllocator);
 	//CONTAINER::increase_memory_block(staticAllocator,names.numobj * sizeof(Mesh));
-
+	
+	meshData->numInfos = 0;
 	meshData->meshInfos = (ModelInfo*)CONTAINER::get_next_memory_block(*staticAllocator);
 	CONTAINER::increase_memory_block(staticAllocator,names.numobj * sizeof(ModelInfo));
 	
 	meshData->numParts = 0;
+	MeshPart* partArray = (Mesh*)CONTAINER::get_next_memory_block(*workingMem);
+	CONTAINER::increase_memory_block(workingMem,MAX_MESH_PARTS * sizeof(MeshPart));
 	//meshData->meshParts = CONTAINER::get_next_memory_block(*workingMem);
 	//CONTAINER::increase_memory_block(workingMem,MAX_MESH_PARTS * sizeof(MeshPart));
 	
-	meshData->numMeshes = 0;
+
 	//meshData->meshParts = (Mesh*)CONTAINER::get_next_memory_block(*workingMem);
 	//CONTAINER::increase_memory_block(workingMem,MAX_MESH_PARTS * sizeof(MeshPart));
+	meshData->numMeshes = 0;
 	Mesh*		meshArray = (Mesh*)CONTAINER::get_next_memory_block(*workingMem);
-	CONTAINER::increase_memory_block(workingMem,MAX_MESH_PARTS * sizeof(MeshPart));
-	
-	MeshPart*	meshParts = NULL;
+	CONTAINER::increase_memory_block(workingMem,MAX_MESHES * sizeof(Mesh));
 	
 	
 	
 	CONTAINER::MemoryBlock lastStateOfMem = *workingMem;
 	for(uint i = 0; i < names.numobj;i++)
 	{
+		ModelInfo info;
 		char* currentName = names.buffer[i];
 		LOG("Getting model %s", currentName);
 		char* tempName = (char*)CONTAINER::get_next_memory_block(*staticAllocator);
 		strcpy(tempName,currentName);
 		CONTAINER::increase_memory_block_aligned(staticAllocator,(int)strlen(tempName)+1);
+		info.name = tempName;
 		JsonToken* meshToken = token[currentName].GetToken();
 		ASSERT_MESSAGE(meshToken,"MESH TOKEN NOT VALID %s \n",currentName);
+		
 		char* metaDataPath = (*meshToken)["metaDataPath"].GetString();
-		MeshInfo info;
-		info.name = tempName;
+		ASSERT_MESSAGE(metaDataPath ,"MODEL DOES NOT HAVE ENOUGH DATA :: %s \n",currentName);
+		tempName = (char*)CONTAINER::get_next_memory_block(*staticAllocator);
+		strcpy(tempName,metaDataPath);
+		CONTAINER::increase_memory_block_aligned(staticAllocator,(int)strlen(metaDataPath)+1);
+		
 		info.path = metaDataPath;
 
 		Mesh data;

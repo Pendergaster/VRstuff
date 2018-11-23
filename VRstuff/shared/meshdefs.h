@@ -23,7 +23,7 @@ struct MeshInfo
 struct MeshData
 {
 	uint							numMeshes = 0;
-	CONTAINER::StringTable<int>		meshCache; // vain kutumanimet, boneille ja muille joku?
+	CONTAINER::StringTable<int>		meshCache; // vain kutsumanimet, boneille ja muille joku?
 	Mesh*							meshArray = NULL;
 	MeshInfo*						meshInfos = NULL;
 };
@@ -50,7 +50,8 @@ struct MeshData
 {
 	uint							numMeshes = 0;
 	uint 							numParts = 0;
-	CONTAINER::StringTable<int>		meshCache; // vain kutumanimet, boneille ja muille joku?
+	uint							numInfos = 0;
+	CONTAINER::StringTable<int>		meshCache; // vain kutsumanimet, boneille ja muille joku?
 	ModelInfo*						meshInfos = NULL;
 	Mesh*							meshArray = NULL;
 	MeshPart*						meshParts = NULL;
