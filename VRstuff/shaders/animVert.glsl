@@ -16,9 +16,14 @@ out DATA
 	float clipSpace;
 } vs_out;
 
+
 void main()
 {
 	vs_out.fragPos = vec3(model * vec4(vertexPosition, 1.0));
+
+
+
+
 
 	vec4 pos = projection * view * model * vec4(vertexPosition, 1.0);
 	gl_Position = pos;
@@ -50,7 +55,15 @@ void main()
 	vs_out.clipPositions[1] = -clipPositions.y;
 	vs_out.clipPositions[2] = -clipPositions.z;
 	vs_out.clipPositions[3] = -clipPositions.w;
+
+
+	//vs_out.clipSpace = gl_Position.z;
+	vs_out.clipSpace = gl_Position.z;
+	//vs_out.clipSpace = (view * vec4(vertexPosition, 1.0)).z;
+//(view * vec4(vertexPosition.xyz, 1.0)).z;
+	//vs_out.fragPosLightSpace = shadowMatrix * vec4(vs_out.fragPos, 1.0);
 }
+
 
 
 

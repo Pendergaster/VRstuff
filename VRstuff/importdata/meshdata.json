@@ -5,6 +5,7 @@
 		"meshDataName" : "metadata/model.bin",
 		"meshPartFile" : "metadata/model.part",
 		"rawPath" : "models/model.dae",
-		"Animated" : true,
+		"Animated" : true
 	}
 }
+

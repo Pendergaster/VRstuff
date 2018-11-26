@@ -25,16 +25,17 @@ static bool load_model(ModelInfo* info,Mesh* meshArray,MeshPart* partArray,
 	ASSERT_MESSAGE(matches == 1 && numMeshes > 0,
 			"INCORRECT SYNTAX :: %s",info->name);
 	info->numMeshes = numMeshes;
+	char nameBuffer[52];
 	for(uint i = 0; i < info->numMeshes; i++) //read meshdata
 	{
-		char* currentFilePath = NULL;
-		matches = fscanf(infoFile,"%s \n",currentFilePath);
+		//char* currentFilePath = NULL;
+		matches = fscanf(infoFile,"%s \n",nameBuffer);
 		ASSERT_MESSAGE(matches == 1, "INCORRECT SYNTAX :: %s",info->name);
 		CONTAINER::MemoryBlock lastState = *workingMem;
 		defer {*workingMem = lastState;};
 		size_t sizeOfFile = 0;
 		void* modelDataDump = 
-			FILESYS::load_binary_file_to_block(currentFilePath,
+			FILESYS::load_binary_file_to_block(nameBuffer,
 					workingMem,&sizeOfFile);
 
 		if(!modelDataDump) return false;
@@ -77,18 +78,19 @@ static bool load_model(ModelInfo* info,Mesh* meshArray,MeshPart* partArray,
 
 		meshArray[i] = mesh;
 	}
-	char* modelPartFilePath = NULL;
-	matches = fscanf(infoFile,"%s",modelPartFilePath);
-	ASSERT_MESSAGE(matches == 1 && modelPartFilePath, "INCORRECT SYNTAX :: %s",info->name);
+	//char* modelPartFilePath = NULL;
+	matches = fscanf(infoFile,"%s",nameBuffer);
+	ASSERT_MESSAGE(matches == 1 && nameBuffer, "INCORRECT SYNTAX :: %s",info->name);
 	CONTAINER::MemoryBlock lastState = *workingMem;
 	defer {*workingMem = lastState;};
-	void* parts = FILESYS::load_binary_file_to_block(modelPartFilePath,workingMem,nullptr);
+	void* parts = FILESYS::load_binary_file_to_block(nameBuffer,workingMem,nullptr);
 	uint numparts = *(uint*)parts;
 	parts = VOIDPTRINC(parts,sizeof(uint));
 	info->numParts = numparts;
 	for(uint i = 0; i < numparts; i++)
 	{
 		partArray[i] = *(MeshPart*)parts;
+		parts = VOIDPTRINC(parts,sizeof(MeshPart));
 	}
 
 #if 0
@@ -195,7 +197,7 @@ static void fill_mesh_cache(MeshData* meshData,CONTAINER::MemoryBlock* workingMe
 		strcpy(tempName,metaDataPath);
 		CONTAINER::increase_memory_block_aligned(staticAllocator,(int)strlen(metaDataPath)+1);
 
-		info.path = metaDataPath;
+		info.path = tempName;
 		info.meshLoc = meshData->numMeshes;
 		info.partsLoc = meshData->numParts;
 
@@ -219,6 +221,6 @@ static void fill_mesh_cache(MeshData* meshData,CONTAINER::MemoryBlock* workingMe
 
 	meshData->meshParts = (MeshPart*)CONTAINER::get_next_memory_block(*staticAllocator);
 	CONTAINER::increase_memory_block(staticAllocator,sizeof(MeshPart) * meshData->numParts);
-	memcpy(meshData->meshArray,partArray,sizeof(MeshPart) * meshData->numParts);
+	memcpy(meshData->meshParts,partArray,sizeof(MeshPart) * meshData->numParts);
 }
 #endif //PAKKI_MESHES

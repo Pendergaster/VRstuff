@@ -1006,7 +1006,7 @@ int main()
 					glBindVertexArray(currentMesh->vao);
 							
 					glDrawElements(GL_TRIANGLES,
-							currentMesh->vao,	
+							currentMesh->numIndexes,	
 							GL_UNSIGNED_INT,0);
 					glCheckError();
 

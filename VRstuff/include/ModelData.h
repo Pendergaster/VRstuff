@@ -2,14 +2,19 @@
 #define PAKKI_MODEL_DATA
 #include <MathUtil.h>
 #include <stdint.h>
+#include <Utils.h>
+#include <array>
 #define MAX_NAME_SIZE 80
-
+#define MAX_BONES 64
+#define MAX_BONES_IN_VERTEX 3
 struct meshData
 {
 	MATH::vec3*		vertexes = 0;
 	MATH::vec3*		normals = 0;
 	MATH::vec2*		texCoords = 0;
 	int*			indexes = 0;
+	int				boneIndexes[3];
+	MATH::vec3		weights;	
 	//next model in line
 };
 
@@ -19,6 +24,8 @@ struct meshAligment
 	int numTextureCoords = 0;
 	int numNormals = 0;
 	int numIndexes = 0;
+	int numBones = 0;
+	int numBoneWeights = 0;
 };
 
 struct ModelData
@@ -32,8 +39,28 @@ struct MeshPart
 	uint32_t 		meshIndex;
 };
 
+struct BoneData
+{
+	MATH::mat4 offset;
+	MATH::mat4 finalTransform;
+};
 
-
+struct VertexBoneData
+{
+	std::array<uint,MAX_BONES_IN_VERTEX> IDs;
+	std::array<float,MAX_BONES_IN_VERTEX> weights;
+	void add(uint index, float weight)
+	{
+		for(uint i = 0; i < MAX_BONES_IN_VERTEX;i++)
+		{
+			if(weights[i] == 0)
+			{
+				weights[i] = weight;
+				IDs[i] = index;
+			}
+		}
+	 }
+};
 
 
 #endif
