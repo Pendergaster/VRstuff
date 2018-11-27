@@ -2,7 +2,9 @@
 
 REM ox- nopee optimointi, 0t nopeutta , oB2 inlineany, Oi instribdsdsds
 REM Od ei optimisaatioita
-REM CLAGS= -Ox -Ot -OB2 -Oi
+REM -OB2
+SET CLAGS= -Od -W4 -wd4201 -wd4505
+REM -Ox -Ot  -Oi -W4 -wd4201
 REM nologo ei turhaa printtiä / /MD common runtime multithreaded   /   /link alottaa linkkaamisen / 
 REM -LD -> buildaa .dll -MD jälkee
 
@@ -32,6 +34,7 @@ IF /I "%1"=="build_engine" (
 		)
 
 IF /I "%1"=="build_test" (
+		cls
 		pushd TestBin
 		set CLAGS= -Od
 		cl %CLAGS% -Z7 /EHsc /DEBUG ..\src\test.cpp  %includes% /MD /link %libs% -LIBPATH:../libraries 

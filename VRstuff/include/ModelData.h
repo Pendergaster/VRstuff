@@ -34,16 +34,11 @@ struct ModelData
 	uint32_t numMeshes;
 };
 
-struct MeshPart
-{
-	MATH::mat4 		localTranform;
-	uint32_t 		meshIndex;
-};
-
 struct BoneData
 {
-	MATH::mat4 offset;
-	MATH::mat4 finalTransform;
+	uint 		nodeIndex;
+	MATH::mat4 	offset;
+	MATH::mat4 	finalTransform;
 };
 
 struct AnimationData
@@ -75,7 +70,7 @@ struct ScaleKey
 
 struct AnimationChannel
 {
-	uint NodeIndex;
+	uint nodeIndex;
 	uint numRotationKeys;
 	uint numPositionKeys;
 	uint numScaleKeys;
@@ -84,10 +79,12 @@ struct AnimationChannel
 	ScaleKey*	scales = NULL;
 };
 #define NO_MESH 0xFFFF
+#define NO_BONE 0xFFFF
 struct RenderNode
 {
 	uint 		numChildren;
-	uint 		meshIndex;
+	uint 		meshIndex = NO_MESH;
+	uint 		boneIndex = NO_BONE;
 	MATH::mat4 	transformation;
 };
 
@@ -99,10 +96,11 @@ struct VertexBoneData
 	{
 		for(uint i = 0; i < MAX_BONES_IN_VERTEX;i++)
 		{
-			if(weights[i] == 0)
+			if(weights[i] == 0.0)
 			{
 				weights[i] = weight;
 				IDs[i] = index;
+				break;
 			}
 		}
 	 }

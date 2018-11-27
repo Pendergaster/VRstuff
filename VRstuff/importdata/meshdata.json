@@ -1,9 +1,9 @@
 {
 	"Skeleton" : 
 	{
-		"metaDataPath" : "metadata/model.info",
-		"meshDataName" : "metadata/model.bin",
-		"meshPartFile" : "metadata/model.part",
+		"metaDataPath" : "temp/model.info",
+		"meshDataName" : "temp/model.bin",
+		"meshPartFile" : "temp/model.part",
 		"rawPath" : "models/model.dae",
 		"Animated" : true
 	}
