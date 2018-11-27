@@ -56,38 +56,39 @@ struct AnimationData
 
 struct RotationKey
 {
-	double time;
+	double 				time;
 	MATH::quaternion	quat;
 };
 
 struct PositionKey
 {
-	double time;
+	double 				time;
 	MATH::vec3			position;
 };
 
 struct ScaleKey
 {
-	double time;
+	double 				time;
 	MATH::vec3			scale;
 };
 
 
-struct ChannelKeys
-	RotationKey rotation;
-	PositionKey position;
-	ScaleKey	scale;
-};
-
 struct AnimationChannel
 {
+	uint NodeIndex;
 	uint numRotationKeys;
 	uint numPositionKeys;
 	uint numScaleKeys;
 	RotationKey* rotations = NULL;
 	PositionKey* positions = NULL;
 	ScaleKey*	scales = NULL;
-
+};
+#define NO_MESH 0xFFFF
+struct RenderNode
+{
+	uint 		numChildren;
+	uint 		meshIndex;
+	MATH::mat4 	transformation;
 };
 
 struct VertexBoneData
