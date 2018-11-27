@@ -22,8 +22,7 @@ struct objIndex
 	int texIndex = 0;
 };
 #undef calloc
-
-
+#if 0
 std::string load_bones(aiMesh* mesh,char* name,int numMesh,std::map<std::string,uint>& bonemapping ,
 		uint* numBones,std::vector<BoneData>& boneInfos)
 {
@@ -85,8 +84,9 @@ std::string load_bones(aiMesh* mesh,char* name,int numMesh,std::map<std::string,
 	return ret;
 	//bonetransforms.resize(numBones);
 }
-
-std::string load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,char* path)
+#endif
+std::string load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,char* path,
+		std::map<std::string,uint>& bonemapping,bool animated)
 {	
 	MATH::vec3* pos = (MATH::vec3*)CONTAINER::get_next_memory_block(*block);
 	CONTAINER::increase_memory_block(block, mesh->mNumVertices * sizeof(MATH::vec3));
@@ -132,6 +132,45 @@ std::string load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,ch
 	aligment.numTextureCoords = mesh->mNumVertices;
 	aligment.numIndexes = indexIndex;
 
+
+	std::vector<VertexBoneData> bones;
+	if(animated)
+	{
+		for(uint b = 0; b < mesh->mNumBones;b++)
+		{
+			uint numWeights = mesh->mBones[b]->mNumWeights;
+			std::string boneName(mesh->mBones[b]->mName.data);
+			int boneIndex = 0;
+			if(bonemapping.find(boneName) == bonemapping.end()) // nothing found, create new
+			{
+				boneIndex = bonemapping.size();
+				bonemapping[boneName] = boneIndex;
+			}
+			else
+			{
+				boneIndex = bonemapping[boneName];
+			}
+			for(uint w = 0; w < numWeights;w++)
+			{
+				//float currentWeight = mesh->mBones[b]->mWeights[w].mWeight;
+				uint vertexId = mesh->mBones[b]->mWeights[w].mVertexId;
+				bones[vertexId].add(boneIndex,mesh->mBones[b]->mWeights[w].mWeight);
+			}
+		}
+		for(uint i = 0; i < bones.size(); i++)
+		{
+			float add = 0;
+			for(int p = 0;p < MAX_BONES_IN_VERTEX; p++){
+				add += bones[i].weights[p];
+			}
+			ASSERT_MESSAGE(add != 0,"WEIGHTS ARE ZERO!");
+			add /= (float)MAX_BONES_IN_VERTEX;
+			for(int p = 0;p < MAX_BONES_IN_VERTEX; p++){
+				bones[i].weights[p] /= add;
+			}
+		}
+		aligment.numBoneData = bones.size();
+	}
 	FILE* metaFile = fopen(modelName.data(), "wb");
 	defer{ fclose(metaFile); };
 	fwrite(&aligment, sizeof(meshAligment), 1, metaFile);
@@ -139,9 +178,14 @@ std::string load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,ch
 	fwrite(normal, sizeof(MATH::vec3), aligment.numNormals , metaFile);
 	fwrite(uv, sizeof(MATH::vec2), aligment.numTextureCoords, metaFile);
 	fwrite(index, sizeof(int), aligment.numIndexes, metaFile);
+	if(animated){
+		fwrite(bones.data(), sizeof(VertexBoneData),bones.size(),metaFile);
+	}
 
 	block->currentIndex = 0;
-	printf("Parsed :: %s file %s with %d Vertexes and %d Indexes \n", path ,modelName.data() , aligment.numVerts, aligment.numIndexes);
+	printf("Parsed :: %s file %s with %d Vertexes and %d Indexes %d bones \n", path ,modelName.data() , 
+			aligment.numVerts, aligment.numIndexes,aligment.numBoneData);
+
 #if 0
 	for(int i2 = 0; i2 < aligment.numVerts;i2++)
 	{
@@ -160,6 +204,18 @@ struct Node
 	MATH::mat4 matrix;
 	aiNode*	   assimpNode;
 };
+
+void load_animation(aiAnimation* anim,uint numAnim)
+{
+	AnimationData data;
+	data.duration = anim->mDuration;
+	data.ticksPerSecond = anim->mTicksPerSecond;
+	data.numChannels = anim->mNumChannels;
+	for(uint i = 0 ; i < data.numChannels; i++)
+	{
+		AnimationChannel channels;
+	}
+}
 
 int main()
 {
@@ -189,7 +245,7 @@ int main()
 		char* meshpartpath = (*currentToken)["meshPartFile"].GetString();
 		ASSERT_MESSAGE(path && metaPath && meshdatapath && meshpartpath,"RAWPATH IS NOT FOUND ::  %s \n",currentName);
 		const aiScene* scene = importer.ReadFile(path,aiProcess_Triangulate | aiProcess_FlipUVs |
-			   	aiProcess_JoinIdenticalVertices | aiProcess_GenNormals | aiProcess_GenUVCoords );
+				aiProcess_JoinIdenticalVertices | aiProcess_GenNormals | aiProcess_GenUVCoords );
 		//aiProcess_GenUVCoords 
 		// aiProcess_GenNormals 
 		//const char * error = importer.GetErrorString();
@@ -206,18 +262,20 @@ int main()
 		uint numBones = 0;
 		for(uint meshIndex = 0; meshIndex < scene->mNumMeshes; meshIndex++)
 		{
+#if 0
 			if(animated)
 			{
 
-//std::string load_bones(aiMesh* mesh,char* name,int numMesh,std::map<std::string,uint>& bonemapping ,uint numBones,std::vector<BoneInfo>& boneInfos)
+				//std::string load_bones(aiMesh* mesh,char* name,int numMesh,std::map<std::string,uint>& bonemapping ,uint numBones,std::vector<BoneInfo>& boneInfos)
 				std::string name = load_bones(scene->mMeshes[meshIndex],meshdatapath,meshIndex,boneMapping,
-						&numBones,boneData);
+						&numBones,boneData,);
 				skinFileNames.push_back(name);
 			}
+#endif
 			std::string name = load_mesh(
 					scene->mMeshes[meshIndex],
 					&block,meshIndex,
-					meshdatapath);	
+					meshdatapath,boneMapping,animated);	
 			meshNames.push_back(name);
 		}
 		FILE* infoFile = fopen(metaPath,"w");
@@ -227,9 +285,11 @@ int main()
 		for(uint meshIndex = 0; meshIndex < scene->mNumMeshes; meshIndex++)
 		{
 			fprintf(infoFile, "%s \n", meshNames[meshIndex].data()); // frite vertex data files to info
+#if 0
 			if(animated){
 				fprintf(infoFile, "%s \n", skinFileNames[meshIndex].data()); // frite skinning info 
 			}
+#endif
 		}
 		fprintf(infoFile, "%s \n", meshpartpath);					//where parts of the mesh is
 		FILE* partFile = fopen(meshpartpath,"wb");

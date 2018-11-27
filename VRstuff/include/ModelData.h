@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <Utils.h>
 #include <array>
+
+
 #define MAX_NAME_SIZE 80
 #define MAX_BONES 64
 #define MAX_BONES_IN_VERTEX 3
@@ -24,8 +26,7 @@ struct meshAligment
 	int numTextureCoords = 0;
 	int numNormals = 0;
 	int numIndexes = 0;
-	int numBones = 0;
-	int numBoneWeights = 0;
+	int numBoneData = 0;
 };
 
 struct ModelData
@@ -43,6 +44,50 @@ struct BoneData
 {
 	MATH::mat4 offset;
 	MATH::mat4 finalTransform;
+};
+
+struct AnimationData
+{
+	double duration;
+	double ticksPerSecond;
+	uint   numChannels;
+	uint   channelsIndex;
+};
+
+struct RotationKey
+{
+	double time;
+	MATH::quaternion	quat;
+};
+
+struct PositionKey
+{
+	double time;
+	MATH::vec3			position;
+};
+
+struct ScaleKey
+{
+	double time;
+	MATH::vec3			scale;
+};
+
+
+struct ChannelKeys
+	RotationKey rotation;
+	PositionKey position;
+	ScaleKey	scale;
+};
+
+struct AnimationChannel
+{
+	uint numRotationKeys;
+	uint numPositionKeys;
+	uint numScaleKeys;
+	RotationKey* rotations = NULL;
+	PositionKey* positions = NULL;
+	ScaleKey*	scales = NULL;
+
 };
 
 struct VertexBoneData
