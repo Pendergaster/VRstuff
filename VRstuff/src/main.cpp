@@ -81,7 +81,7 @@ struct RenderCommands
 	ShaderManager*		shaders = NULL;
 	uint*				textureIds = NULL;
 	SystemUniforms*		uniforms = NULL;
-	MeshData*			meshes = NULL;
+	ModelCache*			models = NULL;
 	FrameTexture		offscreen;
 	//uint				shadowMap;
 	FrameTexture*		shadowMaps;
@@ -304,10 +304,10 @@ int main()
 	CONTAINER::init_memory_block(&workingMemory,WORKING_MEM_SIZE);
 
 	ShaderManager shaders;
-	MeshData meshes;
+	ModelCache models;
 	TextureData textures;
 	init_textures_from_metadata(&textures,&staticMemory);
-	fill_mesh_cache(&meshes,&workingMemory,&staticMemory);
+	fill_model_cache(&models,&workingMemory,&staticMemory);
 
 	glCheckError();
 	load_shader_programs(&shaders,&workingMemory,&staticMemory);
@@ -427,7 +427,7 @@ int main()
 	GameHook hook;
 	init_inputs(&hook.inputs);
 	hook.shaders = &shaders;
-	hook.meshes = &meshes;
+	hook.models = &models;
 	hook.textures = &textures;
 	hook.globalLight.dir = MATH::vec4(0.5f, -1.0f, 0.f,1.f);
 	hook.globalLight.ambient = MATH::vec4(0.2f, 0.2f, 0.2f,1.f);
@@ -665,7 +665,7 @@ int main()
 #if VR
 		rend.frameTextures = eyes;
 #endif
-		rend.meshes = &meshes;
+		rend.models = &models;
 		rend.renderables = hook.renderables;
 		rend.numRenderables = hook.numRenderables;
 		rend.shaders = &shaders;
@@ -969,7 +969,7 @@ int main()
 
 
 
-
+#if REDO
 		for(uint i = 0; i < NUM_CASCADES; i++)
 		{
 			set_and_clear_frameTexture(cascades[i]);
@@ -1013,6 +1013,7 @@ int main()
 				}
 			}
 		}
+#endif
 
 
 
@@ -1230,6 +1231,7 @@ void render_depth(const RenderCommands& commands,Material shadowMat)
 #endif
 void render(const RenderCommands& commands)
 {
+#if REDO
 	//cameramatrixes
 	glBindBuffer(GL_UNIFORM_BUFFER,commands.
 			uniforms->matrixUniformBufferObject);
@@ -1326,7 +1328,7 @@ void render(const RenderCommands& commands)
 			}
 		}
 		glCheckError();
-		ModelInfo* currentModelInfo = &commands.meshes->meshInfos[currentRenderData->meshID];
+		ModelInfo* currentModelInfo = &commands.models->meshInfos[currentRenderData->meshID];
 		for(uint part = 0; part < currentModelInfo->numParts;part++)
 		{
 			if(setModel)
@@ -1394,5 +1396,6 @@ void render(const RenderCommands& commands)
 	glCheckError();
 	glUseProgram(0);
 	glBindVertexArray(0);
+#endif
 }
 //#define VR 1

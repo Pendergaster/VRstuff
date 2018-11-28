@@ -172,8 +172,9 @@ std::string load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,ch
 			for(int p = 0;p < MAX_BONES_IN_VERTEX; p++){
 				add += bones[i].weights[p];
 			}
+			add = sqrtf(add);
 			ASSERT_MESSAGE(add != 0,"WEIGHTS ARE ZERO!");
-			add /= (float)MAX_BONES_IN_VERTEX;
+			//add /= (float)MAX_BONES_IN_VERTEX;
 			for(int p = 0;p < MAX_BONES_IN_VERTEX; p++){
 				bones[i].weights[p] /= add;
 			}
@@ -392,6 +393,7 @@ int main()
 		FILE* treeFile = fopen(treePath.data(),"wb");
 		defer {fclose(treeFile);};
 		fwrite(renderNodes.data(),sizeof(RenderNode),renderNodes.size(),treeFile);
+		fprintf(infoFile, "%d \n", treePath.size()); // frite vertex data files to info
 		fprintf(infoFile, "%s \n", treePath.data()); // frite vertex data files to info
 		//FILE* 
 		ASSERT_MESSAGE(scene->mNumAnimations,"NO ANIMATIONS");
@@ -437,7 +439,7 @@ int main()
 	}
 	FILE* hostfile =  fopen("temp/root.info","w");
 
-	fprintf(hostfile,  "{\n\tNumModels : %d, \n\tNumMeshes : %d, \n\tNumAnimations : %d, \n\tNumAnimationChannels : %d, \n\tNumNodes : %d, \n\tNumBones : %d \n\tNumPositionKeys : %d, \n\tNumRotationKeys : %d, \n\tNumScaleKeys : %d \n}",
+	fprintf(hostfile,  "{\n\t\"NumModels\" : %d, \n\t\"NumMeshes\" : %d, \n\t\"NumAnimations\" : %d, \n\t\"NumAnimationChannels\" : %d, \n\t\"NumNodes\" : %d, \n\t\"NumBones\" : %d \n\t\"NumPositionKeys\" : %d, \n\t\"NumRotationKeys\" : %d, \n\t\"NumScaleKeys\" : %d \n}",
 					modelNames.numobj,allMeshes,allAnimations,allChannels,allNodes,allBones,allPositionKeys,allRotationKeys,allScaleKeys);
 	fclose(hostfile);
 	printf("bye \n");

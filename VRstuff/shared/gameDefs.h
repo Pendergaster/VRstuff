@@ -34,7 +34,7 @@ struct GlobalLight
 
 struct GameHook
 {
-	ModelData*				meshes;
+	ModelCache*				models;
 	ShaderManager*			shaders;
 	int						numRenderables = 0;
 	RenderData*				renderables = NULL;

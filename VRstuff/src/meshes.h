@@ -27,6 +27,7 @@ struct KeyLoader
 		scaleKeys += numScale;
 	}
 };
+#if 0
 static bool load_model(
 		ModelInfo* info,
 		Mesh* meshArray,
@@ -47,7 +48,6 @@ static bool load_model(
 			"INCORRECT SYNTAX :: %s",info->name);
 	info->numMeshes = numMeshes;
 	char nameBuffer[52];
-#if 0
 	for(uint i = 0; i < info->numMeshes; i++) //read meshdata
 	{
 		//char* currentFilePath = NULL;
@@ -160,9 +160,10 @@ static bool load_model(
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, aligment->numIndexes * sizeof(uint), nullptr, GL_DYNAMIC_DRAW);
 	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, aligment->numIndexes * sizeof(uint), modelData.indexes);
 	glCheckError();
-#endif
 	return true;
 }
+
+#endif
 #if 0
 #define MAX_MESH_PARTS 50
 #define MAX_MESHES 50
@@ -178,6 +179,7 @@ static void load_mesh(FILE* file,Mesh* mesh,bool animated,
 	int matches = fscanf(file,"%s \n",nameBuffer);
 	ASSERT_MESSAGE(matches == 1, "SYNTAX ERROR \n");
 	void* mem = FILESYS::load_binary_file_to_block(nameBuffer,&workingMem,NULL);
+	ASSERT_MESSAGE(mem, "FAILED TO LOAD MESH\n");
 	meshAligment* aligment = (meshAligment*)mem;
 	mem = VOIDPTRINC(mem,sizeof(meshAligment));
 	MATH::vec3* verts = (MATH::vec3*)mem;
@@ -188,7 +190,7 @@ static void load_mesh(FILE* file,Mesh* mesh,bool animated,
 	mem = VOIDPTRINC(mem,sizeof(MATH::vec2) * aligment->numTextureCoords);
 	int* indexes = (int*)mem;
 	mem = VOIDPTRINC(mem,sizeof(int) * aligment->numIndexes);
-
+	mesh->numIndexes = aligment->numIndexes;
 	glGenBuffers(4,(uint*)(mesh));
 	glGenVertexArrays(1,&mesh->vao);
 	glBindVertexArray(mesh->vao);
@@ -225,10 +227,10 @@ static void load_mesh(FILE* file,Mesh* mesh,bool animated,
 		VertexBoneData* vertbonedata = (VertexBoneData*)mem;
 
 		glVertexAttribPointer(3, MAX_BONES_IN_VERTEX, GL_INT, GL_FALSE,
-			   	MAX_BONES_IN_VERTEX * sizeof(int), (void*)offsetof(VertexBoneData,IDs));
+			   	sizeof(VertexBoneData), (void*)offsetof(VertexBoneData,IDs));
 		glEnableVertexAttribArray(3);
 		glVertexAttribPointer(4, MAX_BONES_IN_VERTEX, GL_FLOAT, GL_FALSE,
-			   	MAX_BONES_IN_VERTEX * sizeof(float), (void*)offsetof(VertexBoneData,weights));
+			   	sizeof(VertexBoneData), (void*)offsetof(VertexBoneData,weights));
 		glEnableVertexAttribArray(4);
 
 		glBufferData(GL_ARRAY_BUFFER, sizeof(VertexBoneData) * aligment->numBoneData, NULL, GL_STATIC_DRAW);
@@ -243,7 +245,26 @@ static void load_mesh(FILE* file,Mesh* mesh,bool animated,
 	//MeshAl
 }
 
-static void fill_mesh_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workingMem,
+static uint load_nodes(RenderNode* nodes,
+		FILE* file, CONTAINER::MemoryBlock workingMem)
+{
+	char nameBuffer[100];
+	uint numNodes = 0;
+	int matches = fscanf(file,"%d \n",&numNodes);
+	ASSERT_MESSAGE(numNodes && matches == 1 ,"FAILED TO READ NODES");
+	matches = fscanf(file,"%s \n",nameBuffer);
+	ASSERT_MESSAGE(matches == 1, "SYNTAX ERROR");
+	void* mem = FILESYS::load_binary_file_to_block(nameBuffer,&workingMem,NULL);
+	ASSERT_MESSAGE(mem, "FAILED TO LOAD NODES");
+	memcpy(nodes,mem,sizeof(RenderNode) * numNodes);
+	return numNodes;
+}
+static uint load_animation_keys(AnimationChannel* channels,
+ 			FILE* file, CONTAINER::MemoryBlock workingMem)
+{
+
+}
+static void fill_model_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workingMem,
 		CONTAINER::MemoryBlock* staticAllocator)
 {
 
@@ -252,7 +273,7 @@ static void fill_mesh_cache(ModelCache* meshData,CONTAINER::MemoryBlock* working
 	meshData->numMeshes = (uint)rootToken["NumMeshes"].GetInt();
 	meshData->numRenderNodes = (uint)rootToken["NumNodes"].GetInt();
 	meshData->numBones = (uint)rootToken["NumBones"].GetInt();
-	meshData->numAnimations = (uint)rootToken["numAnimations"].GetInt();
+	meshData->numAnimations = (uint)rootToken["NumAnimations"].GetInt();
 	meshData->numAnimationsChannels = (uint)rootToken["NumAnimationChannels"].GetInt();
 	meshData->numModels = (uint)rootToken["NumModels"].GetInt();
 
@@ -299,10 +320,16 @@ static void fill_mesh_cache(ModelCache* meshData,CONTAINER::MemoryBlock* working
 	CONTAINER::increase_memory_block(staticAllocator, numScaleKeys * sizeof(ScaleKey));
 	keys.scaleKeys = meshData->scaleKeys;
 
-	Mesh* meshArray = (Mesh*)CONTAINER::get_next_memory_block(*staticAllocator);
+	meshData->meshArray = (Mesh*)CONTAINER::get_next_memory_block(*staticAllocator);
 	CONTAINER::increase_memory_block(staticAllocator,meshData->numMeshes * sizeof(Mesh));
 
-	uint writtenNodes = 0,writtenMeshes = 0,writtenAnimations = 0,writtenAnimChannels = 0,writtenBones;
+	meshData->renderNodes = (RenderNode*)CONTAINER::get_next_memory_block(*staticAllocator);
+	CONTAINER::increase_memory_block(staticAllocator,meshData->numRenderNodes * sizeof(RenderNode));
+
+
+
+	uint writtenNodes = 0,writtenMeshes = 0,writtenAnimations = 0,
+	writtenAnimChannels = 0,writtenBones = 0;
 	char nameBuffer[100];
 	for(uint i = 0; i < names.numobj;i++)
 	{
@@ -332,7 +359,7 @@ static void fill_mesh_cache(ModelCache* meshData,CONTAINER::MemoryBlock* working
 
 		FILE* infoFile =  fopen(info.path,"r");
 		defer{fclose(infoFile);};
-		ASSERT_MESSAGE(infoFile,"INFO FILE NOT FOUND %s",info->name);
+		ASSERT_MESSAGE(infoFile,"INFO FILE NOT FOUND %s",info.name);
 		uint numMeshes = 0;
 		int matches = fscanf(infoFile,"%d \n",&numMeshes);
 		ASSERT_MESSAGE(matches == 1 && numMeshes > 0,
@@ -345,8 +372,18 @@ static void fill_mesh_cache(ModelCache* meshData,CONTAINER::MemoryBlock* working
 			load_mesh(infoFile,&meshData->meshArray[info.meshLoc + meshIter],animated,*workingMem);
 		}
 		writtenMeshes += info.numMeshes;
-
-
+		writtenNodes += load_nodes(&meshData->renderNodes[writtenNodes],infoFile,*workingMem);
+		if(animated)
+		{
+			uint numAnimations = 0;
+			int matches = fscanf(infoFile,"%d \n",&numAnimations);
+			for(uint animIter = 0; animIter < numAnimations;animIter++)
+			{
+				writtenAnimChannels += load_animation_keys(&meshData->animationChannels[writtenAnimChannels],
+											infoFile,*workingMem);
+			}
+		}
+#if 0
 		if(!load_model(&info,
 					&meshData->meshArray[info.meshLoc],
 					&meshData->renderNodes[info.renderNodesLoc],
@@ -358,7 +395,7 @@ static void fill_mesh_cache(ModelCache* meshData,CONTAINER::MemoryBlock* working
 		{
 			ABORT_MESSAGE("FAILED TO LOAD MESH :: %s \n",currentName);
 		}
-
+#endif
 		CONTAINER::insert_to_table<int>(&meshData->meshCache,currentName,i);
 		glBindVertexArray(0);
 	}
