@@ -3,7 +3,7 @@
 #include <Utils.h>
 #include <Containers.h>
 #include <ModelData.h>
-typedef int MeshId;
+typedef int ModelId;
 struct Mesh
 {
 	uint vertBuffer = 0;
@@ -41,24 +41,41 @@ struct ModelInfo
 {
 	char*	name = NULL;
 	char*	path = NULL;
-	uint	numParts = 0;
-	uint 	partsLoc = 0;
 	uint    numMeshes = 0;
 	uint 	meshLoc = 0;
+	uint	renderNodesLoc = 0;
+	uint	numAnimations = 0;
+	uint	animationLoc = 0;
+	uint	boneLoc;
 };
 
-struct MeshData
+struct Animation
+{
+
+	AnimationData     animData;
+	AnimationChannel* animationChannel;
+};
+
+struct ModelCache
 {
 	uint							numMeshes = 0;
-	uint 							numParts = 0;
-	uint							numInfos = 0;
+	uint							numRenderNodes = 0;
+	uint							numBones = 0;
+	uint							numAnimationsChannels = 0;
+	uint							numAnimations = 0;
 	CONTAINER::StringTable<int>		meshCache; // vain kutsumanimet, boneille ja muille joku?
 	ModelInfo*						meshInfos = NULL;
 	Mesh*							meshArray = NULL;
-	MeshPart*						meshParts = NULL;
+	RenderNode*						renderNodes = NULL;
+	AnimationChannel*				animationChannels = NULL;
+	Animation*						animations = NULL;
+	RotationKey*					rotationKeys = NULL;
+	PositionKey*					positionKeys = NULL;
+	ScaleKey*						scaleKeys = NULL;
+	BoneData*						bonesDatas = NULL;
 };
 
-static MeshId get_mesh(MeshData* meshData,const char* name)
+static ModelId get_model(ModelCache* meshData,const char* name)
 {
 	int* index = CONTAINER::access_table(meshData->meshCache,name);
 	ASSERT_MESSAGE(index,"MESH NOT FOUND :: %s \n",name);

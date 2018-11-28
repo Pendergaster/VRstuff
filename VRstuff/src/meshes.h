@@ -14,8 +14,31 @@
 
 //TODO free method for meshes? 
 //TODO generoi opengl meshit muualla? 
-static bool load_model(ModelInfo* info,Mesh* meshArray,MeshPart* partArray,
-		CONTAINER::MemoryBlock* workingMem)
+#define MAX_IMPORT_ANIMATION_KEYS 1000
+struct KeyLoader
+{
+	RotationKey* rotationKeys = NULL;
+	PositionKey* positionKeys = NULL;
+	ScaleKey*	scaleKeys = NULL;
+	uint numRotKeys = 0,numScaleKeys = 0, numPositionKeys = 0;
+	bool addToLoader(uint numPos,uint numRot,uint numScale)
+	{
+		numPositionKeys += numPos;
+		numRotKeys += numRot;
+		numScaleKeys += numScale;
+		positionKeys += numPos;
+		rotationKeys += numRot;
+		scaleKeys += numScale;
+		return numRotKeys < MAX_IMPORT_ANIMATION_KEYS &&
+		   	numScaleKeys < MAX_IMPORT_ANIMATION_KEYS  &&
+		  	numPositionKeys  <MAX_IMPORT_ANIMATION_KEYS;
+	}
+};
+static bool load_model(
+	ModelInfo* info,
+	Mesh* meshArray,
+		CONTAINER::MemoryBlock* workingMem
+	)
 {
 	FILE* infoFile =  fopen(info->path,"r");
 	defer{fclose(infoFile);};
@@ -143,9 +166,15 @@ static bool load_model(ModelInfo* info,Mesh* meshArray,MeshPart* partArray,
 }
 #define MAX_MESH_PARTS 50
 #define MAX_MESHES 50
-static void fill_mesh_cache(MeshData* meshData,CONTAINER::MemoryBlock* workingMem,
+#define MAX_IMPORT_BONES 100
+#define MAX_IMPORT_ANIMATIONS 10
+#define MAX_IMPORT_ANIMATION_CHANNELS 100
+
+static void fill_mesh_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workingMem,
 		CONTAINER::MemoryBlock* staticAllocator)
 {
+	CONTAINER::MemoryBlock lastStateOfMem = *workingMem;
+
 	JsonToken token;
 	CONTAINER::DynamicArray<char*> names;
 	CONTAINER::init_dynamic_array(&names);
@@ -159,26 +188,36 @@ static void fill_mesh_cache(MeshData* meshData,CONTAINER::MemoryBlock* workingMe
 	//meshData->meshArray = (Mesh*)CONTAINER::get_next_memory_block(*staticAllocator);
 	//CONTAINER::increase_memory_block(staticAllocator,names.numobj * sizeof(Mesh));
 
-	meshData->numInfos = 0;
+	meshData->numBones = 0;
 	meshData->meshInfos = (ModelInfo*)CONTAINER::get_next_memory_block(*staticAllocator);
 	CONTAINER::increase_memory_block(staticAllocator,names.numobj * sizeof(ModelInfo));
 
-	meshData->numParts = 0;
-	MeshPart* partArray = (MeshPart*)CONTAINER::get_next_memory_block(*workingMem);
-	CONTAINER::increase_memory_block(workingMem,MAX_MESH_PARTS * sizeof(MeshPart));
-	//meshData->meshParts = CONTAINER::get_next_memory_block(*workingMem);
-	//CONTAINER::increase_memory_block(workingMem,MAX_MESH_PARTS * sizeof(MeshPart));
+	meshData->numBones = 0;
+	BoneData* boneArray = (BoneData*)CONTAINER::get_next_memory_block(*workingMem);
+	CONTAINER::increase_memory_block(workingMem,MAX_IMPORT_BONES * sizeof(BoneData));
 
+	meshData->numAnimations = 0;
+	Animation* animationArray = (Animation*)CONTAINER::get_next_memory_block(*workingMem);
+	CONTAINER::increase_memory_block(workingMem,MAX_IMPORT_ANIMATIONS * sizeof(Animation));
 
-	//meshData->meshParts = (Mesh*)CONTAINER::get_next_memory_block(*workingMem);
-	//CONTAINER::increase_memory_block(workingMem,MAX_MESH_PARTS * sizeof(MeshPart));
+	meshData->numAnimationsChannels = 0;
+	AnimationChannel* animationChannels = (AnimationChannel*)CONTAINER::get_next_memory_block(*workingMem);
+	CONTAINER::increase_memory_block(workingMem,MAX_IMPORT_ANIMATION_CHANNELS * sizeof(AnimationChannel));
+
+	PositionKey* positionKeys = (PositionKey*)CONTAINER::get_next_memory_block(*staticAllocator);
+	CONTAINER::increase_memory_block(workingMem,MAX_IMPORT_ANIMATION_KEYS * sizeof(PositionKey));
+
+	RotationKey* rotationKeys = (RotationKey*)CONTAINER::get_next_memory_block(*staticAllocator);
+	CONTAINER::increase_memory_block(workingMem, MAX_IMPORT_ANIMATION_KEYS * sizeof(RotationKey));
+
+	ScaleKey* scaleKeys = (ScaleKey*)CONTAINER::get_next_memory_block(*staticAllocator);
+	CONTAINER::increase_memory_block(workingMem, MAX_IMPORT_ANIMATION_KEYS * sizeof(ScaleKey));
+
 	meshData->numMeshes = 0;
 	Mesh* meshArray = (Mesh*)CONTAINER::get_next_memory_block(*workingMem);
+
 	CONTAINER::increase_memory_block(workingMem,MAX_MESHES * sizeof(Mesh));
 
-
-
-	CONTAINER::MemoryBlock lastStateOfMem = *workingMem;
 	for(uint i = 0; i < names.numobj;i++)
 	{
 		ModelInfo info;
@@ -199,7 +238,6 @@ static void fill_mesh_cache(MeshData* meshData,CONTAINER::MemoryBlock* workingMe
 
 		info.path = tempName;
 		info.meshLoc = meshData->numMeshes;
-		info.partsLoc = meshData->numParts;
 
 		if(!load_model(&info,&meshArray[info.meshLoc],
 					&partArray[info.partsLoc],workingMem))

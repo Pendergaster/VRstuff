@@ -166,7 +166,6 @@ std::string load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,ch
 					bones[vertexId].add(boneIndex,mesh->mBones[b]->mWeights[w].mWeight);
 			}
 		}
-		uint numBones = bonemapping.size();
 		for(uint i = 0; i < bones.size(); i++)
 		{
 			float add = 0;
@@ -240,7 +239,7 @@ void push_node(aiNode* node, std::vector<RenderNode>& nodes,
 }
 
 std::string load_animation(aiAnimation* anim,char* metaFileName,
-			std::map<std::string,uint>& nodeMapping)
+			std::map<std::string,uint>& nodeMapping,uint numAnim)
 {
 	AnimationData data;
 	data.duration = anim->mDuration;
@@ -249,7 +248,7 @@ std::string load_animation(aiAnimation* anim,char* metaFileName,
 
 
 	std::string path(metaFileName);
-	path += anim->mName.data + std::string(".anim");
+	path += anim->mName.data + std::string(".anim") + std::to_string(numAnim);
 	FILE* animFile = fopen(path.data(),"wb");
 	defer {fclose(animFile);};
 	fwrite(&data,sizeof(AnimationData),1,animFile);
@@ -343,8 +342,7 @@ int main()
 		char* path = (*currentToken)["rawPath"].GetString();
 		char* metaPath = (*currentToken)["metaDataPath"].GetString();
 		char* meshdatapath = (*currentToken)["meshDataName"].GetString();
-		char* meshpartpath = (*currentToken)["meshPartFile"].GetString();
-		ASSERT_MESSAGE(path && metaPath && meshdatapath && meshpartpath,"RAWPATH IS NOT FOUND ::  %s \n",currentName);
+		ASSERT_MESSAGE(path && metaPath && meshdatapath,"RAWPATH IS NOT FOUND ::  %s \n",currentName);
 		const aiScene* scene = importer.ReadFile(path,aiProcess_Triangulate | aiProcess_FlipUVs |
 				aiProcess_JoinIdenticalVertices | aiProcess_GenNormals | aiProcess_GenUVCoords );
 		ASSERT_MESSAGE(scene && !(scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) && scene->mRootNode, "FAILED TO PARSE :: %s ERROR :: %s \n", currentName, importer.GetErrorString());
@@ -373,15 +371,21 @@ int main()
 		{
 			fprintf(infoFile, "%s \n", meshNames[meshIndex].data()); // frite vertex data files to info
 		}
-		fprintf(infoFile, "%s \n", meshpartpath);					//where parts of the mesh is
-		FILE* partFile = fopen(meshpartpath,"wb");
-		defer {fclose(partFile);};
 		std::vector<RenderNode> renderNodes;
 		std::map<std::string,uint> nodeMapping;
 		push_node(scene->mRootNode,renderNodes,nodeMapping,boneMapping);
+		std::string treePath(meshdatapath);
+		treePath += ".nodes";
+		FILE* treeFile = fopen(treePath.data(),"wb");
+		defer {fclose(treeFile);};
+		fwrite(renderNodes.data(),sizeof(RenderNode),renderNodes.size(),treeFile);
+		fprintf(infoFile, "%s \n", treePath.data()); // frite vertex data files to info
+		//FILE* 
 		ASSERT_MESSAGE(scene->mNumAnimations,"NO ANIMATIONS");
+		fprintf(infoFile, "%s \n", "1"); // frite vertex data files to info
 		std::string animPath = load_animation(scene->mAnimations[0]
-					,metaPath,nodeMapping);
+					,metaPath,nodeMapping,0);
+		fprintf(infoFile, "%s \n", animPath.data()); // frite vertex data files to info
 		
 #if 0
 		std::vector<MeshPart> meshParts;
