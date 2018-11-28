@@ -239,7 +239,8 @@ void push_node(aiNode* node, std::vector<RenderNode>& nodes,
 }
 
 std::string load_animation(aiAnimation* anim,char* metaFileName,
-			std::map<std::string,uint>& nodeMapping,uint numAnim)
+			std::map<std::string,uint>& nodeMapping,uint numAnim,
+			uint* allNumChannels,uint* allNumPositions,uint* allNumRotations,uint* allNumScales)
 {
 	AnimationData data;
 	data.duration = anim->mDuration;
@@ -252,7 +253,7 @@ std::string load_animation(aiAnimation* anim,char* metaFileName,
 	FILE* animFile = fopen(path.data(),"wb");
 	defer {fclose(animFile);};
 	fwrite(&data,sizeof(AnimationData),1,animFile);
-
+	*allNumChannels += data.numChannels;
 	for(uint i = 0 ; i < data.numChannels; i++)
 	{
 		aiNodeAnim* node = anim->mChannels[i];
@@ -304,13 +305,16 @@ std::string load_animation(aiAnimation* anim,char* metaFileName,
 			temp.time = node->mScalingKeys[j].mTime;
 			scalingKeys.push_back(temp);
 		}
+		*allNumPositions += channels.numPositionKeys;
+		*allNumRotations += channels.numRotationKeys;
+		*allNumScales += channels.numScaleKeys;
 		fwrite(&channels,sizeof(AnimationChannel),1,animFile);
 		fwrite(positionKeys.data(),sizeof(PositionKey),positionKeys.size(),animFile);
 		fwrite(rotationKeys.data(),sizeof(RotationKey),rotationKeys.size(),animFile);
 		fwrite(scalingKeys.data(),sizeof(ScaleKey),scalingKeys.size(),animFile);
 	}
 
-	printf("loaded animation %s with %d channels", anim->mName.data,data.numChannels);
+	printf("loaded animation %s with %d channels \n", anim->mName.data,data.numChannels);
 	return path;
 }
 
@@ -330,6 +334,14 @@ int main()
 	CONTAINER::init_memory_block(&block, 6000000);
 	MATH::mat4 identity;
 	MATH::identify(&identity);
+	uint allMeshes = 0;
+	uint allNodes = 0;
+	uint allChannels = 0;
+	uint allRotationKeys = 0;
+	uint allPositionKeys = 0;
+	uint allScaleKeys = 0;
+	uint allAnimations = 0;
+	uint allBones = 0;
 	for (uint i = 0; i < modelNames.numobj; i++)
 	{		
 		std::vector<BoneData> bones;
@@ -351,6 +363,7 @@ int main()
 		bool animated = (*currentToken)["Animated"].GetBool();
 		std::vector<BoneData> boneData;
 		std::map<std::string,uint> boneMapping;
+		allMeshes += scene->mNumMeshes;
 		for(uint meshIndex = 0; meshIndex < scene->mNumMeshes; meshIndex++)
 		{
 			std::string name = load_mesh(
@@ -359,10 +372,9 @@ int main()
 					meshdatapath,boneMapping,animated,bones);	
 			meshNames.push_back(name);
 		}
-
+		allBones += boneMapping.size();
 
 		//safe tree to data structure
-
 		FILE* infoFile = fopen(metaPath,"w");
 		defer {fclose(infoFile);};
 		ASSERT_MESSAGE(infoFile ,"INFO FILE IS NOT CREATED ::  %s \n",currentName);
@@ -374,6 +386,7 @@ int main()
 		std::vector<RenderNode> renderNodes;
 		std::map<std::string,uint> nodeMapping;
 		push_node(scene->mRootNode,renderNodes,nodeMapping,boneMapping);
+		allNodes += (uint)renderNodes.size();
 		std::string treePath(meshdatapath);
 		treePath += ".nodes";
 		FILE* treeFile = fopen(treePath.data(),"wb");
@@ -384,9 +397,9 @@ int main()
 		ASSERT_MESSAGE(scene->mNumAnimations,"NO ANIMATIONS");
 		fprintf(infoFile, "%s \n", "1"); // frite vertex data files to info
 		std::string animPath = load_animation(scene->mAnimations[0]
-					,metaPath,nodeMapping,0);
+					,metaPath,nodeMapping,0,&allChannels,&allPositionKeys,&allRotationKeys,&allScaleKeys);
 		fprintf(infoFile, "%s \n", animPath.data()); // frite vertex data files to info
-		
+		allAnimations += 1;		
 #if 0
 		std::vector<MeshPart> meshParts;
 		while(!nodes.empty()) // 
@@ -422,6 +435,13 @@ int main()
 
 #endif
 	}
+	FILE* hostfile =  fopen("temp/root.info","w");
+
+	fprintf(hostfile,  "{\n\tNumModels : %d, \n\tNumMeshes : %d, \n\tNumAnimations : %d, \n\tNumAnimationChannels : %d, \n\tNumNodes : %d, \n\tNumBones : %d \n\tNumPositionKeys : %d, \n\tNumRotationKeys : %d, \n\tNumScaleKeys : %d \n}",
+					modelNames.numobj,allMeshes,allAnimations,allChannels,allNodes,allBones,allPositionKeys,allRotationKeys,allScaleKeys);
+	fclose(hostfile);
+	printf("bye \n");
+	// frite vertex data files to info
 	return 0;
 }
 

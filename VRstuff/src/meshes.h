@@ -20,24 +20,22 @@ struct KeyLoader
 	RotationKey* rotationKeys = NULL;
 	PositionKey* positionKeys = NULL;
 	ScaleKey*	scaleKeys = NULL;
-	uint numRotKeys = 0,numScaleKeys = 0, numPositionKeys = 0;
-	bool addToLoader(uint numPos,uint numRot,uint numScale)
+	void addToLoader(uint numPos,uint numRot,uint numScale)
 	{
-		numPositionKeys += numPos;
-		numRotKeys += numRot;
-		numScaleKeys += numScale;
 		positionKeys += numPos;
 		rotationKeys += numRot;
 		scaleKeys += numScale;
-		return numRotKeys < MAX_IMPORT_ANIMATION_KEYS &&
-		   	numScaleKeys < MAX_IMPORT_ANIMATION_KEYS  &&
-		  	numPositionKeys  <MAX_IMPORT_ANIMATION_KEYS;
 	}
 };
 static bool load_model(
 	ModelInfo* info,
 	Mesh* meshArray,
-		CONTAINER::MemoryBlock* workingMem
+	RenderNode* renderNodes,
+	Animation* animations,
+	AnimationChannel* animationChannels,
+	BoneData* boneDatas,
+	KeyLoader* keys,
+	CONTAINER::MemoryBlock* workingMem
 	)
 {
 	FILE* infoFile =  fopen(info->path,"r");
@@ -49,6 +47,7 @@ static bool load_model(
 			"INCORRECT SYNTAX :: %s",info->name);
 	info->numMeshes = numMeshes;
 	char nameBuffer[52];
+#if 0
 	for(uint i = 0; i < info->numMeshes; i++) //read meshdata
 	{
 		//char* currentFilePath = NULL;
@@ -115,7 +114,7 @@ static bool load_model(
 		partArray[i] = *(MeshPart*)parts;
 		parts = VOIDPTRINC(parts,sizeof(MeshPart));
 	}
-
+#endif
 #if 0
 	size_t sizeOfFile = 0;
 	void* modelDataDump = FILESYS::load_binary_file_to_block(info->path,workingMem,&sizeOfFile);
@@ -164,15 +163,36 @@ static bool load_model(
 #endif
 	return true;
 }
+#if 0
 #define MAX_MESH_PARTS 50
 #define MAX_MESHES 50
 #define MAX_IMPORT_BONES 100
 #define MAX_IMPORT_ANIMATIONS 10
 #define MAX_IMPORT_ANIMATION_CHANNELS 100
+#endif
+
+static bool load_mesh()
+{
+
+}
 
 static void fill_mesh_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workingMem,
 		CONTAINER::MemoryBlock* staticAllocator)
 {
+
+	JsonToken rootToken;
+	rootToken.ParseFile("temp/root.info");
+	meshData->numMeshes = (uint)rootToken["NumMeshes"].GetInt();
+	meshData->numRenderNodes = (uint)rootToken["NumNodes"].GetInt();
+	meshData->numBones = (uint)rootToken["NumBones"].GetInt();
+	meshData->numAnimations = (uint)rootToken["numAnimations"].GetInt();
+	meshData->numAnimationsChannels = (uint)rootToken["NumAnimationChannels"].GetInt();
+	meshData->numModels = (uint)rootToken["NumModels"].GetInt();
+
+	KeyLoader keys;
+	uint numPositionKeys = (uint)rootToken["NumPositionKeys"].GetInt();
+	uint numRotationKeys = (uint)rootToken["NumRotationKeys"].GetInt();
+	uint numScaleKeys = (uint)rootToken["NumScaleKeys"].GetInt();
 	CONTAINER::MemoryBlock lastStateOfMem = *workingMem;
 
 	JsonToken token;
@@ -188,36 +208,34 @@ static void fill_mesh_cache(ModelCache* meshData,CONTAINER::MemoryBlock* working
 	//meshData->meshArray = (Mesh*)CONTAINER::get_next_memory_block(*staticAllocator);
 	//CONTAINER::increase_memory_block(staticAllocator,names.numobj * sizeof(Mesh));
 
-	meshData->numBones = 0;
-	meshData->meshInfos = (ModelInfo*)CONTAINER::get_next_memory_block(*staticAllocator);
-	CONTAINER::increase_memory_block(staticAllocator,names.numobj * sizeof(ModelInfo));
+	meshData->modelInfos = (ModelInfo*)CONTAINER::get_next_memory_block(*staticAllocator);
+	CONTAINER::increase_memory_block(staticAllocator,meshData->numModels * sizeof(ModelInfo));
 
-	meshData->numBones = 0;
-	BoneData* boneArray = (BoneData*)CONTAINER::get_next_memory_block(*workingMem);
-	CONTAINER::increase_memory_block(workingMem,MAX_IMPORT_BONES * sizeof(BoneData));
+	meshData->bones = (BoneData*)CONTAINER::get_next_memory_block(*staticAllocator);
+	CONTAINER::increase_memory_block(staticAllocator,meshData->numBones * sizeof(BoneData));
 
-	meshData->numAnimations = 0;
-	Animation* animationArray = (Animation*)CONTAINER::get_next_memory_block(*workingMem);
-	CONTAINER::increase_memory_block(workingMem,MAX_IMPORT_ANIMATIONS * sizeof(Animation));
+	meshData->animations = (Animation*)CONTAINER::get_next_memory_block(*staticAllocator);
+	CONTAINER::increase_memory_block(staticAllocator,meshData->numAnimations * sizeof(Animation));
 
-	meshData->numAnimationsChannels = 0;
-	AnimationChannel* animationChannels = (AnimationChannel*)CONTAINER::get_next_memory_block(*workingMem);
-	CONTAINER::increase_memory_block(workingMem,MAX_IMPORT_ANIMATION_CHANNELS * sizeof(AnimationChannel));
+	meshData->animationChannels = (AnimationChannel*)CONTAINER::get_next_memory_block(*staticAllocator);
+	CONTAINER::increase_memory_block(staticAllocator,meshData->numAnimationsChannels * sizeof(AnimationChannel));
 
-	PositionKey* positionKeys = (PositionKey*)CONTAINER::get_next_memory_block(*staticAllocator);
-	CONTAINER::increase_memory_block(workingMem,MAX_IMPORT_ANIMATION_KEYS * sizeof(PositionKey));
+	meshData->positionKeys = (PositionKey*)CONTAINER::get_next_memory_block(*staticAllocator);
+	CONTAINER::increase_memory_block(staticAllocator,numPositionKeys * sizeof(PositionKey));
+	keys.positionKeys  = meshData->positionKeys;
 
-	RotationKey* rotationKeys = (RotationKey*)CONTAINER::get_next_memory_block(*staticAllocator);
-	CONTAINER::increase_memory_block(workingMem, MAX_IMPORT_ANIMATION_KEYS * sizeof(RotationKey));
+	meshData->rotationKeys = (RotationKey*)CONTAINER::get_next_memory_block(*staticAllocator);
+	CONTAINER::increase_memory_block(staticAllocator, numRotationKeys * sizeof(RotationKey));
+	keys.rotationKeys  = meshData->rotationKeys;
 
-	ScaleKey* scaleKeys = (ScaleKey*)CONTAINER::get_next_memory_block(*staticAllocator);
-	CONTAINER::increase_memory_block(workingMem, MAX_IMPORT_ANIMATION_KEYS * sizeof(ScaleKey));
+	meshData->scaleKeys = (ScaleKey*)CONTAINER::get_next_memory_block(*staticAllocator);
+	CONTAINER::increase_memory_block(staticAllocator, numScaleKeys * sizeof(ScaleKey));
+	keys.scaleKeys = meshData->scaleKeys;
 
-	meshData->numMeshes = 0;
-	Mesh* meshArray = (Mesh*)CONTAINER::get_next_memory_block(*workingMem);
+	Mesh* meshArray = (Mesh*)CONTAINER::get_next_memory_block(*staticAllocator);
+	CONTAINER::increase_memory_block(staticAllocator,meshData->numMeshes * sizeof(Mesh));
 
-	CONTAINER::increase_memory_block(workingMem,MAX_MESHES * sizeof(Mesh));
-
+	uint writtenNodes = 0,writtenMeshes = 0,writtenAnimations = 0,writtenAnimChannels = 0,writtenBones;
 	for(uint i = 0; i < names.numobj;i++)
 	{
 		ModelInfo info;
@@ -236,29 +254,45 @@ static void fill_mesh_cache(ModelCache* meshData,CONTAINER::MemoryBlock* working
 		strcpy(tempName,metaDataPath);
 		CONTAINER::increase_memory_block_aligned(staticAllocator,(int)strlen(metaDataPath)+1);
 
+		
 		info.path = tempName;
-		info.meshLoc = meshData->numMeshes;
+		info.meshLoc = writtenMeshes;
+		info.renderNodesLoc = writtenNodes;
+		info.numAnimations = writtenAnimations;
+		info.boneLoc = writtenBones;
 
-		if(!load_model(&info,&meshArray[info.meshLoc],
-					&partArray[info.partsLoc],workingMem))
+
+		FILE* infoFile =  fopen(info.path,"r");
+		defer{fclose(infoFile);};
+		ASSERT_MESSAGE(infoFile,"INFO FILE NOT FOUND %s",info->name);
+		uint numMeshes = 0;
+		int matches = fscanf(infoFile,"%d \n",&numMeshes);
+		ASSERT_MESSAGE(matches == 1 && numMeshes > 0,
+			"INCORRECT SYNTAX :: %s",info->name);
+		info.numMeshes = numMeshes;
+
+
+		for(uint meshIter = 0; meshIter < info.numMeshes;meshIter++)
+		{
+			
+		}
+		writtenMeshes += info.numMeshes;
+
+
+		if(!load_model(&info,
+						&meshData->meshArray[info.meshLoc],
+						&meshData->renderNodes[info.renderNodesLoc],
+						&meshData->animations[info.animationLoc],
+						&meshData->animationChannels[writtenAnimChannels],
+						&meshData->bones[writtenBones],
+						&keys,
+						workingMem))
 		{
 			ABORT_MESSAGE("FAILED TO LOAD MESH :: %s \n",currentName);
 		}
-		meshData->numMeshes += info.numMeshes;
-		meshData->numParts += info.numParts;
 
-		*workingMem = lastStateOfMem;
 		CONTAINER::insert_to_table<int>(&meshData->meshCache,currentName,i);
-		meshData->meshInfos[i] = info;
-
 		glBindVertexArray(0);
 	}
-	meshData->meshArray = (Mesh*)CONTAINER::get_next_memory_block(*staticAllocator);
-	CONTAINER::increase_memory_block(staticAllocator,sizeof(Mesh) * meshData->numMeshes);
-	memcpy(meshData->meshArray,meshArray,sizeof(Mesh) * meshData->numMeshes);
-
-	meshData->meshParts = (MeshPart*)CONTAINER::get_next_memory_block(*staticAllocator);
-	CONTAINER::increase_memory_block(staticAllocator,sizeof(MeshPart) * meshData->numParts);
-	memcpy(meshData->meshParts,partArray,sizeof(MeshPart) * meshData->numParts);
 }
 #endif //PAKKI_MESHES

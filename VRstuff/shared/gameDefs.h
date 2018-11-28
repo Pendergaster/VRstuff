@@ -17,7 +17,7 @@
 struct RenderData
 {
 	int					materialID;
-	MeshId				meshID = 0;
+	ModelId				meshID = 0;
 	MATH::vec3			position;
 	MATH::vec3			oriTemp;
 	MATH::quaternion	orientation;
@@ -34,7 +34,7 @@ struct GlobalLight
 
 struct GameHook
 {
-	MeshData*				meshes;
+	ModelData*				meshes;
 	ShaderManager*			shaders;
 	int						numRenderables = 0;
 	RenderData*				renderables = NULL;

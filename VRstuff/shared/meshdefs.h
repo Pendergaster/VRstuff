@@ -58,13 +58,14 @@ struct Animation
 
 struct ModelCache
 {
+	uint 							numModels = 0;
 	uint							numMeshes = 0;
 	uint							numRenderNodes = 0;
 	uint							numBones = 0;
 	uint							numAnimationsChannels = 0;
 	uint							numAnimations = 0;
 	CONTAINER::StringTable<int>		meshCache; // vain kutsumanimet, boneille ja muille joku?
-	ModelInfo*						meshInfos = NULL;
+	ModelInfo*						modelInfos = NULL;
 	Mesh*							meshArray = NULL;
 	RenderNode*						renderNodes = NULL;
 	AnimationChannel*				animationChannels = NULL;
@@ -72,7 +73,7 @@ struct ModelCache
 	RotationKey*					rotationKeys = NULL;
 	PositionKey*					positionKeys = NULL;
 	ScaleKey*						scaleKeys = NULL;
-	BoneData*						bonesDatas = NULL;
+	BoneData*						bones = NULL;
 };
 
 static ModelId get_model(ModelCache* meshData,const char* name)

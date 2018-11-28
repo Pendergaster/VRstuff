@@ -1,0 +1,11 @@
+{
+	NumModels : 1, 
+	NumMeshes : 1, 
+	NumAnimations : 1, 
+	NumAnimationChannels : 16, 
+	NumNodes : 20, 
+	NumBones : 16 
+	NumPositionKeys : 80, 
+	NumRotationKeys : 80, 
+	NumScaleKeys : 80 
+}
