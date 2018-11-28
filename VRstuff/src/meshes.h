@@ -28,15 +28,15 @@ struct KeyLoader
 	}
 };
 static bool load_model(
-	ModelInfo* info,
-	Mesh* meshArray,
-	RenderNode* renderNodes,
-	Animation* animations,
-	AnimationChannel* animationChannels,
-	BoneData* boneDatas,
-	KeyLoader* keys,
-	CONTAINER::MemoryBlock* workingMem
-	)
+		ModelInfo* info,
+		Mesh* meshArray,
+		RenderNode* renderNodes,
+		Animation* animations,
+		AnimationChannel* animationChannels,
+		BoneData* boneDatas,
+		KeyLoader* keys,
+		CONTAINER::MemoryBlock* workingMem
+		)
 {
 	FILE* infoFile =  fopen(info->path,"r");
 	defer{fclose(infoFile);};
@@ -171,9 +171,76 @@ static bool load_model(
 #define MAX_IMPORT_ANIMATION_CHANNELS 100
 #endif
 
-static bool load_mesh()
+static void load_mesh(FILE* file,Mesh* mesh,bool animated,
+		CONTAINER::MemoryBlock workingMem)
 {
+	char nameBuffer[100];
+	int matches = fscanf(file,"%s \n",nameBuffer);
+	ASSERT_MESSAGE(matches == 1, "SYNTAX ERROR \n");
+	void* mem = FILESYS::load_binary_file_to_block(nameBuffer,&workingMem,NULL);
+	meshAligment* aligment = (meshAligment*)mem;
+	mem = VOIDPTRINC(mem,sizeof(meshAligment));
+	MATH::vec3* verts = (MATH::vec3*)mem;
+	mem = VOIDPTRINC(mem,sizeof(MATH::vec3) * aligment->numVerts);
+	MATH::vec3* normals = (MATH::vec3*)mem;
+	mem = VOIDPTRINC(mem,sizeof(MATH::vec3) * aligment->numNormals);
+	MATH::vec2* uvs = (MATH::vec2*)mem;
+	mem = VOIDPTRINC(mem,sizeof(MATH::vec2) * aligment->numTextureCoords);
+	int* indexes = (int*)mem;
+	mem = VOIDPTRINC(mem,sizeof(int) * aligment->numIndexes);
 
+	glGenBuffers(4,(uint*)(mesh));
+	glGenVertexArrays(1,&mesh->vao);
+	glBindVertexArray(mesh->vao);
+
+	glBindBuffer(GL_ARRAY_BUFFER,mesh->vertBuffer);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(MATH::vec3) * aligment->numVerts, NULL, GL_STATIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(MATH::vec3) * aligment->numVerts, verts);
+
+	glBindBuffer(GL_ARRAY_BUFFER,mesh->normalBuffer);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(1);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(MATH::vec3) * aligment->numNormals, NULL, GL_STATIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(MATH::vec3) * aligment->numNormals, normals);
+
+	glBindBuffer(GL_ARRAY_BUFFER,mesh->texCoordBuffer);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(2);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(MATH::vec2) * aligment->numTextureCoords, NULL, GL_STATIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(MATH::vec2) * aligment->numTextureCoords, uvs);
+	glCheckError();
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->indexBuffer);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, aligment->numIndexes * sizeof(uint), NULL, GL_STATIC_DRAW);
+	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, aligment->numIndexes * sizeof(uint), indexes);
+	glCheckError();
+
+
+	if(animated)
+	{
+		glGenBuffers(1,(uint*)(&mesh->bonedataBuffer));
+		glBindBuffer(GL_ARRAY_BUFFER,mesh->bonedataBuffer);
+		VertexBoneData* vertbonedata = (VertexBoneData*)mem;
+
+		glVertexAttribPointer(3, MAX_BONES_IN_VERTEX, GL_INT, GL_FALSE,
+			   	MAX_BONES_IN_VERTEX * sizeof(int), (void*)offsetof(VertexBoneData,IDs));
+		glEnableVertexAttribArray(3);
+		glVertexAttribPointer(4, MAX_BONES_IN_VERTEX, GL_FLOAT, GL_FALSE,
+			   	MAX_BONES_IN_VERTEX * sizeof(float), (void*)offsetof(VertexBoneData,weights));
+		glEnableVertexAttribArray(4);
+
+		glBufferData(GL_ARRAY_BUFFER, sizeof(VertexBoneData) * aligment->numBoneData, NULL, GL_STATIC_DRAW);
+		glBufferSubData(GL_ARRAY_BUFFER, 0,sizeof(VertexBoneData) * aligment->numBoneData, vertbonedata);
+
+	}
+
+	glBindVertexArray(0);
+
+	//FILE* meshbin = fopen(nameBuffer,"rb");
+	//defer{fclose(meshbin);};
+	//MeshAl
 }
 
 static void fill_mesh_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workingMem,
@@ -236,6 +303,7 @@ static void fill_mesh_cache(ModelCache* meshData,CONTAINER::MemoryBlock* working
 	CONTAINER::increase_memory_block(staticAllocator,meshData->numMeshes * sizeof(Mesh));
 
 	uint writtenNodes = 0,writtenMeshes = 0,writtenAnimations = 0,writtenAnimChannels = 0,writtenBones;
+	char nameBuffer[100];
 	for(uint i = 0; i < names.numobj;i++)
 	{
 		ModelInfo info;
@@ -250,17 +318,17 @@ static void fill_mesh_cache(ModelCache* meshData,CONTAINER::MemoryBlock* working
 
 		char* metaDataPath = (*meshToken)["metaDataPath"].GetString();
 		ASSERT_MESSAGE(metaDataPath ,"MODEL DOES NOT HAVE ENOUGH DATA :: %s \n",currentName);
+		bool animated = (*meshToken)["Animated"].GetBool();
 		tempName = (char*)CONTAINER::get_next_memory_block(*staticAllocator);
 		strcpy(tempName,metaDataPath);
 		CONTAINER::increase_memory_block_aligned(staticAllocator,(int)strlen(metaDataPath)+1);
 
-		
 		info.path = tempName;
 		info.meshLoc = writtenMeshes;
 		info.renderNodesLoc = writtenNodes;
-		info.numAnimations = writtenAnimations;
+		info.numAnimations = 0; // todo set
+		info.animationLoc = writtenAnimations;
 		info.boneLoc = writtenBones;
-
 
 		FILE* infoFile =  fopen(info.path,"r");
 		defer{fclose(infoFile);};
@@ -268,25 +336,25 @@ static void fill_mesh_cache(ModelCache* meshData,CONTAINER::MemoryBlock* working
 		uint numMeshes = 0;
 		int matches = fscanf(infoFile,"%d \n",&numMeshes);
 		ASSERT_MESSAGE(matches == 1 && numMeshes > 0,
-			"INCORRECT SYNTAX :: %s",info->name);
+				"INCORRECT SYNTAX :: %s",info.name);
 		info.numMeshes = numMeshes;
 
 
 		for(uint meshIter = 0; meshIter < info.numMeshes;meshIter++)
 		{
-			
+			load_mesh(infoFile,&meshData->meshArray[info.meshLoc + meshIter],animated,*workingMem);
 		}
 		writtenMeshes += info.numMeshes;
 
 
 		if(!load_model(&info,
-						&meshData->meshArray[info.meshLoc],
-						&meshData->renderNodes[info.renderNodesLoc],
-						&meshData->animations[info.animationLoc],
-						&meshData->animationChannels[writtenAnimChannels],
-						&meshData->bones[writtenBones],
-						&keys,
-						workingMem))
+					&meshData->meshArray[info.meshLoc],
+					&meshData->renderNodes[info.renderNodesLoc],
+					&meshData->animations[info.animationLoc],
+					&meshData->animationChannels[writtenAnimChannels],
+					&meshData->bones[writtenBones],
+					&keys,
+					workingMem))
 		{
 			ABORT_MESSAGE("FAILED TO LOAD MESH :: %s \n",currentName);
 		}

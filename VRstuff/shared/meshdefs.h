@@ -12,6 +12,7 @@ struct Mesh
 	uint indexBuffer = 0;
 	uint vao = 0;
 	uint numIndexes = 0;
+	uint bonedataBuffer = 0;
 };
 #if 0
 struct MeshInfo

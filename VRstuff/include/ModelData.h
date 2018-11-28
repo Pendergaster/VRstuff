@@ -9,14 +9,18 @@
 #define MAX_NAME_SIZE 80
 #define MAX_BONES 64
 #define MAX_BONES_IN_VERTEX 3
-struct meshData
+struct BoneIndexes
+{
+	int	indexes[MAX_BONES_IN_VERTEX];
+};
+struct MeshData
 {
 	MATH::vec3*		vertexes = 0;
 	MATH::vec3*		normals = 0;
 	MATH::vec2*		texCoords = 0;
 	int*			indexes = 0;
-	int				boneIndexes[3];
-	MATH::vec3		weights;	
+	BoneIndexes*    bonesIds;
+	MATH::vec3*		weights;	
 	//next model in line
 };
 
