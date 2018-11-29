@@ -392,7 +392,7 @@ int main()
 		FILE* treeFile = fopen(treePath.data(),"wb");
 		defer {fclose(treeFile);};
 		fwrite(renderNodes.data(),sizeof(RenderNode),renderNodes.size(),treeFile);
-		fprintf(infoFile, "%d \n", treePath.size()); // frite vertex data files to info
+		fprintf(infoFile, "%d \n", (uint)treePath.size()); // frite vertex data files to info
 		fprintf(infoFile, "%s \n", treePath.data()); // frite vertex data files to info
 		//FILE* 
 		// write bones 

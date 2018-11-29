@@ -32,12 +32,12 @@ struct meshAligment
 	int numIndexes = 0;
 	int numBoneData = 0;
 };
-
+#if 0
 struct ModelData
 {
 	uint32_t numMeshes;
 };
-
+#endif
 struct BoneData
 {
 	uint 		nodeIndex;
@@ -84,6 +84,7 @@ struct AnimationChannel
 };
 #define NO_MESH 0xFFFF
 #define NO_BONE 0xFFFF
+#define NO_ANIME 0xFFFF
 struct RenderNode
 {
 	uint 		numChildren;

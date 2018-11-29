@@ -11,7 +11,8 @@
 #include <meshdefs.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <algorithm>
+#include <vector>
 //TODO free method for meshes? 
 //TODO generoi opengl meshit muualla? 
 #define MAX_IMPORT_ANIMATION_KEYS 1000
@@ -268,14 +269,17 @@ static uint load_animation_keys(Animation* anime,AnimationChannel* channels,
 	void* mem = FILESYS::load_binary_file_to_block(filePath,&workingMem,NULL);
 	anime->animData = *(AnimationData*)mem;
 	mem = VOIDPTRINC(mem,sizeof(AnimationData));
-	anime->animationChannel = (AnimationChannel*)mem;
+	anime->animationChannel = channels;//(AnimationChannel*)mem;
+	std::vector<AnimationChannel> loadedChannels;
 	for(uint i = 0; i < anime->animData.numChannels;i++)
 	{
-		*channels = *(AnimationChannel*)mem;
+		AnimationChannel currentChannel = *(AnimationChannel*)mem;
+		//*channels = *(AnimationChannel*)mem;
 		mem = VOIDPTRINC(mem,sizeof(AnimationChannel));
-		channels->positions = keys->positionKeys;
-		channels->rotations = keys->rotationKeys;
-		channels->scales = keys->scaleKeys;
+		currentChannel.positions = keys->positionKeys;
+		currentChannel.rotations = keys->rotationKeys;
+		currentChannel.scales = keys->scaleKeys;
+		loadedChannels.push_back(currentChannel);
 		for(uint j = 0 ; j < channels->numPositionKeys; j++){
 			*keys->positionKeys = *(PositionKey*)mem;
 			keys->positionKeys++;
@@ -292,14 +296,21 @@ static uint load_animation_keys(Animation* anime,AnimationChannel* channels,
 			mem = VOIDPTRINC(mem,sizeof(ScaleKey));
 		}
 	}
+	std::sort(loadedChannels.begin(),loadedChannels.end(),  
+			[](const AnimationChannel &a, const AnimationChannel &b) -> bool
+{ 
+    return a.nodeIndex > b.nodeIndex; 
+});
+	memcpy(channels, loadedChannels.data(), sizeof(AnimationChannel) * anime->animData.numChannels);
 	return anime->animData.numChannels;
+
 }
 
 static uint load_bones(BoneData* bones,FILE* info, CONTAINER::MemoryBlock workingMem)
 {
 	char filePath[100];
-	uint numBones = 0;
-	int matches = fscanf(info,"%d \n",numBones);
+	int numBones = 0;
+	int matches = fscanf(info,"%d \n",&numBones);
 	ASSERT_MESSAGE(matches == 1 && numBones > 0,"INCORRECT SYNTAX!");
 	matches = fscanf(info,"%s \n",filePath);
 	ASSERT_MESSAGE(matches == 1,"INCORRECT SYNTAX!");
@@ -370,11 +381,8 @@ static void fill_model_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workin
 	meshData->renderNodes = (RenderNode*)CONTAINER::get_next_memory_block(*staticAllocator);
 	CONTAINER::increase_memory_block(staticAllocator,meshData->numRenderNodes * sizeof(RenderNode));
 
-
-
 	uint writtenNodes = 0,writtenMeshes = 0,writtenAnimations = 0,
 		 writtenAnimChannels = 0,writtenBones = 0;
-	char nameBuffer[100];
 	for(uint i = 0; i < names.numobj;i++)
 	{
 		ModelInfo info;
@@ -419,7 +427,7 @@ static void fill_model_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workin
 		writtenNodes += load_nodes(&meshData->renderNodes[writtenNodes],infoFile,*workingMem);
 		if(animated)
 		{
-
+			writtenBones += load_bones(&meshData->bones[writtenBones],infoFile,*workingMem);
 			uint numAnimations = 0;
 			int matches = fscanf(infoFile,"%d \n",&numAnimations);
 			ASSERT_MESSAGE(matches == 1,"INCORRECT SYNTAX!");
