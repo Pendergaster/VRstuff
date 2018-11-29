@@ -52,7 +52,6 @@ struct ModelInfo
 
 struct Animation
 {
-
 	AnimationData     animData;
 	AnimationChannel* animationChannel;
 };

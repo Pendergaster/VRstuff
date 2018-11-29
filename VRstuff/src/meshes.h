@@ -227,10 +227,10 @@ static void load_mesh(FILE* file,Mesh* mesh,bool animated,
 		VertexBoneData* vertbonedata = (VertexBoneData*)mem;
 
 		glVertexAttribPointer(3, MAX_BONES_IN_VERTEX, GL_INT, GL_FALSE,
-			   	sizeof(VertexBoneData), (void*)offsetof(VertexBoneData,IDs));
+				sizeof(VertexBoneData), (void*)offsetof(VertexBoneData,IDs));
 		glEnableVertexAttribArray(3);
 		glVertexAttribPointer(4, MAX_BONES_IN_VERTEX, GL_FLOAT, GL_FALSE,
-			   	sizeof(VertexBoneData), (void*)offsetof(VertexBoneData,weights));
+				sizeof(VertexBoneData), (void*)offsetof(VertexBoneData,weights));
 		glEnableVertexAttribArray(4);
 
 		glBufferData(GL_ARRAY_BUFFER, sizeof(VertexBoneData) * aligment->numBoneData, NULL, GL_STATIC_DRAW);
@@ -259,19 +259,33 @@ static uint load_nodes(RenderNode* nodes,
 	memcpy(nodes,mem,sizeof(RenderNode) * numNodes);
 	return numNodes;
 }
-static uint load_animation_keys(AnimatioData* anime,AnimationChannel* channels,
-	KeyLoader* keys, FILE* file, CONTAINER::MemoryBlock workingMem)
+static uint load_animation_keys(Animation* anime,AnimationChannel* channels,
+		KeyLoader* keys, FILE* file, CONTAINER::MemoryBlock workingMem)
 {
 	char filePath[100];
 	int matches = fscanf(file,"%s \n",filePath);
 	ASSERT_MESSAGE(matches == 1,"INCORRECT SYNTAX!");
 	void* mem = FILESYS::load_binary_file_to_block(filePath,&workingMem,NULL);
-	AnimationData* animData = (AnimationData*)mem;
-	mem = VOIDPTRINC(mem,sizeof(animData));
-	for(int i = 0; i < animData->numChannels;i++)
+	anime->animData = *(AnimationData*)mem;
+	mem = VOIDPTRINC(mem,sizeof(AnimationData));
+	anime->animationChannel = (AnimationChannel*)mem;
+	for(uint i = 0; i < anime->animData.numChannels;i++)
 	{
-		AnimationChannel* channel = mem;
+		*channels = *(AnimationChannel*)mem;
+		for(uint j = 0 ; j < channels->numPositionKeys; j++){
+			*keys->positionKeys = *(PositionKey*)mem;
+			mem = VOIDPTRINC(mem,sizeof(PositionKey));
+		}
+		for(uint j = 0 ; j < channels->numRotationKeys; j++){
+			*keys->rotationKeys = *(RotationKey*)mem;
+			mem = VOIDPTRINC(mem,sizeof(RotationKey));
+		}
+		for(uint j = 0 ; j < channels->numScaleKeys; j++){
+			*keys->scaleKeys = *(ScaleKey*)mem;
+			mem = VOIDPTRINC(mem,sizeof(ScaleKey));
+		}
 	}
+	return anime->animData.numChannels;
 }
 static void fill_model_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workingMem,
 		CONTAINER::MemoryBlock* staticAllocator)
@@ -338,7 +352,7 @@ static void fill_model_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workin
 
 
 	uint writtenNodes = 0,writtenMeshes = 0,writtenAnimations = 0,
-	writtenAnimChannels = 0,writtenBones = 0;
+		 writtenAnimChannels = 0,writtenBones = 0;
 	char nameBuffer[100];
 	for(uint i = 0; i < names.numobj;i++)
 	{
@@ -386,10 +400,14 @@ static void fill_model_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workin
 		{
 			uint numAnimations = 0;
 			int matches = fscanf(infoFile,"%d \n",&numAnimations);
+			ASSERT_MESSAGE(matches == 1,"INCORRECT SYNTAX!");
 			for(uint animIter = 0; animIter < numAnimations;animIter++)
 			{
-				writtenAnimChannels += load_animation_keys(&meshData->animationChannels[writtenAnimChannels],
-											infoFile,*workingMem);
+				writtenAnimChannels += load_animation_keys(
+						&meshData->animations[writtenAnimations],
+						&meshData->animationChannels[writtenAnimChannels],
+						&keys,
+						infoFile,*workingMem);
 			}
 		}
 #if 0
