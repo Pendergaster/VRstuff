@@ -259,10 +259,19 @@ static uint load_nodes(RenderNode* nodes,
 	memcpy(nodes,mem,sizeof(RenderNode) * numNodes);
 	return numNodes;
 }
-static uint load_animation_keys(AnimationChannel* channels,
- 			FILE* file, CONTAINER::MemoryBlock workingMem)
+static uint load_animation_keys(AnimatioData* anime,AnimationChannel* channels,
+	KeyLoader* keys, FILE* file, CONTAINER::MemoryBlock workingMem)
 {
-
+	char filePath[100];
+	int matches = fscanf(file,"%s \n",filePath);
+	ASSERT_MESSAGE(matches == 1,"INCORRECT SYNTAX!");
+	void* mem = FILESYS::load_binary_file_to_block(filePath,&workingMem,NULL);
+	AnimationData* animData = (AnimationData*)mem;
+	mem = VOIDPTRINC(mem,sizeof(animData));
+	for(int i = 0; i < animData->numChannels;i++)
+	{
+		AnimationChannel* channel = mem;
+	}
 }
 static void fill_model_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workingMem,
 		CONTAINER::MemoryBlock* staticAllocator)
