@@ -268,7 +268,6 @@ std::string load_animation(aiAnimation* anim,char* metaFileName,
 		} else {
 			channels.nodeIndex = nodeMapping[affectedNode];
 		}
-		fwrite(&channels,sizeof(AnimationChannel),1,animFile);
 		std::vector<RotationKey> rotationKeys;
 		std::vector<PositionKey> positionKeys;
 		std::vector<ScaleKey> scalingKeys;

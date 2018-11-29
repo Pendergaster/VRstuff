@@ -272,16 +272,23 @@ static uint load_animation_keys(Animation* anime,AnimationChannel* channels,
 	for(uint i = 0; i < anime->animData.numChannels;i++)
 	{
 		*channels = *(AnimationChannel*)mem;
+		mem = VOIDPTRINC(mem,sizeof(AnimationChannel));
+		channels->positions = keys->positionKeys;
+		channels->rotations = keys->rotationKeys;
+		channels->scales = keys->scaleKeys;
 		for(uint j = 0 ; j < channels->numPositionKeys; j++){
 			*keys->positionKeys = *(PositionKey*)mem;
+			keys->positionKeys++;
 			mem = VOIDPTRINC(mem,sizeof(PositionKey));
 		}
 		for(uint j = 0 ; j < channels->numRotationKeys; j++){
 			*keys->rotationKeys = *(RotationKey*)mem;
+			keys->rotationKeys++;
 			mem = VOIDPTRINC(mem,sizeof(RotationKey));
 		}
 		for(uint j = 0 ; j < channels->numScaleKeys; j++){
 			*keys->scaleKeys = *(ScaleKey*)mem;
+			keys->scaleKeys++;
 			mem = VOIDPTRINC(mem,sizeof(ScaleKey));
 		}
 	}
@@ -401,14 +408,16 @@ static void fill_model_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workin
 			uint numAnimations = 0;
 			int matches = fscanf(infoFile,"%d \n",&numAnimations);
 			ASSERT_MESSAGE(matches == 1,"INCORRECT SYNTAX!");
-			for(uint animIter = 0; animIter < numAnimations;animIter++)
+			for(uint animIter = 0; animIter < numAnimations;
+					animIter++,writtenAnimations++)
 			{
 				writtenAnimChannels += load_animation_keys(
-						&meshData->animations[writtenAnimations],
+						&meshData->animations[animIter],
 						&meshData->animationChannels[writtenAnimChannels],
 						&keys,
 						infoFile,*workingMem);
 			}
+
 		}
 #if 0
 		if(!load_model(&info,
