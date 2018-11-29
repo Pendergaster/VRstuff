@@ -280,17 +280,17 @@ static uint load_animation_keys(Animation* anime,AnimationChannel* channels,
 		currentChannel.rotations = keys->rotationKeys;
 		currentChannel.scales = keys->scaleKeys;
 		loadedChannels.push_back(currentChannel);
-		for(uint j = 0 ; j < channels->numPositionKeys; j++){
+		for(uint j = 0 ; j < currentChannel.numPositionKeys; j++){
 			*keys->positionKeys = *(PositionKey*)mem;
 			keys->positionKeys++;
 			mem = VOIDPTRINC(mem,sizeof(PositionKey));
 		}
-		for(uint j = 0 ; j < channels->numRotationKeys; j++){
+		for(uint j = 0 ; j < currentChannel.numRotationKeys; j++){
 			*keys->rotationKeys = *(RotationKey*)mem;
 			keys->rotationKeys++;
 			mem = VOIDPTRINC(mem,sizeof(RotationKey));
 		}
-		for(uint j = 0 ; j < channels->numScaleKeys; j++){
+		for(uint j = 0 ; j < currentChannel.numScaleKeys; j++){
 			*keys->scaleKeys = *(ScaleKey*)mem;
 			keys->scaleKeys++;
 			mem = VOIDPTRINC(mem,sizeof(ScaleKey));
@@ -299,7 +299,7 @@ static uint load_animation_keys(Animation* anime,AnimationChannel* channels,
 	std::sort(loadedChannels.begin(),loadedChannels.end(),  
 			[](const AnimationChannel &a, const AnimationChannel &b) -> bool
 { 
-    return a.nodeIndex > b.nodeIndex; 
+    return a.nodeIndex < b.nodeIndex; 
 });
 	memcpy(channels, loadedChannels.data(), sizeof(AnimationChannel) * anime->animData.numChannels);
 	return anime->animData.numChannels;
