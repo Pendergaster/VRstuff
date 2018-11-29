@@ -294,6 +294,20 @@ static uint load_animation_keys(Animation* anime,AnimationChannel* channels,
 	}
 	return anime->animData.numChannels;
 }
+
+static uint load_bones(BoneData* bones,FILE* info, CONTAINER::MemoryBlock workingMem)
+{
+	char filePath[100];
+	uint numBones = 0;
+	int matches = fscanf(info,"%d \n",numBones);
+	ASSERT_MESSAGE(matches == 1 && numBones > 0,"INCORRECT SYNTAX!");
+	matches = fscanf(info,"%s \n",filePath);
+	ASSERT_MESSAGE(matches == 1,"INCORRECT SYNTAX!");
+	void* mem = FILESYS::load_binary_file_to_block(filePath,&workingMem,NULL);
+	memcpy(bones,mem,sizeof(BoneData) * numBones);
+	return numBones;
+}
+
 static void fill_model_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workingMem,
 		CONTAINER::MemoryBlock* staticAllocator)
 {
@@ -405,6 +419,7 @@ static void fill_model_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workin
 		writtenNodes += load_nodes(&meshData->renderNodes[writtenNodes],infoFile,*workingMem);
 		if(animated)
 		{
+
 			uint numAnimations = 0;
 			int matches = fscanf(infoFile,"%d \n",&numAnimations);
 			ASSERT_MESSAGE(matches == 1,"INCORRECT SYNTAX!");

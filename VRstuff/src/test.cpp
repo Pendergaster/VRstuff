@@ -361,7 +361,7 @@ int main()
 		int maxMeshes = scene->mNumMeshes;
 				printf("Parsing model %d/%d :: %s \n Num meshes %d \n", i, modelNames.numobj, currentName, maxMeshes);
 		bool animated = (*currentToken)["Animated"].GetBool();
-		std::vector<BoneData> boneData;
+		//std::vector<BoneData> boneData;
 		std::map<std::string,uint> boneMapping;
 		allMeshes += scene->mNumMeshes;
 		for(uint meshIndex = 0; meshIndex < scene->mNumMeshes; meshIndex++)
@@ -395,6 +395,14 @@ int main()
 		fprintf(infoFile, "%d \n", treePath.size()); // frite vertex data files to info
 		fprintf(infoFile, "%s \n", treePath.data()); // frite vertex data files to info
 		//FILE* 
+		// write bones 
+		std::string boneFilePath = std::string(metaPath) + std::string(".bone"); 
+		fprintf(infoFile, "%d \n", bones.size()); // write bone file path
+		fprintf(infoFile, "%s \n", boneFilePath.data()); // write bone file path
+		FILE* boneFile = fopen(boneFilePath.c_str(),"wb");
+		defer{fclose(boneFile);};
+		fwrite(bones.data(),sizeof(BoneData),bones.size(),boneFile);
+
 		ASSERT_MESSAGE(scene->mNumAnimations,"NO ANIMATIONS");
 		fprintf(infoFile, "%s \n", "1"); // frite vertex data files to info
 		std::string animPath = load_animation(scene->mAnimations[0]
