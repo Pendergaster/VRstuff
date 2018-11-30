@@ -247,7 +247,7 @@ static void load_mesh(FILE* file,Mesh* mesh,bool animated,
 }
 
 static uint load_nodes(RenderNode* nodes,
-		FILE* file, CONTAINER::MemoryBlock workingMem)
+		FILE* file, CONTAINER::MemoryBlock workingMem,MATH::mat4* invMat)
 {
 	char nameBuffer[100];
 	uint numNodes = 0;
@@ -256,6 +256,7 @@ static uint load_nodes(RenderNode* nodes,
 	matches = fscanf(file,"%s \n",nameBuffer);
 	ASSERT_MESSAGE(matches == 1, "SYNTAX ERROR");
 	void* mem = FILESYS::load_binary_file_to_block(nameBuffer,&workingMem,NULL);
+	*invMat = *(MATH::mat4*)mem;
 	ASSERT_MESSAGE(mem, "FAILED TO LOAD NODES");
 	memcpy(nodes,mem,sizeof(RenderNode) * numNodes);
 	return numNodes;
@@ -323,6 +324,9 @@ static void fill_model_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workin
 		CONTAINER::MemoryBlock* staticAllocator)
 {
 
+
+	CONTAINER::MemoryBlock lastStateOfMem = *workingMem;
+	defer{*workingMem = lastStateOfMem;};
 	JsonToken rootToken;
 	rootToken.ParseFile("temp/root.info");
 	meshData->numMeshes = (uint)rootToken["NumMeshes"].GetInt();
@@ -336,7 +340,6 @@ static void fill_model_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workin
 	uint numPositionKeys = (uint)rootToken["NumPositionKeys"].GetInt();
 	uint numRotationKeys = (uint)rootToken["NumRotationKeys"].GetInt();
 	uint numScaleKeys = (uint)rootToken["NumScaleKeys"].GetInt();
-	CONTAINER::MemoryBlock lastStateOfMem = *workingMem;
 
 	JsonToken token;
 	CONTAINER::DynamicArray<char*> names;
@@ -346,7 +349,7 @@ static void fill_model_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workin
 	token.GetKeys(&names);
 	//int num = 0;
 	//meshData->numMeshes = names.numobj;
-	CONTAINER::init_table_with_block(&meshData->meshCache,staticAllocator,names.numobj);
+	CONTAINER::init_table_with_block(&meshData->modelCache,staticAllocator,names.numobj);
 
 	//meshData->meshArray = (Mesh*)CONTAINER::get_next_memory_block(*staticAllocator);
 	//CONTAINER::increase_memory_block(staticAllocator,names.numobj * sizeof(Mesh));
@@ -421,10 +424,12 @@ static void fill_model_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workin
 
 		for(uint meshIter = 0; meshIter < info.numMeshes;meshIter++)
 		{
-			load_mesh(infoFile,&meshData->meshArray[info.meshLoc + meshIter],animated,*workingMem);
+			load_mesh(infoFile,&meshData->meshArray[info.meshLoc + meshIter],
+					animated,*workingMem);
 		}
 		writtenMeshes += info.numMeshes;
-		writtenNodes += load_nodes(&meshData->renderNodes[writtenNodes],infoFile,*workingMem);
+		writtenNodes += load_nodes(&meshData->renderNodes[writtenNodes],
+				infoFile,*workingMem,&info.inverseMatrix);
 		if(animated)
 		{
 			writtenBones += load_bones(&meshData->bones[writtenBones],infoFile,*workingMem);
@@ -455,7 +460,7 @@ static void fill_model_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workin
 			ABORT_MESSAGE("FAILED TO LOAD MESH :: %s \n",currentName);
 		}
 #endif
-		CONTAINER::insert_to_table<int>(&meshData->meshCache,currentName,i);
+		CONTAINER::insert_to_table<int>(&meshData->modelCache,currentName,i);
 		glBindVertexArray(0);
 	}
 }

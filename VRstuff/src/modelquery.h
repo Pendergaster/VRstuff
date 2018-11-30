@@ -11,6 +11,7 @@ static void bone_transform(ModelCache* models,uint modelId,float time,MATH::mat4
 	MATH::identify(&identity);
 	RenderNode* nodes = &models->renderNodes[model->renderNodesLoc];
 	//todo finr affecting node anim!
+	
 }
 
 static inline int find_channel(AnimationChannel* channels,uint low ,uint high,uint key)
@@ -30,7 +31,7 @@ static inline int find_channel(AnimationChannel* channels,uint low ,uint high,ui
 	find_channel(channels,low, mid - 1,key);
 }
 
-static MATH::mat3 calculate_lerp_scale(float time,AnimationChannel* node)
+static MATH::mat4 calculate_lerp_scale(float time,AnimationChannel* node)
 {
 	ASSERT_MESSAGE(node->numScaleKeys,"NO SCALE KEYS");
 	MATH::vec3 scale;
@@ -59,28 +60,107 @@ static MATH::mat3 calculate_lerp_scale(float time,AnimationChannel* node)
 
 	MATH::mat4 m;
 	MATH::identify(&m);
-// todo kato scaling!
+	m.mat[0][0] = scale.x;
+	m.mat[1][1] = scale.y;
+	m.mat[2][2] = scale.z;
+	return m;
 }
+
+static MATH::mat4 calculate_lerp_rotation(float time,AnimationChannel* node)
+{
+	ASSERT_MESSAGE(node->numRotationKeys,"NO SCALE KEYS");
+	MATH::quaternion q;
+	if(node->numScaleKeys == 1)
+	{
+		q =  node->rotations[0].quat;
+	}
+	else
+	{
+		uint frameIndex = 0;
+		for(uint i = 0; i < node->numRotationKeys - 1;i++)
+		{
+			if(time < (float)node->rotations[i + 1].time)
+			{
+				frameIndex = i;
+				break;
+			}
+		}
+		RotationKey currentFrame = node->rotations[frameIndex];
+		RotationKey nextFrame = node->rotations[(frameIndex + 1) % node->numRotationKeys];
+
+		float delta = (time - (float)currentFrame.time) /
+		   	(float)(nextFrame.time - currentFrame.time);
+		
+		q = MATH::interpolate_q(currentFrame.quat,nextFrame.quat,delta);
+		MATH::normalize(&q);
+	}
+	return MATH::mat4(q);
+}
+
+static MATH::mat4 calculate_lerp_position(float time,AnimationChannel* node)
+{
+	ASSERT_MESSAGE(node->numPositionKeys,"NO SCALE KEYS");
+	MATH::vec3 translation;
+	if(node->numPositionKeys == 1)
+	{
+		translation =  node->positions[0].position;
+	}
+	else
+	{
+		uint frameIndex = 0;
+		for(uint i = 0; i < node->numPositionKeys - 1;i++)
+		{
+			if(time < (float)node->positions[i + 1].time)
+			{
+				frameIndex = i;
+				break;
+			}
+		}
+		PositionKey currentFrame = node->positions[frameIndex];
+		PositionKey nextFrame = node->positions[(frameIndex + 1) % node->numPositionKeys];
+
+		float delta = (time - (float)currentFrame.time) /
+		   	(float)(nextFrame.time - currentFrame.time);
+		
+		translation = (currentFrame.position + delta * (nextFrame.position - currentFrame.position));
+	}
+	MATH::mat4 m;
+	MATH::identify(&m);
+	MATH::translate(&m,translation);
+	return m;
+}
+
+
 
 static uint read_node_heirarchy(RenderNode* nodes,uint depth,
 	const float time,AnimationChannel* channels,const uint numChannels,
-	const MATH::mat4& parentTransform)
+	const MATH::mat4& parentTransform,MATH::mat4* boneResults,
+	BoneData* bones,const MATH::mat4& inv)
 {
 	RenderNode* current = &nodes[depth];
 	int affectingChannel = find_channel(channels,0,numChannels,depth);
 
+	MATH::mat4 nodeTranform = current->transformation;
 	if(affectingChannel != -1)
 	{
-		MATH::vec3 scaling;
-		MATH::mat4 scalingM;
+
+		MATH::mat4 scaling = calculate_lerp_scale(time,&channels[affectingChannel]);
+		MATH::mat4 rotation = calculate_lerp_rotation(time,&channels[affectingChannel]);
+		MATH::mat4 position = calculate_lerp_position(time,&channels[affectingChannel]);
+		nodeTranform = position * rotation * scaling;	
 	}
-	MATH::mat4 nodeTranform = current->transformation;
 
 	MATH::mat4 globalTransform = parentTransform * nodeTranform;
+
+	if(current->boneIndex != NO_BONE)
+	{
+		boneResults[current->boneIndex] = inv * globalTransform * bones[current->boneIndex].offset;
+	}
+
 	for(uint i = 0; i < current->numChildren;i++)
 	{
 		depth = read_node_heirarchy(nodes,depth + 1,time,channels,
-				numChannels,globalTransform);
+				numChannels,globalTransform,boneResults,bones,inv);
 	}
 	//if(current->boneIndex = )
 	//	return depth;

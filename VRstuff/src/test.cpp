@@ -391,7 +391,12 @@ int main()
 		treePath += ".nodes";
 		FILE* treeFile = fopen(treePath.data(),"wb");
 		defer {fclose(treeFile);};
-		fwrite(renderNodes.data(),sizeof(RenderNode),renderNodes.size(),treeFile);
+		MATH::mat4 globalTransform = *(MATH::mat4*)&scene->mRootNode->mTransformation;
+		MATH::mat4 inv;
+		MATH::inverse_mat4(&inv, &globalTransform);
+		fwrite(&inv,sizeof(MATH::mat4), 1,treeFile);
+		fwrite(renderNodes.data(),sizeof(RenderNode),
+				renderNodes.size(),treeFile);
 		fprintf(infoFile, "%d \n", (uint)treePath.size()); // frite vertex data files to info
 		fprintf(infoFile, "%s \n", treePath.data()); // frite vertex data files to info
 		//FILE* 
