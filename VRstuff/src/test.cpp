@@ -142,6 +142,7 @@ std::string load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,ch
 	{
 		for(uint b = 0; b < mesh->mNumBones;b++)
 		{
+			aiBone* currentBones = mesh->mBones[b]; 
 			uint numWeights = mesh->mBones[b]->mNumWeights;
 			std::string boneName(mesh->mBones[b]->mName.data);
 			int boneIndex = 0;
@@ -166,6 +167,7 @@ std::string load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,ch
 					bones[vertexId].add(boneIndex,mesh->mBones[b]->mWeights[w].mWeight);
 			}
 		}
+		#if 0
 		for(uint i = 0; i < bones.size(); i++)
 		{
 			float add = 0;
@@ -179,6 +181,7 @@ std::string load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,ch
 				bones[i].weights[p] /= add;
 			}
 		}
+		#endif
 		aligment.numBoneData = (uint)bones.size();
 	}
 	FILE* metaFile = fopen(modelName.data(), "wb");
@@ -360,8 +363,9 @@ int main()
 		char* metaPath = (*currentToken)["metaDataPath"].GetString();
 		char* meshdatapath = (*currentToken)["meshDataName"].GetString();
 		ASSERT_MESSAGE(path && metaPath && meshdatapath,"RAWPATH IS NOT FOUND ::  %s \n",currentName);
-		const aiScene* scene = importer.ReadFile(path,aiProcess_Triangulate | aiProcess_FlipUVs |
-				aiProcess_JoinIdenticalVertices | aiProcess_GenNormals | aiProcess_GenUVCoords );
+		const aiScene* scene = importer.ReadFile(path,0);
+				//aiProcess_Triangulate | aiProcess_FlipUVs |
+				//aiProcess_JoinIdenticalVertices | aiProcess_GenNormals | aiProcess_GenUVCoords );
 		ASSERT_MESSAGE(scene && !(scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) && scene->mRootNode, "FAILED TO PARSE :: %s ERROR :: %s \n", currentName, importer.GetErrorString());
 		int maxMeshes = scene->mNumMeshes;
 				printf("Parsing model %d/%d :: %s \n Num meshes %d \n", i, modelNames.numobj, currentName, maxMeshes);

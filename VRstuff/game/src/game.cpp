@@ -235,8 +235,8 @@ EXPORT void init_game(void* p)
 		 MaterialType::Lattia,
 		 get_model(hook->models,"Skeleton"),
 		 MATH::vec3(0.f,0.f,0.f),
-		 MATH::quaternion(),
-		 MATH::vec3(0.005f,0.005f,0.005f)
+		 MATH::quaternion(MATH::vec3(MATH::deg_to_rad * -90.f,0.f,0.f)),
+		 MATH::vec3(2.005f,2.005f,2.005f)
 		);
 
 	insert_renderdata(lattia,&game->renderData,hook->renderables);
@@ -250,7 +250,7 @@ EXPORT void init_game(void* p)
 	init_sound_device(&game->soundContext,&hook->workingMemory,&hook->gameMemory);
 
 	init_camera(&game->camera,&hook->viewMatrix,&hook->projectionMatrix,
-			MATH::vec3(0,0,0.f),MATH::vec3(0,0,-1.f));
+			MATH::vec3(0,0,10.f),MATH::vec3(0,0,-1.f));
 
 
 	ImGui::SetCurrentContext(hook->imguiContext);

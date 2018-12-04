@@ -221,7 +221,7 @@ static void load_mesh(FILE* file,Mesh* mesh,bool animated,
 		glBindBuffer(GL_ARRAY_BUFFER,mesh->bonedataBuffer);
 		VertexBoneData* vertbonedata = (VertexBoneData*)mem;
 
-		glVertexAttribPointer(3, MAX_BONES_IN_VERTEX, GL_INT, GL_FALSE,
+		glVertexAttribIPointer(3, MAX_BONES_IN_VERTEX, GL_INT, 
 				sizeof(VertexBoneData), (void*)offsetof(VertexBoneData,IDs));
 		glEnableVertexAttribArray(3);
 		glVertexAttribPointer(4, MAX_BONES_IN_VERTEX, GL_FLOAT, GL_FALSE,

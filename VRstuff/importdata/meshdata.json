@@ -3,7 +3,7 @@
 	{
 		"metaDataPath" : "temp/model.info",
 		"meshDataName" : "temp/model.bin",
-		"rawPath" : "models/goblin.dae",
+		"rawPath" : "models/model.dae",
 		"Animated" : true
 	}
 }

@@ -474,7 +474,8 @@ static RenderMeshData* query_models(RenderData* renderData,uint numRenderables,M
 	//RenderData* data;
 	//MATH::mat4* 
 	static float dt = 0; 
-	dt += 0.01f;
+	dt += 0.02f;
+	float animeTime = fmodf(dt,0.9f);
 
 	RenderMeshData* renderDatas = (RenderMeshData*)CONTAINER::get_next_memory_block(*workingMem);
 	CONTAINER::increase_memory_block(workingMem,sizeof(RenderMeshData) * numRenderables);
@@ -500,9 +501,9 @@ static RenderMeshData* query_models(RenderData* renderData,uint numRenderables,M
 		MATH::mat4 parentTransform;
 		MATH::identify(&parentTransform);
 
-		uint depth = load_meshes_from_nodes(startNode,0,dt,
+		uint depth = load_meshes_from_nodes(startNode,0,animeTime,
 				modelInfo->inverseMatrix,parentTransform,orientations);
-		depth  = load_bones_from_nodes(startNode,0,dt,
+		depth  = load_bones_from_nodes(startNode,0,animeTime,
 				modelInfo->inverseMatrix,parentTransform,boneDatas,bones,animeChannels,numChannels);
 
 		for(uint m = 0; m < modelInfo->numMeshes;m++)
@@ -641,7 +642,15 @@ static void render_meshes(Renderer* renderValues ,
 			}
 			if(setBones)
 			{
+				MATH::mat4* bonesI = (MATH::mat4*)malloc(
+					currentData->numbones* sizeof(MATH::mat4));
+				defer{free(bonesI);};
+				for(int ree = 0 ; ree < currentData->numbones;ree++)
+				{
+					MATH::identify(&bonesI[ree]);
+				}
 				glUniformMatrix4fv(boneloc, currentData->numbones, GL_FALSE, 
+						//(GLfloat*)bonesI);
 						(GLfloat*)currentData->bones);//.mat);
 			}
 

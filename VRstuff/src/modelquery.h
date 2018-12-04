@@ -18,7 +18,16 @@ static void bone_transform(ModelCache* models,uint modelId,float time,MATH::mat4
 
 static inline int find_channel(AnimationChannel* channels,int low ,int high,uint key)
 {
-
+#if 0
+	for(uint i = 0; i < high; i++)
+	{
+		if(key == channels[i].nodeIndex) return i;
+	}
+	return -1;
+	#else
+    if (key == 3) {
+        int k = 10;
+    }
 	if(high < low){
 		return -1;
 	}
@@ -28,9 +37,10 @@ static inline int find_channel(AnimationChannel* channels,int low ,int high,uint
 		return mid;
 	}
 	if(key > channels[mid].nodeIndex) {
-		find_channel(channels,mid + 1, high,key);
+		return find_channel(channels,mid + 1, high,key);
 	}
 	return find_channel(channels,low, mid - 1,key);
+	#endif
 }
 
 static MATH::mat4 calculate_lerp_scale(float time,AnimationChannel* node)
@@ -61,10 +71,11 @@ static MATH::mat4 calculate_lerp_scale(float time,AnimationChannel* node)
 	}
 
 	MATH::mat4 m;
+
+	MATH::identify(&m);
 	m.mat[0][0] = scale.x;
 	m.mat[1][1] = scale.y;
 	m.mat[2][2] = scale.z;
-	MATH::identify(&m);
 	return m;
 }
 
@@ -96,9 +107,7 @@ static MATH::mat4 calculate_lerp_rotation(float time,AnimationChannel* node)
 	q = MATH::interpolate_q(currentFrame.quat,nextFrame.quat,delta);
 		MATH::normalize(&q);
 	}
-	MATH::mat4 iden;
-	MATH::identify(&iden);
-	return iden;//MATH::mat4(q);
+	return MATH::mat4(q);
 }
 
 static MATH::mat4 calculate_lerp_position(float time,AnimationChannel* node)
@@ -129,8 +138,8 @@ static MATH::mat4 calculate_lerp_position(float time,AnimationChannel* node)
 		translation = (currentFrame.position + delta * (nextFrame.position - currentFrame.position));
 	}
 	MATH::mat4 m;
-	MATH::translate(&m,translation);
 	MATH::identify(&m);
+	MATH::translate(&m,translation);
 	return m;
 }
 
@@ -156,7 +165,6 @@ static uint load_bones_from_nodes(RenderNode* nodes,uint depth,float time,
 		if(!current->boneIndex ){
 			int kkkkkkk = 0;
 		}
-
 		MATH::mat4 scaling = calculate_lerp_scale(time,&channels[affectingChannel]);
 		MATH::mat4 rotation = calculate_lerp_rotation(time,&channels[affectingChannel]);
 		MATH::mat4 position = calculate_lerp_position(time,&channels[affectingChannel]);
