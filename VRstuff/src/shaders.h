@@ -186,6 +186,12 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 					//currentShaderProg.globalUniformFlags = 
 					BIT_SET(currentShaderProg.globalUniformFlags,GlobalUniforms::ShadowBlock);
 				}
+				else if(!strcmp(glUniName,"AnimeBlock")){
+					LOG("DETECTED AnimeBlock ");
+					//currentShaderProg.globalUniformFlags = 
+					BIT_SET(currentShaderProg.globalUniformFlags,GlobalUniforms::AnimeBlock);
+				}
+
 				else{
 					ABORT_MESSAGE("GLOBALUNIFORM NOT DEFINED %s \n",currentName);
 				}
@@ -273,7 +279,7 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 			uniformInfo.name = modelName;
 			uniformInfo.hashedID = CONTAINER::hash(uniformInfo.name);
 			int location = glGetUniformLocation(manager->shaderProgramIds[i],"model");
-			ASSERT_MESSAGE(location != GL_INVALID_VALUE,
+			ASSERT_MESSAGE(location != -1,
 					"MODEL MATRIX COULD NOT BE FOUND IN :: %s \n",currentName);
 			uniformInfo.location = location;
 			uniformInfo.type = UniformType::MODEL;
@@ -281,16 +287,31 @@ static void load_shader_programs(ShaderManager* manager,CONTAINER::MemoryBlock* 
 			++manager->numSystemUniforms; 
 			++currentShaderProg.numUniforms;
 		}
+		if(BIT_CHECK(currentShaderProg.globalUniformFlags,GlobalUniforms::AnimeBlock))
+		{
+			UniformInfo uniformInfo;
+			uniformInfo.name = modelName;
+			uniformInfo.hashedID = CONTAINER::hash(uniformInfo.name);
+			int location = glGetUniformLocation(manager->shaderProgramIds[i],"bones");
+			ASSERT_MESSAGE(location != -1,
+					"BONES MATRIX COULD NOT BE FOUND IN :: %s \n",currentName);
+			uniformInfo.location = location;
+			uniformInfo.type = UniformType::BONES;
+			currentShaderProg.uniforms[currentShaderProg.numUniforms] = uniformInfo;
+			++manager->numSystemUniforms; 
+			++currentShaderProg.numUniforms;
+		}
+
 		if(BIT_CHECK(currentShaderProg.globalUniformFlags,GlobalUniforms::ShadowBlock))
 		{
 			UniformInfo uniformInfo;
 			uniformInfo.name = shadowname;
 			uniformInfo.hashedID = CONTAINER::hash(uniformInfo.name);
 
-            if (!setup_uniform_shadowMap(&uniformInfo, manager->shaderProgramIds[i]))
-            {
-                ABORT_MESSAGE("SHADOW SAMPLER NOT FOUND");
-            }
+			if (!setup_uniform_shadowMap(&uniformInfo, manager->shaderProgramIds[i]))
+			{
+				ABORT_MESSAGE("SHADOW SAMPLER NOT FOUND");
+			}
 			uniformInfo.type = UniformType::SHADOW;
 			currentShaderProg.uniforms[currentShaderProg.numUniforms] = uniformInfo;
 			++manager->numSystemUniforms; 

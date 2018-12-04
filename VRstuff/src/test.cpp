@@ -206,9 +206,13 @@ std::string load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,ch
 	return modelName;
 }
 
+uint numpasses = 0;
 void push_node(aiNode* node, std::vector<RenderNode>& nodes,
 		std::map<std::string,uint>& nodeMapping,std::map<std::string,uint>& boneMapping)
 {
+	if(numpasses == 20){
+		int kkkk = 0;
+	}
 	RenderNode n;
 	n.numChildren = node->mNumChildren;
 	ASSERT_MESSAGE(node->mNumMeshes <= 1,"MORE THAN TWO BODIES IN NODE");
@@ -233,6 +237,7 @@ void push_node(aiNode* node, std::vector<RenderNode>& nodes,
 		ABORT_MESSAGE("node is already found!");
 	}
 	nodes.push_back(n);
+	numpasses++;
 	for(uint i = 0; i < node->mNumChildren;i++)
 	{
 		push_node(node->mChildren[i],nodes,nodeMapping,boneMapping);
@@ -397,7 +402,7 @@ int main()
 		fwrite(&inv,sizeof(MATH::mat4), 1,treeFile);
 		fwrite(renderNodes.data(),sizeof(RenderNode),
 				renderNodes.size(),treeFile);
-		fprintf(infoFile, "%d \n", (uint)treePath.size()); // frite vertex data files to info
+		fprintf(infoFile, "%d \n", (uint)renderNodes.size()); // frite vertex data files to info
 		fprintf(infoFile, "%s \n", treePath.data()); // frite vertex data files to info
 		//FILE* 
 		// write bones 

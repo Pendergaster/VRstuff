@@ -43,6 +43,7 @@ struct ModelInfo
 	char*			name = NULL;
 	char*			path = NULL;
 	uint			numMeshes = 0;
+	uint			numBones = 0;
 	uint			meshLoc = 0;
 	uint			renderNodesLoc = 0;
 	uint			numAnimations = 0;

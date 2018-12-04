@@ -17,6 +17,17 @@
 		"RenderGroup" : "Model",
 		"GlobalUniforms" : ["MVP"]
 	},
+	"AnimatedProg" : 
+	{
+		"VertexPath" : "shaders/animVert.glsl",
+		"FragmentPath" : "shaders/frag.glsl",
+		"RenderGroup" : "Model",
+		"GlobalUniforms" : ["MVP","GlobalLight","ShadowBlock","AnimeBlock"],
+		"Uniforms" : 
+		{
+			"tex" : "SAMPLER2D" 
+		}
+	},
 
 	"EyeProg" : 
 	{

@@ -142,7 +142,7 @@ static void init_camera(Camera* cam,MATH::mat4* view,MATH::mat4* projection,
 	//MATH::mat4 
 	MATH::create_lookat_mat4(view,cam->position,at,worldUp);
 	cam->up = worldUp;
-	cam->yaw = -90.0f;
+	cam->yaw = -0.0f;
 	cam->pitch = 0;
 
 	MATH::vec3 cameraDirection = MATH::normalized(at -cam->position);
@@ -211,12 +211,12 @@ EXPORT void init_game(void* p)
 	game->renderData.freeListIndex = 0;
 
 	Material planetMat = create_new_material(hook->shaders,"MainProg");
-	Material lattiaMat = create_new_material(hook->shaders,"MainProg");
-
+	Material lattiaMat = create_new_material(hook->shaders,"AnimatedProg");
+#if 0
 	RenderData planetData = create_new_renderdata
 		(
 		 MaterialType::PlanetMat,
-		 get_mesh(hook->meshes,"Skeleton"),
+		 get_model(hook->models,"Skeleton"),
 		 MATH::vec3(0.f,0,-10.f),
 		 MATH::quaternion(),
 		 MATH::vec3(0.5f,0.5f,0.5f)
@@ -228,20 +228,20 @@ EXPORT void init_game(void* p)
 
 	planetData.position = MATH::vec3(0,-1.f,-10.f);
 	game->enemy = insert_renderdata(planetData,&game->renderData,hook->renderables);
-
+#endif
 
 	RenderData lattia = create_new_renderdata
 		(
 		 MaterialType::Lattia,
-		 get_mesh(hook->meshes,"Skeleton"),
-		 MATH::vec3(0.f,-3.f,-10.f),
+		 get_model(hook->models,"Skeleton"),
+		 MATH::vec3(0.f,0.f,0.f),
 		 MATH::quaternion(),
-		 MATH::vec3(1.0f,0.5f,1.0f)
+		 MATH::vec3(0.005f,0.005f,0.005f)
 		);
 
 	insert_renderdata(lattia,&game->renderData,hook->renderables);
 
-	hook->numRenderables = 3;
+	hook->numRenderables = 1;
 	TextureID moonTex = get_texture(*hook->textures,"MoonTexture");
 	set_material_texture(hook->shaders,&planetMat,0,moonTex);
 	set_material_texture(hook->shaders,&lattiaMat,0,get_texture(*hook->textures,"Lattia"));

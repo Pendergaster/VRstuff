@@ -215,12 +215,6 @@ static void load_mesh(FILE* file,Mesh* mesh,bool animated,
 	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(MATH::vec2) * aligment->numTextureCoords, uvs);
 	glCheckError();
 
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->indexBuffer);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, aligment->numIndexes * sizeof(uint), NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, aligment->numIndexes * sizeof(uint), indexes);
-	glCheckError();
-
-
 	if(animated)
 	{
 		glGenBuffers(1,(uint*)(&mesh->bonedataBuffer));
@@ -238,6 +232,12 @@ static void load_mesh(FILE* file,Mesh* mesh,bool animated,
 		glBufferSubData(GL_ARRAY_BUFFER, 0,sizeof(VertexBoneData) * aligment->numBoneData, vertbonedata);
 
 	}
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->indexBuffer);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, aligment->numIndexes * sizeof(uint), NULL, GL_STATIC_DRAW);
+	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, aligment->numIndexes * sizeof(uint), indexes);
+	glCheckError();
+
+
 
 	glBindVertexArray(0);
 
@@ -257,6 +257,7 @@ static uint load_nodes(RenderNode* nodes,
 	ASSERT_MESSAGE(matches == 1, "SYNTAX ERROR");
 	void* mem = FILESYS::load_binary_file_to_block(nameBuffer,&workingMem,NULL);
 	*invMat = *(MATH::mat4*)mem;
+	mem = VOIDPTRINC(mem,sizeof(MATH::mat4));
 	ASSERT_MESSAGE(mem, "FAILED TO LOAD NODES");
 	memcpy(nodes,mem,sizeof(RenderNode) * numNodes);
 	return numNodes;
@@ -299,9 +300,9 @@ static uint load_animation_keys(Animation* anime,AnimationChannel* channels,
 	}
 	std::sort(loadedChannels.begin(),loadedChannels.end(),  
 			[](const AnimationChannel &a, const AnimationChannel &b) -> bool
-{ 
-    return a.nodeIndex < b.nodeIndex; 
-});
+			{ 
+			return a.nodeIndex < b.nodeIndex; 
+			});
 	memcpy(channels, loadedChannels.data(), sizeof(AnimationChannel) * anime->animData.numChannels);
 	return anime->animData.numChannels;
 
@@ -432,9 +433,10 @@ static void fill_model_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workin
 				infoFile,*workingMem,&info.inverseMatrix);
 		if(animated)
 		{
-			writtenBones += load_bones(&meshData->bones[writtenBones],infoFile,*workingMem);
+			info.numBones = load_bones(&meshData->bones[writtenBones],infoFile,*workingMem);
+			writtenBones += info.numBones;
 			uint numAnimations = 0;
-			int matches = fscanf(infoFile,"%d \n",&numAnimations);
+			matches = fscanf(infoFile,"%d \n",&numAnimations);
 			ASSERT_MESSAGE(matches == 1,"INCORRECT SYNTAX!");
 			for(uint animIter = 0; animIter < numAnimations;
 					animIter++,writtenAnimations++)
@@ -445,8 +447,8 @@ static void fill_model_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workin
 						&keys,
 						infoFile,*workingMem);
 			}
-
 		}
+		meshData->modelInfos[i] = info;
 #if 0
 		if(!load_model(&info,
 					&meshData->meshArray[info.meshLoc],

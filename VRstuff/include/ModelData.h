@@ -8,7 +8,7 @@
 
 #define MAX_NAME_SIZE 80
 #define MAX_BONES 64
-#define MAX_BONES_IN_VERTEX 3
+#define MAX_BONES_IN_VERTEX 4
 struct BoneIndexes
 {
 	int	indexes[MAX_BONES_IN_VERTEX];
@@ -42,7 +42,7 @@ struct BoneData
 {
 	uint 		nodeIndex;
 	MATH::mat4 	offset;
-	MATH::mat4 	finalTransform;
+	//MATH::mat4 	finalTransform;
 };
 
 struct AnimationData

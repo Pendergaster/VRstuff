@@ -15,6 +15,7 @@
 	MODE(SAMPLERCUBE)\
 	MODE(MODEL)\
 	MODE(SHADOW)\
+	MODE(BONES)\
 
 #define RENDERGROUPS(MODE)\
 	MODE(INVALID)\
@@ -50,7 +51,8 @@ enum GlobalUniforms
 	Invalid = 1 << 0,
 	MVP = 1 << 2,
 	GlobalLight = 1 << 3,
-	ShadowBlock = 1 << 5,
+	ShadowBlock = 1 << 4,
+	AnimeBlock = 1 << 5
 };
 
 struct Uniform
