@@ -159,15 +159,16 @@ std::string load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,ch
 			}
 			bonemapping[boneName] = boneIndex;
 			// bone to node space
-			boneData[boneIndex].offset = *(MATH::mat4*)&mesh->mBones[b]->mOffsetMatrix;
+			MATH::mat4 temp = *(MATH::mat4*)&mesh->mBones[b]->mOffsetMatrix;
+			MATH::transpose(&boneData[boneIndex].offset,&temp);
 			for(uint w = 0; w < numWeights;w++)
 			{
 				//float currentWeight = mesh->mBones[b]->mWeights[w].mWeight;
 				uint vertexId = mesh->mBones[b]->mWeights[w].mVertexId;
-					bones[vertexId].add(boneIndex,mesh->mBones[b]->mWeights[w].mWeight);
+				bones[vertexId].add(boneIndex,mesh->mBones[b]->mWeights[w].mWeight);
 			}
 		}
-		#if 0
+#if 0
 		for(uint i = 0; i < bones.size(); i++)
 		{
 			float add = 0;
@@ -181,7 +182,7 @@ std::string load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,ch
 				bones[i].weights[p] /= add;
 			}
 		}
-		#endif
+#endif
 		aligment.numBoneData = (uint)bones.size();
 	}
 	FILE* metaFile = fopen(modelName.data(), "wb");
@@ -209,13 +210,9 @@ std::string load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,ch
 	return modelName;
 }
 
-uint numpasses = 0;
 void push_node(aiNode* node, std::vector<RenderNode>& nodes,
 		std::map<std::string,uint>& nodeMapping,std::map<std::string,uint>& boneMapping)
 {
-	if(numpasses == 20){
-		int kkkk = 0;
-	}
 	RenderNode n;
 	n.numChildren = node->mNumChildren;
 	ASSERT_MESSAGE(node->mNumMeshes <= 1,"MORE THAN TWO BODIES IN NODE");
@@ -233,14 +230,15 @@ void push_node(aiNode* node, std::vector<RenderNode>& nodes,
 	}
 
 	n.numChildren = node->mNumChildren;
-    n.transformation = (*((MATH::mat4*)&node->mTransformation));
+	MATH::mat4 nodeTransform = *((MATH::mat4*)&node->mTransformation);
+
+	MATH::transpose(&n.transformation,&nodeTransform);
 	if(nodeMapping.find(name) == nodeMapping.end()) {
 		nodeMapping[name] = (uint)nodes.size();
 	} else {
 		ABORT_MESSAGE("node is already found!");
 	}
 	nodes.push_back(n);
-	numpasses++;
 	for(uint i = 0; i < node->mNumChildren;i++)
 	{
 		push_node(node->mChildren[i],nodes,nodeMapping,boneMapping);
@@ -248,8 +246,8 @@ void push_node(aiNode* node, std::vector<RenderNode>& nodes,
 }
 
 std::string load_animation(aiAnimation* anim,char* metaFileName,
-			std::map<std::string,uint>& nodeMapping,uint numAnim,
-			uint* allNumChannels,uint* allNumPositions,uint* allNumRotations,uint* allNumScales)
+		std::map<std::string,uint>& nodeMapping,uint numAnim,
+		uint* allNumChannels,uint* allNumPositions,uint* allNumRotations,uint* allNumScales)
 {
 	AnimationData data;
 	data.duration = anim->mDuration;
@@ -283,10 +281,10 @@ std::string load_animation(aiAnimation* anim,char* metaFileName,
 		{
 			PositionKey temp;
 			temp.position = MATH::vec3(
-				node->mPositionKeys[j].mValue.x,
-				node->mPositionKeys[j].mValue.y,
-				node->mPositionKeys[j].mValue.z
-			);
+					node->mPositionKeys[j].mValue.x,
+					node->mPositionKeys[j].mValue.y,
+					node->mPositionKeys[j].mValue.z
+					);
 			temp.time = node->mPositionKeys[j].mTime;
 			positionKeys.push_back(temp);
 		}
@@ -294,11 +292,11 @@ std::string load_animation(aiAnimation* anim,char* metaFileName,
 		{
 			RotationKey temp;
 			temp.quat = MATH::quaternion(
-				node->mRotationKeys[j].mValue.w,
-				node->mRotationKeys[j].mValue.x,
-				node->mRotationKeys[j].mValue.y,
-				node->mRotationKeys[j].mValue.z
-			);
+					node->mRotationKeys[j].mValue.w,
+					node->mRotationKeys[j].mValue.x,
+					node->mRotationKeys[j].mValue.y,
+					node->mRotationKeys[j].mValue.z
+					);
 			temp.time = node->mRotationKeys[j].mTime;
 			rotationKeys.push_back(temp);
 		}
@@ -306,10 +304,10 @@ std::string load_animation(aiAnimation* anim,char* metaFileName,
 		{
 			ScaleKey temp;
 			temp.scale = MATH::vec3(
-				node->mScalingKeys[j].mValue.x,
-				node->mScalingKeys[j].mValue.y,
-				node->mScalingKeys[j].mValue.z
-			);
+					node->mScalingKeys[j].mValue.x,
+					node->mScalingKeys[j].mValue.y,
+					node->mScalingKeys[j].mValue.z
+					);
 			temp.time = node->mScalingKeys[j].mTime;
 			scalingKeys.push_back(temp);
 		}
@@ -364,11 +362,11 @@ int main()
 		char* meshdatapath = (*currentToken)["meshDataName"].GetString();
 		ASSERT_MESSAGE(path && metaPath && meshdatapath,"RAWPATH IS NOT FOUND ::  %s \n",currentName);
 		const aiScene* scene = importer.ReadFile(path,0);
-				//aiProcess_Triangulate | aiProcess_FlipUVs |
-				//aiProcess_JoinIdenticalVertices | aiProcess_GenNormals | aiProcess_GenUVCoords );
+		//aiProcess_Triangulate | aiProcess_FlipUVs |
+		//aiProcess_JoinIdenticalVertices | aiProcess_GenNormals | aiProcess_GenUVCoords );
 		ASSERT_MESSAGE(scene && !(scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) && scene->mRootNode, "FAILED TO PARSE :: %s ERROR :: %s \n", currentName, importer.GetErrorString());
 		int maxMeshes = scene->mNumMeshes;
-				printf("Parsing model %d/%d :: %s \n Num meshes %d \n", i, modelNames.numobj, currentName, maxMeshes);
+		printf("Parsing model %d/%d :: %s \n Num meshes %d \n", i, modelNames.numobj, currentName, maxMeshes);
 		bool animated = (*currentToken)["Animated"].GetBool();
 		//std::vector<BoneData> boneData;
 		std::map<std::string,uint> boneMapping;
@@ -403,7 +401,9 @@ int main()
 		MATH::mat4 globalTransform = *(MATH::mat4*)&scene->mRootNode->mTransformation;
 		MATH::mat4 inv;
 		MATH::inverse_mat4(&inv, &globalTransform);
-		fwrite(&inv,sizeof(MATH::mat4), 1,treeFile);
+		MATH::mat4 inverse_trans;
+		MATH::transpose(&inverse_trans,&inv);
+		fwrite(&inverse_trans,sizeof(MATH::mat4), 1,treeFile);
 		fwrite(renderNodes.data(),sizeof(RenderNode),
 				renderNodes.size(),treeFile);
 		fprintf(infoFile, "%d \n", (uint)renderNodes.size()); // frite vertex data files to info
@@ -420,7 +420,7 @@ int main()
 		ASSERT_MESSAGE(scene->mNumAnimations,"NO ANIMATIONS");
 		fprintf(infoFile, "%s \n", "1"); // frite vertex data files to info
 		std::string animPath = load_animation(scene->mAnimations[0]
-					,metaPath,nodeMapping,0,&allChannels,&allPositionKeys,&allRotationKeys,&allScaleKeys);
+				,metaPath,nodeMapping,0,&allChannels,&allPositionKeys,&allRotationKeys,&allScaleKeys);
 		fprintf(infoFile, "%s \n", animPath.data()); // frite vertex data files to info
 		allAnimations += 1;		
 #if 0
@@ -461,7 +461,7 @@ int main()
 	FILE* hostfile =  fopen("temp/root.info","w");
 
 	fprintf(hostfile,  "{\n\t\"NumModels\" : %d, \n\t\"NumMeshes\" : %d, \n\t\"NumAnimations\" : %d, \n\t\"NumAnimationChannels\" : %d, \n\t\"NumNodes\" : %d, \n\t\"NumBones\" : %d \n\t\"NumPositionKeys\" : %d, \n\t\"NumRotationKeys\" : %d, \n\t\"NumScaleKeys\" : %d \n}",
-					modelNames.numobj,allMeshes,allAnimations,allChannels,allNodes,allBones,allPositionKeys,allRotationKeys,allScaleKeys);
+			modelNames.numobj,allMeshes,allAnimations,allChannels,allNodes,allBones,allPositionKeys,allRotationKeys,allScaleKeys);
 	fclose(hostfile);
 	printf("bye \n");
 	// frite vertex data files to info

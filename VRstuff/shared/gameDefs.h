@@ -14,6 +14,7 @@
 #define SCREENWIDHT 800
 #define SCREENHEIGHT 800
 #define VR 0
+
 struct RenderData
 {
 	int					materialID;
@@ -23,6 +24,14 @@ struct RenderData
 	MATH::quaternion	orientation;
 	MATH::vec3			scale;
 };
+
+struct AnimationHook
+{
+	uint	renderDataIndex = 0;
+	uint	animtionIndex = 0;
+	float	animationSpeed = 0;
+};
+
 struct GlobalLight
 {
 	MATH::vec4 dir;
@@ -31,14 +40,12 @@ struct GlobalLight
 	MATH::vec4 specular;
 };
 
-
 struct GameHook
 {
 	ModelCache*				models;
 	ShaderManager*			shaders;
 	int						numRenderables = 0;
 	RenderData*				renderables = NULL;
-	//int*					renderIndexes = NULL;
 	int						numMaterials = 0;
 	Material*				materials = NULL;
 	CONTAINER::MemoryBlock	gameMemory;
@@ -52,6 +59,5 @@ struct GameHook
 	MATH::mat4				projectionMatrix;
 	struct GlobalLight		globalLight;
 };
-
 
 #endif

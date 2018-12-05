@@ -37,16 +37,61 @@ const char* material_names[] =
 };
 
 typedef uint RenderDataHandle;
-struct GameRender
+
+struct RenderHandle
 {
-	RenderDataHandle*	dataHandles = NULL;	
-	int					dataHandleIndex = 0;
-	uint*				freelist = NULL;	
-	int					freeListIndex = 0;
-	uint*				renderDataBackPointers = NULL;
+	uint renderIndex = 0;
+	uint animationIndex = 0;
+};
+#define NO_ANIMATION 0xFFFFFFFF
+struct RenderDataBackPointer
+{
+	uint renderIndex = 0;
+	uint animationIndex = 0;
 };
 
-typedef uint RenderHandle;
+#define MAX_RENDER_OBJECTS 100
+struct GameRender
+{
+	RenderDataHandle*			dataHandles = NULL;	
+	int							dataHandleIndex = 0;
+	uint*						freelist = NULL;	
+	int							freeListIndex = 0;
+	RenderDataBackPointer*		renderDataBackPointers = NULL;
+	//animation datas
+	uint*						animationHandles = NULL;
+	uint						animationHandleIndex = 0;
+	uint*						animationFreelist = NULL;
+	uint						animationFreelistIndex = 0;
+};
+
+static void init_game_render_datas(GameRender* renderer,CONTAINER::MemoryBlock* mem)
+{
+	renderer->dataHandles = (RenderDataHandle*)CONTAINER::get_next_memory_block(*mem);
+	CONTAINER::increase_memory_block(mem,sizeof(int) * MAX_RENDER_OBJECTS);
+	renderer->dataHandleIndex = 0;
+
+	renderer->dataHandles = (RenderDataHandle*)CONTAINER::get_next_memory_block(*mem);
+	CONTAINER::increase_memory_block(mem,sizeof(int) * MAX_RENDER_OBJECTS);
+	renderer->dataHandleIndex = 0;
+
+	renderer->freelist = (uint*)CONTAINER::get_next_memory_block(*mem);
+	CONTAINER::increase_memory_block(mem,sizeof(int) * MAX_RENDER_OBJECTS);
+	renderer->freeListIndex = 0;
+
+	renderer->renderDataBackPointers = (RenderDataBackPointer*)CONTAINER::get_next_memory_block(*mem);
+	CONTAINER::increase_memory_block(mem,sizeof(RenderDataBackPointer) * MAX_RENDER_OBJECTS);
+	renderer->freeListIndex = 0;
+
+	renderer->animationHandles = (uint*)CONTAINER::get_next_memory_block(*mem);
+	CONTAINER::increase_memory_block(mem,sizeof(uint) * MAX_RENDER_OBJECTS);
+	renderer->animationHandleIndex = 0;
+
+	renderer->animationFreelist = (uint*)CONTAINER::get_next_memory_block(*mem);
+	CONTAINER::increase_memory_block(mem,sizeof(uint) * MAX_RENDER_OBJECTS);
+	renderer->animationFreelistIndex = 0;
+}
+//typedef uint RenderHandle;
 
 struct Camera 
 {
@@ -57,7 +102,6 @@ struct Camera
 	float				pitch;
 };
 
-#define MAX_RENDER_OBJECTS 100
 static RenderData create_new_renderdata(uint materialID, uint meshID,
 		const MATH::vec3& pos,const MATH::quaternion q,MATH::vec3 scale)
 {
@@ -72,64 +116,92 @@ static RenderData create_new_renderdata(uint materialID, uint meshID,
 static RenderData* get_render_data(RenderHandle handle,const GameRender& gameRend,
 		RenderData* data)
 {
-	return  &data[gameRend.dataHandles[handle]];
+	return  &data[gameRend.dataHandles[handle.renderIndex]];
 }
 
 static RenderHandle insert_renderdata(const RenderData& data,GameRender* render,RenderData* renderData)
 {
-	RenderDataHandle ret = 0;
+	RenderDataHandle handleIndex = 0;
 	int numRenderables = render->dataHandleIndex - render->freeListIndex;
 	renderData[numRenderables]= data;
 	//always push to the back
 	if(render->freeListIndex != 0)
 	{
 		--render->freeListIndex;
-		ret = render->freelist[render->freeListIndex];
+		handleIndex = render->freelist[render->freeListIndex];
 	}
 	else
 	{
 		ASSERT_MESSAGE((render->dataHandleIndex + 1) < MAX_PLAYERS,"RenderData overflow \n");
-		ret = numRenderables;
+		handleIndex = numRenderables;
 		render->dataHandleIndex++;
 	}
 	//because we are always iserting to back
-	render->renderDataBackPointers[numRenderables] = ret;
-	render->dataHandles[ret] = numRenderables;
-	return ret;
+	RenderDataBackPointer ptr;
+	ptr.animationIndex = NO_ANIMATION;
+	ptr.renderIndex = handleIndex;
+
+	render->renderDataBackPointers[numRenderables] = ptr;
+	render->dataHandles[handleIndex] = numRenderables;
+
+	RenderHandle h;
+	h.animationIndex = NO_ANIMATION;
+	h.animationIndex = handleIndex;
+	return h;
 }
-static void dispose_renderData(RenderHandle handle,GameRender* render,RenderData* renderData)
+static void dispose_renderData(RenderHandle handle,GameRender* render,
+		RenderData* renderData,AnimationHook* animes)
 {
 	ASSERT_MESSAGE((render->freeListIndex + 1) < MAX_PLAYERS,"freelist overflow \n");
-
 	uint numRenderObjects = render->dataHandleIndex - render->freeListIndex;
-
 	if( 1 < numRenderObjects )
 	{
-
 		//swap actual data last one and handles id
-		uint actualID = render->dataHandles[handle];
+
 		uint lastIndex = numRenderObjects - 1;
+
+		uint tempBackpointer = render->renderDataBackPointers[lastIndex].renderIndex;
+		uint actualID = render->dataHandles[handle.renderIndex];
 
 		RenderData temp = renderData[actualID];
 		renderData[actualID] = renderData[lastIndex];
 		renderData[lastIndex] = temp;
 
-		uint tempBackpointer = render->renderDataBackPointers[lastIndex];
 		render->renderDataBackPointers[lastIndex] = render->renderDataBackPointers[actualID];
-		render->renderDataBackPointers[actualID] = tempBackpointer;
+		render->renderDataBackPointers[actualID].renderIndex = tempBackpointer;
 
-		uint swapHandle = render->renderDataBackPointers[render->dataHandles[handle]]; // 2
-		render->dataHandles[swapHandle] = render->dataHandles[handle] ;// 0	
+		uint swapHandle = render->renderDataBackPointers[render->dataHandles[handle.renderIndex]].renderIndex;
+		render->dataHandles[swapHandle] = render->dataHandles[handle.renderIndex];
 
-
-		render->freelist[render->freeListIndex] = handle;// add 0 to back of the list 
+		render->freelist[render->freeListIndex] = handle.renderIndex;// add 0 to back of the list 
 		render->freeListIndex++;
 	}
 	else
 	{
-		render->freelist[render->freeListIndex] = handle;// add 0 to back of the list 
+		render->freelist[render->freeListIndex] = handle.renderIndex;// add 0 to back of the list 
 		render->freeListIndex++;
 	}
+
+
+	uint numAnimation = render->animationHandleIndex -render->animationFreelistIndex; 
+	if(1 < numAnimation)
+	{
+		if(handle.animationIndex != NO_ANIMATION)
+		{
+			//get anime index
+			uint lastAnimation = numAnimation -1;
+
+			uint animIndex = render->animationHandles[handle.animationIndex];
+			//swap animeIndexes
+			AnimationHook temp = animes[animIndex];
+			animes[animIndex] = animes[lastAnimation];
+			animes[lastAnimation] = temp;
+		}
+	}
+
+
+
+
 }
 
 static const MATH::vec3 worldUp(0.f,1.f,0.f);
@@ -192,23 +264,9 @@ EXPORT void init_game(void* p)
 	hook->numRenderables = 0;
 
 	//hook->renderIndexes = (int*)CONTAINER::get_next_memory_block(hook->gameMemory);
-	CONTAINER::increase_memory_block(&hook->gameMemory,sizeof(int) * MAX_RENDER_OBJECTS);
+	//CONTAINER::increase_memory_block(&hook->gameMemory,sizeof(int) * MAX_RENDER_OBJECTS);
 
-	game->renderData.dataHandles = (RenderDataHandle*)CONTAINER::get_next_memory_block(hook->gameMemory);
-	CONTAINER::increase_memory_block(&hook->gameMemory,sizeof(int) * MAX_RENDER_OBJECTS);
-	game->renderData.dataHandleIndex = 0;
-
-	game->renderData.dataHandles = (RenderDataHandle*)CONTAINER::get_next_memory_block(hook->gameMemory);
-	CONTAINER::increase_memory_block(&hook->gameMemory,sizeof(int) * MAX_RENDER_OBJECTS);
-	game->renderData.dataHandleIndex = 0;
-
-	game->renderData.freelist = (uint*)CONTAINER::get_next_memory_block(hook->gameMemory);
-	CONTAINER::increase_memory_block(&hook->gameMemory,sizeof(int) * MAX_RENDER_OBJECTS);
-	game->renderData.freeListIndex = 0;
-
-	game->renderData.renderDataBackPointers = (uint*)CONTAINER::get_next_memory_block(hook->gameMemory);
-	CONTAINER::increase_memory_block(&hook->gameMemory,sizeof(uint) * MAX_RENDER_OBJECTS);
-	game->renderData.freeListIndex = 0;
+	init_game_render_datas(&game->renderData,&hook->gameMemory);
 
 	Material planetMat = create_new_material(hook->shaders,"MainProg");
 	Material lattiaMat = create_new_material(hook->shaders,"AnimatedProg");
@@ -236,7 +294,7 @@ EXPORT void init_game(void* p)
 		 get_model(hook->models,"Skeleton"),
 		 MATH::vec3(0.f,0.f,0.f),
 		 MATH::quaternion(MATH::vec3(MATH::deg_to_rad * -90.f,0.f,0.f)),
-		 MATH::vec3(2.005f,2.005f,2.005f)
+		 MATH::vec3(0.005f,0.005f,0.005f)
 		);
 
 	insert_renderdata(lattia,&game->renderData,hook->renderables);
@@ -274,23 +332,10 @@ EXPORT void on_game_reload(void* p)
 static void update_camera(Camera* cam,MATH::mat4* view)
 {
 	MATH::vec2 movement = get_mouse_movement();
-#if 0
-	if (key_down(Key::KEY_M))
-		movement.x += 6.1f;
-	if (key_down(Key::KEY_N))
-		movement.y += 6.1f;
-	if (key_down(Key::KEY_V))
-		movement.x -= 6.1f;
-	if (key_down(Key::KEY_B))
-		movement.y -= 6.1f;
-#endif
-
-
 
 	float sensitivity = 0.05f;
 	scale(&movement,sensitivity);
 
-	//printf("%.3f %.3f \n",cam->yaw, cam->pitch);
 	cam->yaw   += movement.x;
 	cam->pitch -= movement.y;  
 
@@ -299,14 +344,11 @@ static void update_camera(Camera* cam,MATH::mat4* view)
 	if(cam->pitch < -89.0f)
 		cam->pitch = -89.0f;
 
-
 	cam->direction.x = cosf(MATH::deg_to_rad * cam->yaw) * 
 		cosf(MATH::deg_to_rad * cam->pitch);
 	cam->direction.y = sinf(MATH::deg_to_rad * cam->pitch);
 	cam->direction.z = sinf(MATH::deg_to_rad * cam->yaw) * 
 		cosf(MATH::deg_to_rad * cam->pitch);
-
-
 
 	MATH::normalize(&cam->direction);
 
@@ -389,9 +431,6 @@ EXPORT void update_game(void* p)
 		data->position.z += 0.1f;
 	}
 
-
-
-
 	update_camera(&game->camera,&hook->viewMatrix);
 #if MIKA
 	game->client.Update();
@@ -408,7 +447,3 @@ EXPORT void dispose_game(void* p)
 	alcCloseDevice(game->soundContext.device);
 	printf("game disposed\n");
 }
-
-
-
-

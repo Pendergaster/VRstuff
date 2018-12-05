@@ -14,30 +14,7 @@ struct Mesh
 	uint numIndexes = 0;
 	uint bonedataBuffer = 0;
 };
-#if 0
-struct MeshInfo
-{
-	char*	name = NULL;
-	char*	path = NULL;
-	int		numVerts = 0;
-	int		numIndexes = 0;
-};
-struct MeshData
-{
-	uint							numMeshes = 0;
-	CONTAINER::StringTable<int>		meshCache; // vain kutsumanimet, boneille ja muille joku?
-	Mesh*							meshArray = NULL;
-	MeshInfo*						meshInfos = NULL;
-};
 
-static MeshId get_mesh(MeshData* meshes,const char* name)
-{
-	int* index = CONTAINER::access_table(meshes->meshCache,name);
-	ASSERT_MESSAGE(index,"MESH NOT FOUND :: %s \n",name);
-	return *index;
-}
-#else
-// meshID reference
 struct ModelInfo
 {
 	char*			name = NULL;
@@ -84,8 +61,5 @@ static ModelId get_model(ModelCache* meshData,const char* name)
 	ASSERT_MESSAGE(index,"MESH NOT FOUND :: %s \n",name);
 	return *index;
 }
-
-
-#endif
 
 #endif //PAKKI_MESHDEFS

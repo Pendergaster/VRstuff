@@ -24,10 +24,7 @@ static inline int find_channel(AnimationChannel* channels,int low ,int high,uint
 		if(key == channels[i].nodeIndex) return i;
 	}
 	return -1;
-	#else
-    if (key == 3) {
-        int k = 10;
-    }
+#else
 	if(high < low){
 		return -1;
 	}
@@ -40,7 +37,7 @@ static inline int find_channel(AnimationChannel* channels,int low ,int high,uint
 		return find_channel(channels,mid + 1, high,key);
 	}
 	return find_channel(channels,low, mid - 1,key);
-	#endif
+#endif
 }
 
 static MATH::mat4 calculate_lerp_scale(float time,AnimationChannel* node)
@@ -104,7 +101,7 @@ static MATH::mat4 calculate_lerp_rotation(float time,AnimationChannel* node)
 		float delta = (time - (float)currentFrame.time) /
 			(float)(nextFrame.time - currentFrame.time);
 
-	q = MATH::interpolate_q(currentFrame.quat,nextFrame.quat,delta);
+		q = MATH::interpolate_q(currentFrame.quat,nextFrame.quat,delta);
 		MATH::normalize(&q);
 	}
 	return MATH::mat4(q);
@@ -143,28 +140,18 @@ static MATH::mat4 calculate_lerp_position(float time,AnimationChannel* node)
 	return m;
 }
 
-int numpasses = 0;
 static uint load_bones_from_nodes(RenderNode* nodes,uint depth,float time,
 		const MATH::mat4 inverse,MATH::mat4 parentTransform,
 		BoneData* bones,MATH::mat4* results,AnimationChannel* channels,
 		uint numChannels)
 {
-	if(numpasses == 20)
-	{
-		int kkkkk = 0;
-	}
 	RenderNode* current = &nodes[depth];
 
-	MATH::mat4 temp = current->transformation;
-	MATH::mat4 nodeTranform;
-	MATH::transpose(&nodeTranform,&temp);
+	MATH::mat4 nodeTranform = current->transformation;
 
 	int affectingChannel = find_channel(channels,0,numChannels,depth);
 	if(affectingChannel != -1)
 	{
-		if(!current->boneIndex ){
-			int kkkkkkk = 0;
-		}
 		MATH::mat4 scaling = calculate_lerp_scale(time,&channels[affectingChannel]);
 		MATH::mat4 rotation = calculate_lerp_rotation(time,&channels[affectingChannel]);
 		MATH::mat4 position = calculate_lerp_position(time,&channels[affectingChannel]);
@@ -173,16 +160,8 @@ static uint load_bones_from_nodes(RenderNode* nodes,uint depth,float time,
 	MATH::mat4 globalTransform = parentTransform * nodeTranform;
 	if(current->boneIndex != NO_BONE)
 	{
-		if(!current->boneIndex ){
-			int kkkkkkk = 0;
-		}
-		MATH::mat4 bone_trans;
-		MATH::mat4 inv_trans;
-		MATH::transpose(&bone_trans,&bones[current->boneIndex].offset);
-		MATH::transpose(&inv_trans,(MATH::mat4*)&inverse);
-		results[current->boneIndex] = inv_trans * globalTransform * bone_trans;
+		results[current->boneIndex] = inverse * globalTransform *  bones[current->boneIndex].offset;
 	}
-	numpasses++;
 	for(uint i = 0; i < current->numChildren;i++)
 	{
 		depth = load_bones_from_nodes(nodes,depth+1,time,inverse,globalTransform,bones,results,channels,numChannels);
