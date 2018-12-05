@@ -171,7 +171,7 @@ int main()
 	double accumulator = 0.0;
 	Renderer renderer;
 	renderer.globalUniforms = &sysUniforms;
-	init_renderer(&renderer,&shaders,&textures);
+	init_renderer(&renderer,&shaders,&textures,&workingMemory);
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	//uint canvasVao = 0;
 
@@ -304,6 +304,7 @@ int main()
 		renderer.numRenderables = hook.numRenderables;
 		renderer.renderData = hook.renderables;
 		renderer.materials = hook.materials;
+		renderer.animations = hook.animations;
 
 		render_pass(&renderer,&models,&shaders,&textures,&workingMemory);
 

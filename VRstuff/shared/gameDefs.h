@@ -15,6 +15,8 @@
 #define SCREENHEIGHT 800
 #define VR 0
 
+#define NO_ANIMATION 0xFFFFFFFF
+#define MAX_ANIMATIONS 50
 struct RenderData
 {
 	int					materialID;
@@ -23,13 +25,16 @@ struct RenderData
 	MATH::vec3			oriTemp;
 	MATH::quaternion	orientation;
 	MATH::vec3			scale;
+	uint				animationIndex = NO_ANIMATION;
 };
 
 struct AnimationHook
 {
-	uint	renderDataIndex = 0;
 	uint	animtionIndex = 0;
 	float	animationSpeed = 0;
+	float	animationPercent = 0;
+	ModelId	modelID = 0;
+	void*	engineData = NULL;
 };
 
 struct GlobalLight
@@ -58,6 +63,7 @@ struct GameHook
 	MATH::mat4				viewMatrix;
 	MATH::mat4				projectionMatrix;
 	struct GlobalLight		globalLight;
+	AnimationHook*			animations;
 };
 
 #endif

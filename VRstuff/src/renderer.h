@@ -165,8 +165,8 @@ struct CascadeShadowData
 struct RenderMeshData
 {
 	uint		matId;
-	MATH::mat4*	bones;
-	MATH::mat4*	modelOrientations;
+	MATH::mat4*	modelOrientations = NULL;
+	MATH::mat4*	bones = NULL;
 	uint*		meshes;
 	uint		numMeshes;
 	uint		meshLoc;
@@ -191,10 +191,20 @@ struct Renderer
 	FrameTexture cascades[NUM_CASCADES];
 	uint				skyvao;
 	uint				canvasvao;
+	AnimationHook*		animations;
+	MATH::mat4*			identitybones;
 };
 
-static void init_renderer(Renderer* pass,ShaderManager* shaders,TextureData* textures)
+static void init_renderer(Renderer* pass,ShaderManager* shaders,TextureData* textures,
+		CONTAINER::MemoryBlock* mem)
 {
+
+	pass->identitybones = (MATH::mat4*)CONTAINER::get_next_memory_block(*mem);
+	CONTAINER::increase_memory_block(mem,sizeof(MATH::mat4) * MAX_BONES);
+	for(uint i = 0; i < MAX_BONES;i++)
+	{
+		MATH::identify(&pass->identitybones[i]);
+	}
 	pass->offscreen = create_new_frameTexture(SCREENWIDHT,
 			SCREENHEIGHT, GL_COLOR_ATTACHMENT0, 
 			FrameBufferAttacment::Color | FrameBufferAttacment::Depth 
@@ -469,7 +479,7 @@ static CascadeShadowData cascade_shadow_render(RenderMeshData* renderData, Rende
 }
 
 static RenderMeshData* query_models(RenderData* renderData,uint numRenderables,ModelCache* models,
-		CONTAINER::MemoryBlock* workingMem)
+		AnimationHook* animationHooks,CONTAINER::MemoryBlock* workingMem)
 {
 	//RenderData* data;
 	//MATH::mat4* 
@@ -480,6 +490,9 @@ static RenderMeshData* query_models(RenderData* renderData,uint numRenderables,M
 	RenderMeshData* renderDatas = (RenderMeshData*)CONTAINER::get_next_memory_block(*workingMem);
 	CONTAINER::increase_memory_block(workingMem,sizeof(RenderMeshData) * numRenderables);
 
+	AnimationHook** individualAnimations = (AnimationHook**)CONTAINER::get_next_memory_block(*workingMem);
+	CONTAINER::increase_memory_block(workingMem,sizeof(AnimationHook*) * MAX_ANIMATIONS);
+	uint numIndividualAnimations = 0;
 
 	for(uint i = 0; i < numRenderables;i++)
 	{
@@ -494,34 +507,53 @@ static RenderMeshData* query_models(RenderData* renderData,uint numRenderables,M
 
 		MATH::mat4* orientations = (MATH::mat4*)CONTAINER::get_next_memory_block(*workingMem);
 		CONTAINER::increase_memory_block(workingMem,sizeof(MATH::mat4) * modelInfo->numMeshes);
-		MATH::mat4* bones = (MATH::mat4*)CONTAINER::get_next_memory_block(*workingMem);
-		CONTAINER::increase_memory_block(workingMem,sizeof(MATH::mat4) * modelInfo->numBones);
-
-
 		MATH::mat4 parentTransform;
 		MATH::identify(&parentTransform);
 
-		uint depth = load_meshes_from_nodes(startNode,0,animeTime,
-				modelInfo->inverseMatrix,parentTransform,orientations);
-		depth  = load_bones_from_nodes(startNode,0,animeTime,
-				modelInfo->inverseMatrix,parentTransform,boneDatas,bones,animeChannels,numChannels);
+		MATH::mat4* bones = NULL;
+		if(currentData->animationIndex != NO_ANIMATION)
+		{
+			AnimationHook* currentAnimHook = &animationHooks[currentData->animationIndex];
+			ASSERT_MESSAGE(currentData->meshID == currentAnimHook->modelID,"WRONG ANIMATION WITH WRONG MODEL");
+			printf(" ANIME DETECTED \n");
+			if(currentAnimHook->engineData == NULL) // bones already calculated
+			{
+				printf("CALCULATING STUFF \n");
+				MATH::mat4* _bones = (MATH::mat4*)CONTAINER::get_next_memory_block(*workingMem);
+				CONTAINER::increase_memory_block(workingMem,sizeof(MATH::mat4) * modelInfo->numBones);
+				uint depth  = load_bones_from_nodes(startNode,0,animeTime,
+						modelInfo->inverseMatrix,parentTransform,boneDatas,_bones,animeChannels,numChannels);
+				ASSERT_MESSAGE(depth != modelInfo->numAnimations,"ERROR QUERING MESHES");
+				currentAnimHook->engineData = bones;
+				individualAnimations[numIndividualAnimations] = currentAnimHook;
+				numIndividualAnimations++;
+			}
+			bones = (MATH::mat4*)currentAnimHook->engineData;
+		}
 
 		for(uint m = 0; m < modelInfo->numMeshes;m++)
 		{
 			MATH::mat4 model(currentData->orientation);
 			MATH::translate(&model,currentData->position);
 			MATH::scale_mat4(&model,currentData->scale);
-			orientations[m] =  /*orientations[m] **/ model;
+			orientations[m] = model;
 		}
 		RenderMeshData data;
 		data.animated = true;
+		if(bones == NULL)
+			printf("NULL BONES \n");
+		data.bones = bones;
 		data.numMeshes = modelInfo->numMeshes;
 		data.numbones = modelInfo->numBones;
-		data.bones = bones;
 		data.modelOrientations = orientations;
 		data.matId = currentData->materialID;
 		data.meshLoc = modelInfo->meshLoc;
 		renderDatas[i] = data;
+	}
+
+	for(uint i = 0; i < numIndividualAnimations;i++)
+	{
+		individualAnimations[i]->engineData = NULL;
 	}
 	return renderDatas;
 }
@@ -642,27 +674,27 @@ static void render_meshes(Renderer* renderValues ,
 			}
 			if(setBones)
 			{
-				MATH::mat4* bonesI = (MATH::mat4*)malloc(
-					currentData->numbones* sizeof(MATH::mat4));
-				defer{free(bonesI);};
-				for(int ree = 0 ; ree < currentData->numbones;ree++)
+				if(currentData->bones)
 				{
-					MATH::identify(&bonesI[ree]);
-				}
-				glUniformMatrix4fv(boneloc, currentData->numbones, GL_FALSE, 
-						//(GLfloat*)bonesI);
+					glUniformMatrix4fv(boneloc, currentData->numbones, GL_FALSE, 
+							//(GLfloat*)bonesI);
 						(GLfloat*)currentData->bones);//.mat);
+				}
+				else
+				{
+					//NO ANIME
+					printf("NO ANIME \n");
+					glUniformMatrix4fv(boneloc, currentData->numbones, GL_FALSE, 
+						(GLfloat*)renderValues->identitybones);
+				}
 			}
 
 			Mesh* currentMesh = &models->meshArray[currentData->meshLoc + part];
 			glBindVertexArray(currentMesh->vao);
 			glDrawElements(GL_TRIANGLES,currentMesh->numIndexes,
 					GL_UNSIGNED_INT,0);
-
-
 		}
 	}
-
 	//render skybox
 	glActiveTexture(GL_TEXTURE0);
 	glDepthFunc(GL_LEQUAL); 
@@ -698,7 +730,6 @@ static void render_meshes(Renderer* renderValues ,
 	glCheckError();
 	glUseProgram(0);
 	glBindVertexArray(0);
-
 }
 
 static void render_pass(Renderer* renderValues ,ModelCache* models,ShaderManager* shaders, 
@@ -712,13 +743,10 @@ static void render_pass(Renderer* renderValues ,ModelCache* models,ShaderManager
 	glEnable(GL_CULL_FACE);  
 	glCullFace(GL_BACK);  
 
-
-
-
 	CONTAINER::MemoryBlock currentState = *workingMem;
 	defer{*workingMem = currentState;};
 	RenderMeshData* renderData = query_models(renderValues->renderData,renderValues->numRenderables,
-			models,workingMem);
+			models,renderValues->animations,workingMem);
 	glCheckError();
 	CascadeShadowData shadowData = cascade_shadow_render(renderData, renderValues,*shaders,
 			renderValues->cascades,models);
