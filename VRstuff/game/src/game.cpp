@@ -32,6 +32,7 @@
 	MODE(PlanetMat)\
 	MODE(Lattia)\
 	MODE(Man)\
+	MODE(Scaled)\
 
 
 enum MaterialType : int
@@ -302,6 +303,7 @@ EXPORT void init_game(void* p)
 	Material planetMat = create_new_material(hook->shaders,"MainProg");
 	Material lattiaMat = create_new_material(hook->shaders,"AnimatedProg");
 	Material ManMaterial = create_new_material(hook->shaders,"AnimatedProg");
+	Material ScaledMaterial = create_new_material(hook->shaders,"ScaledProg");
 
 	RenderData lattia = create_new_renderdata
 		(
@@ -314,6 +316,14 @@ EXPORT void init_game(void* p)
 	RenderData cube = create_new_renderdata
 		(
 		 MaterialType::PlanetMat,
+		 get_model(hook->models,"Cube"),
+		 MATH::vec3(0.f,0.f,0.f),
+		 MATH::quaternion(),
+		 MATH::vec3(10.f,1.0f,10.f)
+		);
+	RenderData ScaledLattia = create_new_renderdata
+		(
+		 MaterialType::Scaled,
 		 get_model(hook->models,"Cube"),
 		 MATH::vec3(0.f,0.f,0.f),
 		 MATH::quaternion(),
@@ -335,7 +345,7 @@ EXPORT void init_game(void* p)
 	lattia.animationIndex = handle;
 	man.animationIndex = manAnim;
 	insert_renderdata(lattia,&game->renderData,hook->renderables);
-	insert_renderdata(cube,&game->renderData,hook->renderables);
+	insert_renderdata(ScaledLattia,&game->renderData,hook->renderables);
 	cube.scale = MATH::vec3(1.f,1.f,1.f);
 	cube.position = MATH::vec3(3.f,3.f,1.f);
 	insert_renderdata(cube,&game->renderData,hook->renderables);
@@ -349,10 +359,13 @@ EXPORT void init_game(void* p)
 	hook->numRenderables = 6;
 	set_material_texture(hook->shaders,&planetMat,0,get_texture(*hook->textures,"Lattia"));
 	set_material_texture(hook->shaders,&lattiaMat,0,get_texture(*hook->textures,"Lattia"));
+	set_material_float(hook->shaders,&ScaledMaterial,0,0.2f);
+	set_material_texture(hook->shaders,&ScaledMaterial,1,get_texture(*hook->textures,"Lattia"));
 	set_material_texture(hook->shaders,&ManMaterial,0,get_texture(*hook->textures,"Skin"));
 	hook->materials[0] = planetMat;
 	hook->materials[1] = lattiaMat;
 	hook->materials[2] = ManMaterial;
+	hook->materials[3] = ScaledMaterial;
 	init_sound_device(&game->soundContext,&hook->workingMemory,&hook->gameMemory);
 
 	init_camera(&game->camera,&hook->viewMatrix,&hook->projectionMatrix,

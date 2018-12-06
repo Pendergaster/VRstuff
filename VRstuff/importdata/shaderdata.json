@@ -10,6 +10,18 @@
 			"tex" : "SAMPLER2D" 
 		}
 	},
+	"ScaledProg" : 
+	{
+		"VertexPath" : "shaders/vert.glsl",
+		"FragmentPath" : "shaders/fragScale.glsl",
+		"RenderGroup" : "Model",
+		"GlobalUniforms" : ["MVP","GlobalLight","ShadowBlock"],
+		"Uniforms" : 
+		{
+			"uvScale" : "FLOATTYPE",
+			"tex" : "SAMPLER2D" 
+		}
+	},
 	"ShadowProg" : 
 	{
 		"VertexPath" : "shaders/shadow.vert",
