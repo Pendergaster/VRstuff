@@ -245,7 +245,7 @@ int main()
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED); 
 
 	glEnable(GL_MULTISAMPLE);
-
+	float runTime = (float)glfwGetTime();
 	//FrameTexture depthMap = create_depth_texture(2048,2048);
 
 	while (!glfwWindowShouldClose(window))
@@ -256,6 +256,7 @@ int main()
 		glfwPollEvents();
 		PROFILER::start_timer(PROFILER::TimerID::Iteration,&timers);
 		double newTime = glfwGetTime();
+		runTime = (float)newTime;
 		double frameTime = newTime - currentTime;
 		currentTime = newTime;
 		accumulator += frameTime;
@@ -299,6 +300,7 @@ int main()
 		}
 		glCheckError();
 		renderer.light = hook.globalLight;
+		renderer.runtime = runTime;
 		renderer.view = hook.viewMatrix;
 		renderer.projection = hook.projectionMatrix;
 		renderer.numRenderables = hook.numRenderables;

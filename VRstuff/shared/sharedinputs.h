@@ -106,9 +106,4 @@ static MATH::vec2 get_mouse_movement()
 {
 	return g_inputs->mpos - g_inputs->lastmpos;
 }
-
-
-
-
-
 #endif

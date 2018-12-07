@@ -1,5 +1,5 @@
 
-
+#define _ITERATOR_DEBUG_LEVEL 2
 #define _CRT_SECURE_NO_WARNINGS
 #define MIKA 0
 #if MIKA 
@@ -21,9 +21,17 @@
 #include <imgui/imgui_widgets.cpp>
 #include "sound.h"
 
+//#include<bullet/btBulletDynamicsCommon.h>
+#include <bullet/btBulletDynamicsCommon.h>
+#include <bullet/BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
+//#include<bullet/BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
+//#include<bullet/btBulletCollisionCommon.h>
+
+
 #define MATERIALS(MODE)\
 	MODE(PlanetMat)\
 	MODE(Lattia)\
+	MODE(Man)\
 
 
 enum MaterialType : int
@@ -96,7 +104,7 @@ static void init_game_animations(GameAnimations* animes,CONTAINER::MemoryBlock* 
 typedef uint AnimeHandle;
 static AnimeHandle create_new_animation(uint animationIndex,
 		ModelId model,
-		float animationSpeed = 0,
+		float animationSpeed = 1.f,
 		float animationPerCent = 0)
 {
 	AnimationHook* data;
@@ -114,7 +122,7 @@ static AnimeHandle create_new_animation(uint animationIndex,
 		animations->animationIndex++;
 	}
 	data->animtionIndex = animationIndex;
-	data->animationSpeed = animationPerCent;
+	data->animationPercent = animationPerCent;
 	data->animationSpeed = animationSpeed;
 	data->modelID = model;
 	data->engineData = NULL;
@@ -222,7 +230,7 @@ static void init_camera(Camera* cam,MATH::mat4* view,MATH::mat4* projection,
 	//MATH::mat4 
 	MATH::create_lookat_mat4(view,cam->position,at,worldUp);
 	cam->up = worldUp;
-	cam->yaw = -0.0f;
+	cam->yaw = 40.0f;
 	cam->pitch = 0;
 
 	MATH::vec3 cameraDirection = MATH::normalized(at -cam->position);
@@ -237,6 +245,12 @@ static void init_camera(Camera* cam,MATH::mat4* view,MATH::mat4* projection,
 #endif
 }
 
+#define MAX_BOXES 100
+struct PhysicsBox
+{
+	RenderDataHandle	boxRenderData;
+	btRigidBody*		body;
+};
 struct Game
 {
 	GameRender			renderData;
@@ -248,8 +262,11 @@ struct Game
 #if MIKA
 	Client				client;
 #endif
-
+	btDiscreteDynamicsWorld*	dynamicsWorld;
+	uint						numBoxes;
+	PhysicsBox					boxes[MAX_BOXES];
 };
+
 
 EXPORT void init_game(void* p)
 {
@@ -281,57 +298,145 @@ EXPORT void init_game(void* p)
 
 	Material planetMat = create_new_material(hook->shaders,"MainProg");
 	Material lattiaMat = create_new_material(hook->shaders,"AnimatedProg");
-#if 0
-	RenderData planetData = create_new_renderdat
-		(
-		 MaterialType::PlanetMat,
-		 get_model(hook->models,"Skeleton"),
-		 MATH::vec3(0.f,0,-10.f),
-		 MATH::quaternion(),
-		 MATH::vec3(0.5f,0.5f,0.5f)
-		);
-
-
-	game->planet = insert_renderdata(planetData,
-			&game->renderData,hook->renderables);
-
-	planetData.position = MATH::vec3(0,-1.f,-10.f);
-	game->enemy = insert_renderdata(planetData,&game->renderData,hook->renderables);
-#endif
+	Material ManMaterial = create_new_material(hook->shaders,"AnimatedProg");
 
 	RenderData lattia = create_new_renderdata
 		(
 		 MaterialType::Lattia,
 		 get_model(hook->models,"Skeleton"),
-		 MATH::vec3(0.f,0.f,0.f),
+		 MATH::vec3(0.f,3.0f,0.f),
 		 MATH::quaternion(MATH::vec3(MATH::deg_to_rad * -90.f,0.f,0.f)),
-		 MATH::vec3(0.005f,0.005f,0.005f)
+		 MATH::vec3(0.001f,0.001f,0.001f)
 		);
-
-
-	AnimeHandle handle = create_new_animation(0,get_model(hook->models,"Skeleton"));
+	RenderData cube = create_new_renderdata
+		(
+		 MaterialType::PlanetMat,
+		 get_model(hook->models,"Cube"),
+		 MATH::vec3(0.f,0.f,0.f),
+		 MATH::quaternion(),
+		 MATH::vec3(10.f,1.0f,10.f)
+		);
+#if 1
+	RenderData man = create_new_renderdata
+		(
+		 MaterialType::Man,
+		 get_model(hook->models,"Man"),
+		 MATH::vec3(5.f,1.f,3.f),
+		 MATH::quaternion(MATH::vec3(MATH::deg_to_rad * -90.f,
+				 MATH::deg_to_rad * -90.f,0.f)),
+		 MATH::vec3(0.6f,0.6f,0.6f)
+		);
+#endif
+	AnimeHandle handle = create_new_animation(0,get_model(hook->models,"Skeleton"),1.f);
+	AnimeHandle manAnim = create_new_animation(0,get_model(hook->models,"Man"),1.f);
 	lattia.animationIndex = handle;
+	man.animationIndex = manAnim;
 	insert_renderdata(lattia,&game->renderData,hook->renderables);
+	insert_renderdata(cube,&game->renderData,hook->renderables);
+	cube.scale = MATH::vec3(1.f,1.f,1.f);
+	cube.position = MATH::vec3(3.f,3.f,1.f);
+	insert_renderdata(cube,&game->renderData,hook->renderables);
+	insert_renderdata(man,&game->renderData,hook->renderables);
 
-	hook->numRenderables = 1;
-	TextureID moonTex = get_texture(*hook->textures,"MoonTexture");
-	set_material_texture(hook->shaders,&planetMat,0,moonTex);
+	hook->numRenderables = 4;
+	set_material_texture(hook->shaders,&planetMat,0,get_texture(*hook->textures,"Lattia"));
 	set_material_texture(hook->shaders,&lattiaMat,0,get_texture(*hook->textures,"Lattia"));
+	set_material_texture(hook->shaders,&ManMaterial,0,get_texture(*hook->textures,"Skin"));
 	hook->materials[0] = planetMat;
 	hook->materials[1] = lattiaMat;
+	hook->materials[2] = ManMaterial;
 	init_sound_device(&game->soundContext,&hook->workingMemory,&hook->gameMemory);
 
 	init_camera(&game->camera,&hook->viewMatrix,&hook->projectionMatrix,
-			MATH::vec3(0,0,10.f),MATH::vec3(0,0,-1.f));
+			MATH::vec3(0,5,-10.f),MATH::vec3(4.f,0,-4.f));
 
 
-	ImGui::SetCurrentContext(hook->imguiContext);
+	//ImGui::SetCurrentContext(hook->imguiContext);
 	set_input_context(&hook->inputs);
 #if MIKA
 	game->client.init_client("172.31.16.152",60000,"Nilkki");
 	game->client.OpenConnection();
 	printf("connected \n");
 #endif
+#if 0
+	btCollisionConfiguration* collisionConfig = new btDefaultCollisionConfiguration();
+	btDispatcher* dispatcher = new btCollisonDispatcher(collisionConfig);
+	btBroadphaseInterface* broadPhase = new btDbvtBroadphase();
+	btDynamicsWorld* world;
+	btConstraintRow* solver;
+#endif
+	btDefaultCollisionConfiguration* collisionConfiguration = new btDefaultCollisionConfiguration(); 
+	btCollisionDispatcher* dispatcher = new btCollisionDispatcher(collisionConfiguration);
+	btBroadphaseInterface* overlappingPairCache = new btDbvtBroadphase ();
+	btSequentialImpulseConstraintSolver* solver = new  btSequentialImpulseConstraintSolver;
+
+	game->dynamicsWorld = new btDiscreteDynamicsWorld(dispatcher ,
+			overlappingPairCache ,solver ,collisionConfiguration);
+
+	game->dynamicsWorld ->setGravity(btVector3 (0,-4.f,0));
+
+	{
+		btTransform groundTransform;
+		groundTransform.setIdentity();
+		groundTransform.setOrigin(btVector3(0,-0.5,0));
+		btBoxShape* groundShape = new btBoxShape(btVector3(btScalar(10.f),btScalar(1.),btScalar(10.)));
+
+		//game->collisionShapes[game->numShapes++] = groundShape; 
+		btScalar mass(0.);
+		//rigidbody is dynamic if and only if mass is non zero, otherwise static
+		bool isDynamic = (mass != 0.f);
+
+		btVector3 localInertia(0,0,0);
+		if (isDynamic)
+			groundShape->calculateLocalInertia(mass,localInertia);
+
+		//using motionstate is recommended, it provides interpolation capabilities, and only synchronizes 'active' objects
+		btDefaultMotionState* myMotionState = new btDefaultMotionState(groundTransform);
+		btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,groundShape,localInertia);
+		btRigidBody* body = new btRigidBody(rbInfo);
+		//add the body to the dynamics world
+		game->dynamicsWorld->addRigidBody(body);
+	}
+	{
+		btBoxShape* colShape = new btBoxShape(btVector3(1.f,1.f,1.f));
+		//btCollisionShape* colShape = new btSphereShape(btScalar(1.));
+		//game->collisionShapes[game->numShapes++] = colShape; 
+		/// Create Dynamic Objects
+		btTransform startTransform;
+		startTransform.setIdentity();
+		btScalar	mass(1.f);
+		//rigidbody is dynamic if and only if mass is non zero, otherwise static
+		bool isDynamic = (mass != 0.f);
+
+		btVector3 localInertia(0,0,0);
+		if (isDynamic)
+			colShape->calculateLocalInertia(mass,localInertia);
+
+		for(int box = 0; box < 5;box++)
+		{
+			startTransform.setOrigin(btVector3((float)(-box) * 1.1f,4.f,-3.f));
+			btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
+			btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,colShape,localInertia);
+			btRigidBody* body = new btRigidBody(rbInfo);
+			game->dynamicsWorld->addRigidBody(body);
+
+			PhysicsBox* currentBox = &game->boxes[box];
+			currentBox->body = body;
+
+			RenderData boxRenderData = create_new_renderdata
+				(
+				 MaterialType::PlanetMat,
+				 get_model(hook->models,"Cube"),
+				 MATH::vec3( (float)(-box * 3.f),4.f,-5.f),
+				 MATH::quaternion(),
+				 MATH::vec3(1.0f,1.0f,1.0f)
+				);
+
+			currentBox->boxRenderData = insert_renderdata(boxRenderData,&game->renderData,hook->renderables);
+			hook->numRenderables++;
+			game->numBoxes++;
+		}
+	}
 }
 
 EXPORT void on_game_reload(void* p)
@@ -339,7 +444,7 @@ EXPORT void on_game_reload(void* p)
 	GameHook* hook = (GameHook*)p;
 	Game* game = (Game*)hook->userData;
 	set_sound_context(&game->soundContext);
-	ImGui::SetCurrentContext(hook->imguiContext);
+	//ImGui::SetCurrentContext(hook->imguiContext);
 	set_input_context(&hook->inputs);
 	set_animation_context(&game->animations);
 }
@@ -378,10 +483,7 @@ static void update_camera(Camera* cam,MATH::mat4* view)
 	cam->direction.z = sinf(MATH::deg_to_rad * cam->yaw) * 
 		cosf(MATH::deg_to_rad * cam->pitch);
 
-
-
 	MATH::normalize(&cam->direction);
-
 
 	cam->up = MATH::cross_product(cam->direction, worldUp);
 	MATH::normalize(&cam->up);
@@ -393,8 +495,6 @@ static void update_camera(Camera* cam,MATH::mat4* view)
 
 	MATH::mat4 inv;
 	MATH::inverse_mat4(&inv,view);
-	//printf(" view pos%.3f  %.3f  %.3f \n",inv.mat[3][0],inv.mat[3][1],inv.mat[3][2]);
-	//printf(" cam pos%.3f  %.3f  %.3f \n",cam->position.x,cam->position.y,cam->position.z);
 }
 
 
@@ -403,11 +503,11 @@ EXPORT void update_game(void* p)
 {
 	GameHook* hook = (GameHook*)p;
 	Game* game = (Game*)hook->userData;
-	ImGui::Begin("Game window ");
-	ImGui::Text("lenght of song is %.3f \n",0.f);
+	//ImGui::Begin("Game window ");
+	//ImGui::Text("lenght of song is %.3f \n",0.f);
 	static bool pause = true;
-	ImGui::Checkbox("pause",&pause);
-	ImGui::End();
+	//ImGui::Checkbox("pause",&pause);
+	//ImGui::End();
 
 	float cameraSpeed = 4.f * 1.f/60.f; // adjust accordingly
 	if (key_down(Key::KEY_W))
@@ -430,39 +530,82 @@ EXPORT void update_game(void* p)
 		game->camera.position  += MATH::normalized(MATH::cross_product(game->camera.direction,
 					game->camera.up)) * cameraSpeed;
 	}
-	if (key_down(Key::KEY_U))
+	game->dynamicsWorld ->stepSimulation (1.f/60.f,10);
+	for (int j = game->dynamicsWorld->getNumCollisionObjects () -1; j>=0 ;j--)
 	{
-		RenderData* data = get_render_data(game->planet,game->renderData,hook->renderables);
-		data->position.y += 0.1f;
+		btCollisionObject* obj = game->dynamicsWorld->getCollisionObjectArray ()[j];
+		btRigidBody* body = btRigidBody :: upcast(obj);
+		if (body && body->getMotionState())
+		{
+			btTransform  trans;
+			body->getMotionState ()->getWorldTransform(trans);
+			printf("world pos = %f,%f,%f\n",float(trans.getOrigin ().getX()),float(trans.
+						getOrigin ().getY()),float(trans.getOrigin ().getZ()));
+		}
 	}
-	if (key_down(Key::KEY_J))
+	for(uint i = 0; i < game->numBoxes;i++)
 	{
-		RenderData* data = get_render_data(game->planet,game->renderData,hook->renderables);
-		data->position.y -= 0.1f;
-	}
-	if (key_down(Key::KEY_K))
-	{
-		RenderData* data = get_render_data(game->planet,game->renderData,hook->renderables);
-		data->position.x -= 0.1f;
-	}
-	if (key_down(Key::KEY_H))
-	{
-		RenderData* data = get_render_data(game->planet,game->renderData,hook->renderables);
-		data->position.x += 0.1f;
-	}
-	if (key_down(Key::KEY_Y))
-	{
-		RenderData* data = get_render_data(game->planet,game->renderData,hook->renderables);
-		data->position.z -= 0.1f;
-	}
-	if (key_down(Key::KEY_I))
-	{
-		RenderData* data = get_render_data(game->planet,game->renderData,hook->renderables);
-		data->position.z += 0.1f;
+		btRigidBody* body = game->boxes[i].body;
+		btTransform trans;
+		body->getMotionState()->getWorldTransform(trans);
+		btVector3 origin = trans.getOrigin();
+
+		RenderData* data = get_render_data(game->boxes[i].boxRenderData,game->renderData,hook->renderables);
+		data->position.x = origin.getX();
+		data->position.y = origin.getY();
+		data->position.z = origin.getZ();
+
+		btQuaternion q = trans.getRotation();
+		//MATH::vec3 euler();
+		data->orientation.scalar = q.getW();
+		data->orientation.i = q.getX();
+		data->orientation.j = q.getY();
+		data->orientation.k = q.getZ();
 	}
 
+	if(key_pressed(Key::KEY_M))
+	{
+		btBoxShape* colShape = new btBoxShape(btVector3(1.f,1.f,1.f));
+		//btCollisionShape* colShape = new btSphereShape(btScalar(1.));
+		//game->collisionShapes[game->numShapes++] = colShape; 
+		/// Create Dynamic Objects
+		btTransform startTransform;
+		startTransform.setIdentity();
+		btScalar	mass(1.f);
+		//rigidbody is dynamic if and only if mass is non zero, otherwise static
+		bool isDynamic = (mass != 0.f);
 
+		btVector3 localInertia(0,0,0);
+		if (isDynamic){
+			colShape->calculateLocalInertia(mass,localInertia);
+		}
 
+		startTransform.setOrigin(btVector3(
+					game->camera.position.x,game->camera.position.y,game->camera.position.z));
+		btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
+		btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,colShape,localInertia);
+		btRigidBody* body = new btRigidBody(rbInfo);
+		game->dynamicsWorld->addRigidBody(body);
+		body->applyCentralForce(btVector3(game->camera.direction.x,
+					game->camera.direction.y,
+					game->camera.direction.z) * 1000);
+
+		PhysicsBox* currentBox = &game->boxes[game->numBoxes];
+		currentBox->body = body;
+
+		RenderData boxRenderData = create_new_renderdata
+			(
+			 MaterialType::PlanetMat,
+			 get_model(hook->models,"Cube"),
+			 MATH::vec3( game->camera.position),
+			 MATH::quaternion(),
+			 MATH::vec3(1.0f,1.0f,1.0f)
+			);
+
+		currentBox->boxRenderData = insert_renderdata(boxRenderData,&game->renderData,hook->renderables);
+		hook->numRenderables++;
+		game->numBoxes++;
+	}
 
 	update_camera(&game->camera,&hook->viewMatrix);
 #if MIKA

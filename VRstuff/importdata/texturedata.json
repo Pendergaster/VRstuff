@@ -15,6 +15,14 @@
 		"Wrap" : "Repeat",
 		"TextureType":"Texture2D"
 	},
+	"Skin" : 
+	{
+		"Path" : "assets/mantext.png",
+		"Mipmap" : true,
+		"SRGB" : true,
+		"Wrap" : "Repeat",
+		"TextureType":"Texture2D"
+	},
 	"sky_box" : 
 	{
 		"Path" : "assets/sky_right.tga",

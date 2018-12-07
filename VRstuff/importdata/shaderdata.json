@@ -17,12 +17,20 @@
 		"RenderGroup" : "Model",
 		"GlobalUniforms" : ["MVP"]
 	},
+	"AnimeShadowProg" : 
+	{
+		"VertexPath" : "shaders/shadowAnim.vert",
+		"FragmentPath" : "shaders/shadow.frag",
+		"RenderGroup" : "Model",
+		"GlobalUniforms" : ["MVP","AnimeBlock"]
+	},
+
 	"AnimatedProg" : 
 	{
 		"VertexPath" : "shaders/animVert.glsl",
-		"FragmentPath" : "shaders/frag.glsl",
+		"FragmentPath" : "shaders/fragNoShadow.glsl",
 		"RenderGroup" : "Model",
-		"GlobalUniforms" : ["MVP","GlobalLight","ShadowBlock","AnimeBlock"],
+		"GlobalUniforms" : ["MVP","GlobalLight","AnimeBlock"],
 		"Uniforms" : 
 		{
 			"tex" : "SAMPLER2D" 

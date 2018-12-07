@@ -17,6 +17,8 @@ layout	(location = 3) in ivec4 boneIndexes;
 layout	(location = 4) in vec4 weights;
 
 
+mat4 finalBoneTrasform;
+
 vec4 calculate_glPos()
 {
 
@@ -25,7 +27,7 @@ vec4 calculate_glPos()
 	boneTransform += 	 bones[boneIndexes[1]] * nW[1];
 	boneTransform += 	 bones[boneIndexes[2]] * nW[2];
 	boneTransform += 	 bones[boneIndexes[3]] * nW[3];	
-
+	finalBoneTrasform = boneTransform;
 	#if 0
 		vec4 RE = boneTransform * vec4(1,1,1,1);
 		vec4 ret;
@@ -39,6 +41,10 @@ vec4 calculate_glPos()
 
 		#endif
 		return ret;
-	}
+}
 
+vec3 calculate_normal()
+{
+	return normalize(mat3(inverse(transpose(model * finalBoneTrasform))) * normal);
+}
 

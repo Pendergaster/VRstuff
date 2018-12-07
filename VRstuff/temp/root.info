@@ -1,11 +1,11 @@
 {
-	"NumModels" : 1, 
-	"NumMeshes" : 1, 
-	"NumAnimations" : 1, 
-	"NumAnimationChannels" : 42, 
-	"NumNodes" : 44, 
-	"NumBones" : 40 
-	"NumPositionKeys" : 4242, 
-	"NumRotationKeys" : 4242, 
-	"NumScaleKeys" : 4242 
+	"NumModels" : 3, 
+	"NumMeshes" : 3, 
+	"NumAnimations" : 2, 
+	"NumAnimationChannels" : 58, 
+	"NumNodes" : 64, 
+	"NumBones" : 56 
+	"NumPositionKeys" : 4322, 
+	"NumRotationKeys" : 4322, 
+	"NumScaleKeys" : 4322 
 }

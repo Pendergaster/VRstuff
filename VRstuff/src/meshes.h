@@ -240,10 +240,6 @@ static void load_mesh(FILE* file,Mesh* mesh,bool animated,
 
 
 	glBindVertexArray(0);
-
-	//FILE* meshbin = fopen(nameBuffer,"rb");
-	//defer{fclose(meshbin);};
-	//MeshAl
 }
 
 static uint load_nodes(RenderNode* nodes,
@@ -390,6 +386,7 @@ static void fill_model_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workin
 	for(uint i = 0; i < names.numobj;i++)
 	{
 		ModelInfo info;
+		memset(&info,0,sizeof(ModelInfo));
 		char* currentName = names.buffer[i];
 		LOG("Getting model %s", currentName);
 		char* tempName = (char*)CONTAINER::get_next_memory_block(*staticAllocator);
@@ -422,17 +419,17 @@ static void fill_model_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workin
 				"INCORRECT SYNTAX :: %s",info.name);
 		info.numMeshes = numMeshes;
 
-
 		for(uint meshIter = 0; meshIter < info.numMeshes;meshIter++)
 		{
 			load_mesh(infoFile,&meshData->meshArray[info.meshLoc + meshIter],
 					animated,*workingMem);
 		}
 		writtenMeshes += info.numMeshes;
-		writtenNodes += load_nodes(&meshData->renderNodes[writtenNodes],
-				infoFile,*workingMem,&info.inverseMatrix);
 		if(animated)
 		{
+			writtenNodes += load_nodes(&meshData->renderNodes[writtenNodes],
+					infoFile,*workingMem,&info.inverseMatrix);
+
 			info.numBones = load_bones(&meshData->bones[writtenBones],infoFile,*workingMem);
 			writtenBones += info.numBones;
 			uint numAnimations = 0;
@@ -442,7 +439,7 @@ static void fill_model_cache(ModelCache* meshData,CONTAINER::MemoryBlock* workin
 					animIter++,writtenAnimations++)
 			{
 				writtenAnimChannels += load_animation_keys(
-						&meshData->animations[animIter],
+						&meshData->animations[info.animationLoc + animIter],
 						&meshData->animationChannels[writtenAnimChannels],
 						&keys,
 						infoFile,*workingMem);

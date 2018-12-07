@@ -6,7 +6,6 @@
 
 #line 0
 
-
 in DATA
 {
 	vec2 uv;

@@ -71,7 +71,6 @@ struct ScaleKey
 	MATH::vec3			scale;
 };
 
-
 struct AnimationChannel
 {
 	uint nodeIndex;

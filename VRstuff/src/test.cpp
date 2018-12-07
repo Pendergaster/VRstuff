@@ -168,21 +168,6 @@ std::string load_mesh(aiMesh* mesh,CONTAINER::MemoryBlock* block,uint numMesh,ch
 				bones[vertexId].add(boneIndex,mesh->mBones[b]->mWeights[w].mWeight);
 			}
 		}
-#if 0
-		for(uint i = 0; i < bones.size(); i++)
-		{
-			float add = 0;
-			for(int p = 0;p < MAX_BONES_IN_VERTEX; p++){
-				add += bones[i].weights[p];
-			}
-			add = sqrtf(add);
-			ASSERT_MESSAGE(add != 0,"WEIGHTS ARE ZERO!");
-			//add /= (float)MAX_BONES_IN_VERTEX;
-			for(int p = 0;p < MAX_BONES_IN_VERTEX; p++){
-				bones[i].weights[p] /= add;
-			}
-		}
-#endif
 		aligment.numBoneData = (uint)bones.size();
 	}
 	FILE* metaFile = fopen(modelName.data(), "wb");
@@ -361,9 +346,9 @@ int main()
 		char* metaPath = (*currentToken)["metaDataPath"].GetString();
 		char* meshdatapath = (*currentToken)["meshDataName"].GetString();
 		ASSERT_MESSAGE(path && metaPath && meshdatapath,"RAWPATH IS NOT FOUND ::  %s \n",currentName);
-		const aiScene* scene = importer.ReadFile(path,0);
-		//aiProcess_Triangulate | aiProcess_FlipUVs |
-		//aiProcess_JoinIdenticalVertices | aiProcess_GenNormals | aiProcess_GenUVCoords );
+		const aiScene* scene = importer.ReadFile(path,//0);
+		aiProcess_Triangulate | aiProcess_FlipUVs |
+		aiProcess_JoinIdenticalVertices | aiProcess_GenNormals | aiProcess_GenUVCoords );
 		ASSERT_MESSAGE(scene && !(scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) && scene->mRootNode, "FAILED TO PARSE :: %s ERROR :: %s \n", currentName, importer.GetErrorString());
 		int maxMeshes = scene->mNumMeshes;
 		printf("Parsing model %d/%d :: %s \n Num meshes %d \n", i, modelNames.numobj, currentName, maxMeshes);
@@ -380,7 +365,6 @@ int main()
 			meshNames.push_back(name);
 		}
 		allBones += boneMapping.size();
-
 		//safe tree to data structure
 		FILE* infoFile = fopen(metaPath,"w");
 		defer {fclose(infoFile);};
@@ -390,73 +374,43 @@ int main()
 		{
 			fprintf(infoFile, "%s \n", meshNames[meshIndex].data()); // frite vertex data files to info
 		}
-		std::vector<RenderNode> renderNodes;
-		std::map<std::string,uint> nodeMapping;
-		push_node(scene->mRootNode,renderNodes,nodeMapping,boneMapping);
-		allNodes += (uint)renderNodes.size();
-		std::string treePath(meshdatapath);
-		treePath += ".nodes";
-		FILE* treeFile = fopen(treePath.data(),"wb");
-		defer {fclose(treeFile);};
-		MATH::mat4 globalTransform = *(MATH::mat4*)&scene->mRootNode->mTransformation;
-		MATH::mat4 inv;
-		MATH::inverse_mat4(&inv, &globalTransform);
-		MATH::mat4 inverse_trans;
-		MATH::transpose(&inverse_trans,&inv);
-		fwrite(&inverse_trans,sizeof(MATH::mat4), 1,treeFile);
-		fwrite(renderNodes.data(),sizeof(RenderNode),
-				renderNodes.size(),treeFile);
-		fprintf(infoFile, "%d \n", (uint)renderNodes.size()); // frite vertex data files to info
-		fprintf(infoFile, "%s \n", treePath.data()); // frite vertex data files to info
-		//FILE* 
-		// write bones 
-		std::string boneFilePath = std::string(metaPath) + std::string(".bone"); 
-		fprintf(infoFile, "%d \n", bones.size()); // write bone file path
-		fprintf(infoFile, "%s \n", boneFilePath.data()); // write bone file path
-		FILE* boneFile = fopen(boneFilePath.c_str(),"wb");
-		defer{fclose(boneFile);};
-		fwrite(bones.data(),sizeof(BoneData),bones.size(),boneFile);
-
-		ASSERT_MESSAGE(scene->mNumAnimations,"NO ANIMATIONS");
-		fprintf(infoFile, "%s \n", "1"); // frite vertex data files to info
-		std::string animPath = load_animation(scene->mAnimations[0]
-				,metaPath,nodeMapping,0,&allChannels,&allPositionKeys,&allRotationKeys,&allScaleKeys);
-		fprintf(infoFile, "%s \n", animPath.data()); // frite vertex data files to info
-		allAnimations += 1;		
-#if 0
-		std::vector<MeshPart> meshParts;
-		while(!nodes.empty()) // 
+		if(animated)
 		{
-			Node current = nodes.back();
-			int numNodesLoopped = 0;
-			nodes.pop_back();
-			for(int childIndex = 0;childIndex < (int)current.assimpNode->mNumChildren; childIndex++)
-			{
-				MATH::mat4 mTemp = current.matrix * (*((MATH::mat4*)&current.assimpNode->mChildren[childIndex]->mTransformation));
-				nodes.push_back
-					({
-					 mTemp,
-					 current.assimpNode->mChildren[childIndex]
-					 });
-			}
-			//write current mesh to parts list and file for it			
-			for(int meshIndex = 0; meshIndex < (int)current.assimpNode->mNumMeshes; meshIndex++) // for every 
-			{
-				MeshPart currentPart;
-				currentPart.localTranform = current.matrix;
-				currentPart.meshIndex = current.assimpNode->mMeshes[meshIndex];
-				meshParts.push_back(currentPart);
-			}			
+			std::vector<RenderNode> renderNodes;
+			std::map<std::string,uint> nodeMapping;
+			push_node(scene->mRootNode,renderNodes,nodeMapping,boneMapping);
+			allNodes += (uint)renderNodes.size();
+			std::string treePath(meshdatapath);
+			treePath += ".nodes";
+			FILE* treeFile = fopen(treePath.data(),"wb");
+			defer {fclose(treeFile);};
+			MATH::mat4 globalTransform = *(MATH::mat4*)&scene->mRootNode->mTransformation;
+			MATH::mat4 inv;
+			MATH::inverse_mat4(&inv, &globalTransform);
+			MATH::mat4 inverse_trans;
+			MATH::transpose(&inverse_trans,&inv);
+			fwrite(&inverse_trans,sizeof(MATH::mat4), 1,treeFile);
+			fwrite(renderNodes.data(),sizeof(RenderNode),
+					renderNodes.size(),treeFile);
+			fprintf(infoFile, "%d \n", (uint)renderNodes.size()); // frite vertex data files to info
+			fprintf(infoFile, "%s \n", treePath.data()); // frite vertex data files to info
+			//FILE* 
+			// write bones 
+			std::string boneFilePath = std::string(metaPath) + std::string(".bone"); 
+			fprintf(infoFile, "%d \n", bones.size()); // write bone file path
+			fprintf(infoFile, "%s \n", boneFilePath.data()); // write bone file path
+			FILE* boneFile = fopen(boneFilePath.c_str(),"wb");
+			defer{fclose(boneFile);};
+			fwrite(bones.data(),sizeof(BoneData),bones.size(),boneFile);
+
+			ASSERT_MESSAGE(scene->mNumAnimations,"NO ANIMATIONS");
+			fprintf(infoFile, "%s \n", "1"); // frite vertex data files to info
+			std::string animPath = load_animation(scene->mAnimations[0]
+					,metaPath,nodeMapping,0,&allChannels,&allPositionKeys,&allRotationKeys,&allScaleKeys);
+			fprintf(infoFile, "%s \n", animPath.data()); // frite vertex data files to info
+			allAnimations += 1;		
 		}
-		int numParts = meshParts.size();
-		fwrite(&numParts, sizeof(int), 1, partFile);
-		//meshdata
-		for(const MeshPart& mp : meshParts)
-		{
-			fwrite(&mp, sizeof(MeshPart), 1, partFile);
-		}			
 
-#endif
 	}
 	FILE* hostfile =  fopen("temp/root.info","w");
 
@@ -599,7 +553,6 @@ for(uint i = 0; i < modelNames.numobj;i++)
 		}
 		if(indexExists)
 		{
-
 			indexBufferOutput[numRealIndexes++] = *i2;
 		}
 		else

@@ -5,7 +5,22 @@
 		"meshDataName" : "temp/model.bin",
 		"rawPath" : "models/goblin.dae",
 		"Animated" : true
+	},
+	"Cube" : 
+	{
+		"metaDataPath" : "temp/cube.info",
+		"meshDataName" : "temp/cube.bin",
+		"rawPath" : "models/cube.dae",
+		"Animated" : false
+	},
+	"Man" : 
+	{
+		"metaDataPath" : "temp/runner.info",
+		"meshDataName" : "temp/runner.bin",
+		"rawPath" : "models/model.dae",
+		"Animated" : true
 	}
+
 }
 
 
