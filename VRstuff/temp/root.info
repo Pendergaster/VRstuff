@@ -1,6 +1,6 @@
 {
-	"NumModels" : 3, 
-	"NumMeshes" : 3, 
+	"NumModels" : 4, 
+	"NumMeshes" : 4, 
 	"NumAnimations" : 2, 
 	"NumAnimationChannels" : 58, 
 	"NumNodes" : 64, 

@@ -15,9 +15,25 @@
 		"Wrap" : "Repeat",
 		"TextureType":"Texture2D"
 	},
+	"Box" : 
+	{
+		"Path" : "assets/box.jpg",
+		"Mipmap" : true,
+		"SRGB" : true,
+		"Wrap" : "Repeat",
+		"TextureType":"Texture2D"
+	},
 	"Skin" : 
 	{
 		"Path" : "assets/mantext.png",
+		"Mipmap" : true,
+		"SRGB" : true,
+		"Wrap" : "Repeat",
+		"TextureType":"Texture2D"
+	},
+	"HandTex" : 
+	{
+		"Path" : "assets/skin.png",
 		"Mipmap" : true,
 		"SRGB" : true,
 		"Wrap" : "Repeat",

@@ -11,8 +11,8 @@
 #include "sharedinputs.h"
 #define GAME_MEMORY_SIZE 100000
 #define GAME_WORKING_MEMORY 60000000
-#define SCREENWIDHT 800
-#define SCREENHEIGHT 800
+#define SCREENWIDHT 1080
+#define SCREENHEIGHT 600
 #define VR 0
 
 #define NO_ANIMATION 0xFFFFFFFF

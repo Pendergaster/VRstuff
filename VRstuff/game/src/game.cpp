@@ -33,6 +33,7 @@
 	MODE(Lattia)\
 	MODE(Man)\
 	MODE(Scaled)\
+	MODE(Skin)\
 
 
 enum MaterialType : int
@@ -304,6 +305,7 @@ EXPORT void init_game(void* p)
 	Material lattiaMat = create_new_material(hook->shaders,"AnimatedProg");
 	Material ManMaterial = create_new_material(hook->shaders,"AnimatedProg");
 	Material ScaledMaterial = create_new_material(hook->shaders,"ScaledProg");
+	Material SkinMaterial = create_new_material(hook->shaders,"MainProg");
 
 	RenderData lattia = create_new_renderdata
 		(
@@ -320,6 +322,14 @@ EXPORT void init_game(void* p)
 		 MATH::vec3(0.f,0.f,0.f),
 		 MATH::quaternion(),
 		 MATH::vec3(10.f,1.0f,10.f)
+		);
+	RenderData handMod = create_new_renderdata
+		(
+		 MaterialType::Skin,
+		 get_model(hook->models,"Gun"),
+		 MATH::vec3(0.f,0.f,0.f),
+		 MATH::quaternion(),
+		 MATH::vec3(0.01f,0.01f,0.01f)
 		);
 	RenderData ScaledLattia = create_new_renderdata
 		(
@@ -345,27 +355,57 @@ EXPORT void init_game(void* p)
 	lattia.animationIndex = handle;
 	man.animationIndex = manAnim;
 	insert_renderdata(lattia,&game->renderData,hook->renderables);
-	insert_renderdata(ScaledLattia,&game->renderData,hook->renderables);
+	
+	struct Lattia{
+		MATH::vec3 pos;
+		MATH::vec3 scale;
+	} lattiat[10];
+	uint numLattia = 0;
+	{ // lattiat
+		lattiat[numLattia].pos = ScaledLattia.position;
+		lattiat[numLattia++].scale = ScaledLattia.scale;
+		insert_renderdata(ScaledLattia,&game->renderData,hook->renderables);
+		ScaledLattia.position.x += 26.f;
+		lattiat[numLattia].pos = ScaledLattia.position;
+		lattiat[numLattia++].scale = ScaledLattia.scale;
+		insert_renderdata(ScaledLattia,&game->renderData,hook->renderables);
+		
+		ScaledLattia.position.x -= 15.f;
+		ScaledLattia.position.z += 24.f;
+		ScaledLattia.position.y += 3.f;
+		lattiat[numLattia].pos = ScaledLattia.position;
+		lattiat[numLattia++].scale = ScaledLattia.scale;
+		insert_renderdata(ScaledLattia,&game->renderData,hook->renderables);
+		
+		ScaledLattia.position.x -= 25.f;
+		//ScaledLattia.position.z -= 24.f;
+		ScaledLattia.position.y += 3.f;
+		lattiat[numLattia].pos = ScaledLattia.position;
+		lattiat[numLattia++].scale = ScaledLattia.scale;
+		insert_renderdata(ScaledLattia,&game->renderData,hook->renderables);	
+	}
 	cube.scale = MATH::vec3(1.f,1.f,1.f);
 	cube.position = MATH::vec3(3.f,3.f,1.f);
 	insert_renderdata(cube,&game->renderData,hook->renderables);
 	cube.scale = MATH::vec3(0.1f,0.1f,0.1f);
 	cube.position = MATH::vec3(0.f,0.f,0.f);
-	game->controllerRight = insert_renderdata(cube,&game->renderData,hook->renderables);
-	game->controllerLeft = insert_renderdata(cube,&game->renderData,hook->renderables);
+	game->controllerRight = insert_renderdata(handMod,&game->renderData,hook->renderables);
+	game->controllerLeft = insert_renderdata(handMod,&game->renderData,hook->renderables);
 	
 	insert_renderdata(man,&game->renderData,hook->renderables);
 
-	hook->numRenderables = 6;
-	set_material_texture(hook->shaders,&planetMat,0,get_texture(*hook->textures,"Lattia"));
+	hook->numRenderables = 9;
+	set_material_texture(hook->shaders,&planetMat,0,get_texture(*hook->textures,"Box"));
 	set_material_texture(hook->shaders,&lattiaMat,0,get_texture(*hook->textures,"Lattia"));
-	set_material_float(hook->shaders,&ScaledMaterial,0,0.2f);
+	set_material_texture(hook->shaders,&SkinMaterial,0,get_texture(*hook->textures,"HandTex"));
+	set_material_float(hook->shaders,&ScaledMaterial,0,5.f);
 	set_material_texture(hook->shaders,&ScaledMaterial,1,get_texture(*hook->textures,"Lattia"));
 	set_material_texture(hook->shaders,&ManMaterial,0,get_texture(*hook->textures,"Skin"));
 	hook->materials[0] = planetMat;
 	hook->materials[1] = lattiaMat;
 	hook->materials[2] = ManMaterial;
 	hook->materials[3] = ScaledMaterial;
+	hook->materials[4] = SkinMaterial;
 	init_sound_device(&game->soundContext,&hook->workingMemory,&hook->gameMemory);
 
 	init_camera(&game->camera,&hook->viewMatrix,&hook->projectionMatrix,
@@ -397,31 +437,36 @@ EXPORT void init_game(void* p)
 	game->dynamicsWorld ->setGravity(btVector3 (0,-4.f,0));
 
 	{
-		btTransform groundTransform;
-		groundTransform.setIdentity();
-		groundTransform.setOrigin(btVector3(0,-0.0f,0));
-		btBoxShape* groundShape = new btBoxShape(btVector3(btScalar(10.f),btScalar(1.),btScalar(10.)));
+		bool isDynamic = true;
+		for(uint l = 0; l < numLattia; l++)
+		{
+			btTransform groundTransform;
+			groundTransform.setIdentity();
+			groundTransform.setOrigin(btVector3(lattiat[l].pos.x,lattiat[l].pos.y,lattiat[l].pos.z));
+			btBoxShape* groundShape = new btBoxShape(btVector3(lattiat[l].scale.x,lattiat[l].scale.y,lattiat[l].scale.z));
 
-		//game->collisionShapes[game->numShapes++] = groundShape; 
-		btScalar mass(0.);
-		//rigidbody is dynamic if and only if mass is non zero, otherwise static
-		bool isDynamic = (mass != 0.f);
+			//game->collisionShapes[game->numShapes++] = groundShape; 
+			btScalar mass(0.);
+			//rigidbody is dynamic if and only if mass is non zero, otherwise static
+			 isDynamic = (mass != 0.f);
 
-		btVector3 localInertia(0,0,0);
-		if (isDynamic)
-			groundShape->calculateLocalInertia(mass,localInertia);
+			btVector3 localInertia(0,0,0);
+			if (isDynamic)
+				groundShape->calculateLocalInertia(mass,localInertia);
 
-		//using motionstate is recommended, it provides interpolation capabilities, and only synchronizes 'active' objects
-		btDefaultMotionState* myMotionState = new btDefaultMotionState(groundTransform);
-		btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,groundShape,localInertia);
-		btRigidBody* body = new btRigidBody(rbInfo);
-		body->setFriction(0.1);
-		//add the body to the dynamics world
-		game->dynamicsWorld->addRigidBody(body);
+			//using motionstate is recommended, it provides interpolation capabilities, and only synchronizes 'active' objects
+			btDefaultMotionState* myMotionState = new btDefaultMotionState(groundTransform);
+			btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,groundShape,localInertia);
+			btRigidBody* body = new btRigidBody(rbInfo);
+			body->setFriction(0.1);
+			//add the body to the dynamics world
+			game->dynamicsWorld->addRigidBody(body);
+			
+		}
 		
 		//Player
 		{
-			btSphereShape* playerShape = new btSphereShape(2.f);//btVector3(1.f,1.f,1.f));
+			btSphereShape* playerShape = new btSphereShape(1.f);//btVector3(1.f,1.f,1.f));
 			btTransform playerStartTransform;
 			playerStartTransform.setIdentity();
 			btScalar	playerMass(5.f);
@@ -621,7 +666,10 @@ EXPORT void update_game(void* p)
 	{
 		RenderData* data = get_render_data(game->controllerRight,game->renderData,hook->renderables);
 		data->position = hook->controllerPosRight;
-		data->orientation = hook->controllerRotRight;
+		MATH::quaternion q({1,0,0},MATH::deg_to_rad * -60.f);
+		MATH::quaternion qz({0,0,1},MATH::deg_to_rad * 0.f);
+		MATH::quaternion qy({0,1,0},MATH::deg_to_rad * 60.f);
+		data->orientation = hook->controllerRotRight * q *  qy * qz;
 		
 		data = get_render_data(game->controllerLeft,game->renderData,hook->renderables);
 		data->position = hook->controllerPosLeft;
@@ -657,6 +705,7 @@ EXPORT void update_game(void* p)
 		btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,colShape,localInertia);
 		btRigidBody* body = new btRigidBody(rbInfo);
 		game->dynamicsWorld->addRigidBody(body);
+		#if 0
 		body->applyCentralForce(btVector3(
 					-camDir.x,
 					-camDir.y,
@@ -664,9 +713,9 @@ EXPORT void update_game(void* p)
 					#if 0
 					game->camera.direction.x,
 					game->camera.direction.y,
-					game->camera.direction.z) * 1000);
+					game->camera.direction.z));
 					#endif
-
+		#endif
 		PhysicsBox* currentBox = &game->boxes[game->numBoxes];
 		currentBox->body = body;
 
@@ -717,7 +766,6 @@ EXPORT void update_game(void* p)
 		MATH::vec3 finalMovement = camRight + camDir;
 		if(MATH::lenght(finalMovement) > 0)
 		{
-			printf("FORCE!!!! \n");
 			btVector3 lastVel = body->getLinearVelocity();
 			//if(lastVel.x > 2.f) lastVel.x = 2.f;
 			//if(lastVel.z > 2.f) lastVel.z = 2.f;
@@ -731,7 +779,6 @@ EXPORT void update_game(void* p)
 						0,
 						1.f,
 						0) * 1000);
-			printf("JUMP!!! \n");
 		}
 		
 	}

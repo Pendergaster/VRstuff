@@ -995,7 +995,14 @@ static void render_pass(Renderer* renderValues ,ModelCache* models,ShaderManager
 	//printf("cam RENDER POS  %.3f %.3f %.3f \n", invCam[3][0],invCam[3][1],invCam[3][2]);
 	
 #endif
-
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, mirrorFBO);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    GLint w = windowSize.w;
+    GLint h = windowSize.h;
+    glBlitFramebuffer(0, SCREENHEIGHT, SCREENWIDHT, 0,
+        0, 0, SCREENWIDHT, SCREENHEIGHT,
+        GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 }
 #endif //PAKKI_RENDERER
 

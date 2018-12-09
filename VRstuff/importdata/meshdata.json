@@ -19,8 +19,14 @@
 		"meshDataName" : "temp/runner.bin",
 		"rawPath" : "models/model.dae",
 		"Animated" : true
+	},
+	"Gun" : 
+	{
+		"metaDataPath" : "temp/gun.info",
+		"meshDataName" : "temp/gun.bin",
+		"rawPath" : "models/Hand.dae",
+		"Animated" : false
 	}
-
 }
 
 
