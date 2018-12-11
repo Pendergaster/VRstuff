@@ -265,7 +265,6 @@ struct Game
 	btDiscreteDynamicsWorld*	dynamicsWorld;
 	uint						numBoxes;
 	PhysicsBox					boxes[MAX_BOXES];
-	RenderDataHandle			controller;
 };
 
 
@@ -337,13 +336,9 @@ EXPORT void init_game(void* p)
 	cube.scale = MATH::vec3(1.f,1.f,1.f);
 	cube.position = MATH::vec3(3.f,3.f,1.f);
 	insert_renderdata(cube,&game->renderData,hook->renderables);
-	cube.scale = MATH::vec3(0.3f,0.3f,0.3f);
-	cube.position = MATH::vec3(0.f,0.f,0.f);
-	game->controller = insert_renderdata(cube,&game->renderData,hook->renderables);
-	
 	insert_renderdata(man,&game->renderData,hook->renderables);
 
-	hook->numRenderables = 5;
+	hook->numRenderables = 4;
 	set_material_texture(hook->shaders,&planetMat,0,get_texture(*hook->textures,"Lattia"));
 	set_material_texture(hook->shaders,&lattiaMat,0,get_texture(*hook->textures,"Lattia"));
 	set_material_texture(hook->shaders,&ManMaterial,0,get_texture(*hook->textures,"Skin"));
@@ -515,7 +510,6 @@ EXPORT void update_game(void* p)
 	//ImGui::End();
 
 	float cameraSpeed = 4.f * 1.f/60.f; // adjust accordingly
-#if 0
 	if (key_down(Key::KEY_W))
 	{
 		//printf("%.2f  %.2f  %.2f \n ",game->camera.direction.x, game->camera.direction.x, 
@@ -536,7 +530,6 @@ EXPORT void update_game(void* p)
 		game->camera.position  += MATH::normalized(MATH::cross_product(game->camera.direction,
 					game->camera.up)) * cameraSpeed;
 	}
-#endif
 	game->dynamicsWorld ->stepSimulation (1.f/60.f,10);
 	for (int j = game->dynamicsWorld->getNumCollisionObjects () -1; j>=0 ;j--)
 	{
@@ -569,25 +562,7 @@ EXPORT void update_game(void* p)
 		data->orientation.j = q.getY();
 		data->orientation.k = q.getZ();
 	}
-	MATH::mat4 invCam;
-	MATH::inverse_mat4(&invCam,&hook->viewMatrix);
-	MATH::vec3 camPos(invCam.mat[3][0],invCam.mat[3][1],invCam.mat[3][2]);
-	printf("camPOS  %.3f %.3f %.3f \n!!",
-	camPos.x,camPos.y,camPos.z);
-	
-	MATH::vec3 camDir(invCam.mat[2][0],invCam.mat[2][1],invCam.mat[2][2]);
-	//printf("camdir  %.3f %.3f %.3f \n!!",
-	//camDir.x,camDir.y,camDir.z);
-	{
-		RenderData* data = get_render_data(game->controller,game->renderData,hook->renderables);
-		MATH::vec3 cntr = MATH::vec3(hook->controllerPos.x,hook->controllerPos.y,hook->controllerPos.z);
-		data->position = hook->controllerPos;
-		//( cntr - MATH::vec3( camPos.x, camPos.y, camPos.z ) );//+ MATH::vec3(  0 , -0.5f, 0 );
-		//MATH::scale(&data->position , 8.f );
-		printf("cntrlPOS  %.3f %.3f %.3f \n!!",
-			data->position .x,data->position .y,data->position .z);
-		
-	}
+
 	if(key_pressed(Key::KEY_M))
 	{
 		btBoxShape* colShape = new btBoxShape(btVector3(1.f,1.f,1.f));
@@ -603,25 +578,17 @@ EXPORT void update_game(void* p)
 		btVector3 localInertia(0,0,0);
 		if (isDynamic){
 			colShape->calculateLocalInertia(mass,localInertia);
-		}		
-		
+		}
+
 		startTransform.setOrigin(btVector3(
-					//game->camera.position.x,game->camera.position.y,game->camera.position.z
-					camPos.x,camPos.y + 1,camPos.z
-					));
+					game->camera.position.x,game->camera.position.y,game->camera.position.z));
 		btDefaultMotionState* myMotionState = new btDefaultMotionState(startTransform);
 		btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,colShape,localInertia);
 		btRigidBody* body = new btRigidBody(rbInfo);
 		game->dynamicsWorld->addRigidBody(body);
-		body->applyCentralForce(btVector3(
-					-camDir.x,
-					-camDir.y,
-					-camDir.z) * 1000);
-					#if 0
-					game->camera.direction.x,
+		body->applyCentralForce(btVector3(game->camera.direction.x,
 					game->camera.direction.y,
 					game->camera.direction.z) * 1000);
-					#endif
 
 		PhysicsBox* currentBox = &game->boxes[game->numBoxes];
 		currentBox->body = body;

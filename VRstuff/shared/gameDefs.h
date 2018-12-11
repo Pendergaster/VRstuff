@@ -64,6 +64,7 @@ struct GameHook
 	MATH::mat4				projectionMatrix;
 	struct GlobalLight		globalLight;
 	AnimationHook*			animations;
+	MATH::vec3 				controllerPos;
 };
 
 #endif

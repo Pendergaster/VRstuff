@@ -327,7 +327,7 @@ void update_vr_state()
 #endif
 	
 }
-
+#if 0
 void render_vr(const RenderCommands& commands)
 {
 
@@ -632,7 +632,7 @@ void render_vr(const RenderCommands& commands)
     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 #endif
 }
-
+#endif
 void dispose_vr_platform()
 {
 	if (mirrorTexture) ovr_DestroyMirrorTexture(session, mirrorTexture);

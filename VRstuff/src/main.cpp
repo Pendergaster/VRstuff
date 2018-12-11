@@ -309,14 +309,20 @@ int main()
 		renderer.animations = hook.animations;
 
 		render_pass(&renderer,&models,&shaders,&textures,&workingMemory);
+		
+		hook.controllerPos = renderer.controllerPos;
+		hook.viewMatrix = renderer.view;
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		int display_w,display_h;
+		glfwGetFramebufferSize(window, &display_w, &display_h);
+		glViewport(0, 0, display_w, display_h);
+		glCheckError();
+		
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		//glfwGetFramebufferSize(window, &display_w, &display_h);
-		//glViewport(0, 0, display_w, display_h);
-		glCheckError();
+		
 
 		glfwSwapBuffers(window);
 
@@ -348,6 +354,7 @@ int main()
 #endif
 	LOG("trying to dispose game");
 	dispose_game(&hook);
+	dispose_renderer();
 	PROFILER::show_timers(&timers);
 	glfwTerminate();
 	printf("Bye \n");

@@ -13,6 +13,10 @@
 #include <texturedefs.h>
 #include <shader_utils.h>
 
+#define PAKKI_VR
+#ifdef PAKKI_VR
+#include <vrfuncs.h>
+#endif
 struct FrameTexture
 {
 	uint texture;
@@ -194,11 +198,16 @@ struct Renderer
 	AnimationHook*		animations;
 	MATH::mat4*			identitybones;
 	float				runtime = 0;
+	MATH::vec3 			controllerPos;
 };
+
 
 static void init_renderer(Renderer* pass,ShaderManager* shaders,TextureData* textures,
 		CONTAINER::MemoryBlock* mem)
 {
+#ifdef PAKKI_VR
+	init_vr_platform();
+#endif
 
 	pass->identitybones = (MATH::mat4*)CONTAINER::get_next_memory_block(*mem);
 	CONTAINER::increase_memory_block(mem,sizeof(MATH::mat4) * MAX_BONES);
@@ -782,14 +791,91 @@ static void render_pass(Renderer* renderValues ,ModelCache* models,ShaderManager
 			renderValues->cascades,models);
 	glCheckError();
 
+#ifdef PAKKI_VR
+	ovrSessionStatus sessionStatus;
+    ovr_GetSessionStatus(session, &sessionStatus);
+    if (sessionStatus.ShouldQuit) {
+        printf("ovr exit \n");
+        ABORT_MESSAGE("OVR fail");
+    }
+    if (sessionStatus.ShouldRecenter) {
+        ovr_RecenterTrackingOrigin(session);
+    }
+    if (!sessionStatus.IsVisible) {
+        LOG("NOT VISIBLE \n");
+        return;
+    }
+	ovrEyeRenderDesc eyeRenderDesc[2];
+    eyeRenderDesc[0] = ovr_GetRenderDesc(session, ovrEye_Left, desc.DefaultEyeFov[0]);
+    eyeRenderDesc[1] = ovr_GetRenderDesc(session, ovrEye_Right, desc.DefaultEyeFov[1]);
+
+    // Get eye poses, feeding in correct IPD offset
+    ovrPosef EyeRenderPose[2];
+    ovrPosef HmdToEyePose[2] = { eyeRenderDesc[0].HmdToEyePose,
+                                 eyeRenderDesc[1].HmdToEyePose };
+    double sensorSampleTime;    // sensorSampleTime is fed into the layer later
+
+    ovr_GetEyePoses(session, frameIndex, ovrTrue, HmdToEyePose, 
+        EyeRenderPose, &sensorSampleTime);
+
+    ovrTimewarpProjectionDesc posTimewarpProjectionDesc = {};
+	
+	OVR::Matrix4f rollPitchYaw = OVR::Matrix4f::RotationY(3.f);
+    MATH::mat4 reee = MATH::rotationMatZ(3.f);
+	
+	 double ftiming = ovr_GetPredictedDisplayTime(session, 0);
+	ovrTrackingState trackingState = ovr_GetTrackingState(session, ftiming, ovrTrue);
+	
+	
+	//MATH::vec3 controllerPos;
+	renderValues->controllerPos.x = -trackingState.HandPoses[ovrHand_Left].ThePose.Position.x;
+	renderValues->controllerPos.y = trackingState.HandPoses[ovrHand_Left].ThePose.Position.y;
+	renderValues->controllerPos.z = -trackingState.HandPoses[ovrHand_Left].ThePose.Position.z;
+	
+	//printf(" CONTROLLER POS %.3f %.3f %.3f \n",
+	//renderValues->controllerPos.x,renderValues->controllerPos.y,renderValues->controllerPos.z);
+	
+	for(int eye = 0; eye < 2; eye++)
+	{
+	OVR::Vector3f Pos2(0,0,4.f);
+    OVR::Matrix4f finalRollPitchYaw = rollPitchYaw * OVR::Matrix4f(EyeRenderPose[eye].Orientation);
+    OVR::Vector3f finalUp = finalRollPitchYaw.Transform(OVR::Vector3f(0, 1, 0));
+    OVR::Vector3f finalForward = finalRollPitchYaw.Transform(OVR::Vector3f(0, 0, -1));
+    OVR::Vector3f shiftedEyePos = Pos2 + rollPitchYaw.Transform(EyeRenderPose[eye].Position);
+
+    MATH::mat4 viewProj[2];
+    OVR::Matrix4f vi = OVR::Matrix4f::LookAtRH(shiftedEyePos, shiftedEyePos + finalForward, finalUp);
+    OVR::Matrix4f pr = ovrMatrix4f_Projection(desc.DefaultEyeFov[eye], 0.2f, 1000.0f, ovrProjection_None);
+    posTimewarpProjectionDesc = ovrTimewarpProjectionDesc_FromProjection(pr, ovrProjection_None);
+		
+	MATH::mat4 v = (*((MATH::mat4*)(&vi)));
+	MATH::mat4 p = (*((MATH::mat4*)(&pr)));
+	
+	MATH::transpose(&viewProj[0],&v);
+	MATH::transpose(&viewProj[1],&p);
+	
+	
+	renderValues->view = viewProj[0];
+	renderValues->projection = viewProj[1];
+	
+#endif
+	glEnable(GL_DEPTH_TEST);
+	
 	set_and_clear_frameTexture(renderValues->offscreen);
+	glCheckError();
 #if 1
 	render_meshes(renderValues,renderData,models,shaders,textures,
 			renderValues->cascades,&shadowData);
 	glCheckError();
 	blit_frameTexture(renderValues->offscreen,renderValues->postProcessCanvas);
+	glCheckError();
+#ifdef PAKKI_VR
+	eyeRenderTexture[eye]->SetAndClearRenderSurface();
+	glCheckError();
+#else
 	glBindFramebuffer(GL_FRAMEBUFFER,0);
-	glDisable(GL_DEPTH_TEST);
+#endif
+	//glDisable(GL_DEPTH_TEST);
 
 	glUseProgram(shaders->shaderProgramIds[renderValues->postCanvasMaterial.shaderProgram]);
 	SHADER::set_vec2_name( shaders->shaderProgramIds[renderValues->postCanvasMaterial.shaderProgram],"pos"
@@ -805,12 +891,59 @@ static void render_pass(Renderer* renderValues ,ModelCache* models,ShaderManager
 	glCheckError();
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0); 
 
-	glEnable(GL_DEPTH_TEST);
+	//glEnable(GL_DEPTH_TEST);
 
-	blit_frameTexture(renderValues->postProcessCanvas,0);
+	//blit_frameTexture(renderValues->postProcessCanvas,0);
+#ifdef PAKKI_VR
+	 eyeRenderTexture[eye]->UnsetRenderSurface();
+	 eyeRenderTexture[eye]->Commit();
+	}
+#endif
 #else
 	blit_frameTexture(renderValues->offscreen,renderValues->cascades->texture);
+	printf("reeeeee");
+#endif
+
+#ifdef PAKKI_VR
+	ovrLayerEyeFovDepth ld = {};
+    ld.Header.Type = ovrLayerType_EyeFovDepth;
+    ld.Header.Flags = ovrLayerFlag_TextureOriginAtBottomLeft;   // Because OpenGL.
+
+    ld.ProjectionDesc = posTimewarpProjectionDesc;
+
+    for (int eye = 0; eye < 2; ++eye)
+    {
+        ld.ColorTexture[eye] = eyeRenderTexture[eye]->ColorTextureChain;
+        ld.DepthTexture[eye] = eyeRenderTexture[eye]->DepthTextureChain;
+        ld.Viewport[eye] = OVR::Recti(eyeRenderTexture[eye]->GetSize());
+        ld.Fov[eye] = desc.DefaultEyeFov[eye];
+        ld.RenderPose[eye] = EyeRenderPose[eye];
+        ld.SensorSampleTime = sensorSampleTime;
+    }
+
+
+
+	ovrLayerHeader* layers = &ld.Header;
+    ovrResult result = ovr_SubmitFrame(session, frameIndex, nullptr, &layers, 1);
+
+	if (!OVR_SUCCESS(result))
+	{
+		ABORT_MESSAGE("RENDERING FAIL  VR \n");//goto Done;
+	}
+
+    frameIndex++;
+	glm::mat4 invCam = glm::inverse(*(glm::mat4*)&renderValues->view);
+	printf("cam RENDER POS  %.3f %.3f %.3f \n", invCam[3][0],invCam[3][1],invCam[3][2]);
+	
 #endif
 
 }
 #endif //PAKKI_RENDERER
+
+static void dispose_renderer()
+{
+#ifdef PAKKI_VR
+	dispose_vr_platform();
+#endif
+	
+}
