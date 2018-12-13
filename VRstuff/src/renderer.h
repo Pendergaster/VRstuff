@@ -198,7 +198,13 @@ struct Renderer
 	AnimationHook*		animations;
 	MATH::mat4*			identitybones;
 	float				runtime = 0;
-	MATH::vec3 			controllerPos;
+	MATH::vec3 			controllerPosRight;
+	MATH::quaternion 	controllerRotRight;
+	MATH::vec3 			controllerPosLeft;
+	MATH::quaternion 	controllerRotLeft;
+	MATH::vec3			camPos;
+	MATH::vec2 			stick;
+	bool 				jumpButton;
 };
 
 
@@ -331,6 +337,7 @@ static void init_renderer(Renderer* pass,ShaderManager* shaders,TextureData* tex
 	glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, sizeof(canvasInds), canvasInds);
 	glBindVertexArray(0);
 
+	pass->jumpButton = false;
 }
 
 
@@ -828,16 +835,68 @@ static void render_pass(Renderer* renderValues ,ModelCache* models,ShaderManager
 	
 	
 	//MATH::vec3 controllerPos;
-	renderValues->controllerPos.x = -trackingState.HandPoses[ovrHand_Left].ThePose.Position.x;
-	renderValues->controllerPos.y = trackingState.HandPoses[ovrHand_Left].ThePose.Position.y;
-	renderValues->controllerPos.z = -trackingState.HandPoses[ovrHand_Left].ThePose.Position.z;
+	renderValues->controllerPosLeft.x = -trackingState.HandPoses[ovrHand_Left].ThePose.Position.x;
+	renderValues->controllerPosLeft.y = trackingState.HandPoses[ovrHand_Left].ThePose.Position.y;
+	renderValues->controllerPosLeft.z = -trackingState.HandPoses[ovrHand_Left].ThePose.Position.z;
+	
+	renderValues->controllerPosRight.x = -trackingState.HandPoses[ovrHand_Right].ThePose.Position.x;
+	renderValues->controllerPosRight.y = trackingState.HandPoses[ovrHand_Right].ThePose.Position.y;
+	renderValues->controllerPosRight.z = -trackingState.HandPoses[ovrHand_Right].ThePose.Position.z;
+	
+	renderValues->controllerRotLeft.i = trackingState.HandPoses[ovrHand_Left].ThePose.Orientation.x;
+	renderValues->controllerRotLeft.j = -trackingState.HandPoses[ovrHand_Left].ThePose.Orientation.y;
+	renderValues->controllerRotLeft.k = trackingState.HandPoses[ovrHand_Left].ThePose.Orientation.z;
+	renderValues->controllerRotLeft.scalar = -trackingState.HandPoses[ovrHand_Left].ThePose.Orientation.w;
+	                        
+	renderValues->controllerRotRight.i = trackingState.HandPoses[ovrHand_Right].ThePose.Orientation.x;
+	renderValues->controllerRotRight.j = -trackingState.HandPoses[ovrHand_Right].ThePose.Orientation.y;
+	renderValues->controllerRotRight.k = trackingState.HandPoses[ovrHand_Right].ThePose.Orientation.z;
+	renderValues->controllerRotRight.scalar = -trackingState.HandPoses[ovrHand_Right].ThePose.Orientation.w;
+	
+	renderValues->controllerPosRight += renderValues->camPos;
+	renderValues->controllerPosLeft += renderValues->camPos;
+	ovrInputState    inputState;
+	if (OVR_SUCCESS(ovr_GetInputState(session, ovrControllerType_Touch, &inputState)))
+	{
+    
+	
+		ovrVector2f	thumbStick = inputState.Thumbstick[1];
+		//printf("stick %.3f %.3f \n",thumbStick.x,thumbStick.y);
+		renderValues->stick.x = thumbStick.x;
+		renderValues->stick.y = thumbStick.y;
+		static bool internalButton = false;
+		static bool internalButtonLast = false;
+		 if (inputState.HandTrigger[ovrHand_Right] > 0.5f)
+		{	 
+			internalButton= true;	
+			// Handle hand grip...
+		}
+		else
+		{
+			internalButton= false;
+		}
+		
+		
+		if(internalButtonLast == false && internalButton == true)
+		{
+			renderValues->jumpButton = true;
+		}
+		else
+		{
+			renderValues->jumpButton = false;
+		}
+	
+		internalButtonLast = internalButton; 
+	}
+	
+	
 	
 	//printf(" CONTROLLER POS %.3f %.3f %.3f \n",
 	//renderValues->controllerPos.x,renderValues->controllerPos.y,renderValues->controllerPos.z);
 	
 	for(int eye = 0; eye < 2; eye++)
 	{
-	OVR::Vector3f Pos2(0,0,4.f);
+	OVR::Vector3f Pos2(renderValues->camPos.x ,renderValues->camPos.y,renderValues->camPos.z);
     OVR::Matrix4f finalRollPitchYaw = rollPitchYaw * OVR::Matrix4f(EyeRenderPose[eye].Orientation);
     OVR::Vector3f finalUp = finalRollPitchYaw.Transform(OVR::Vector3f(0, 1, 0));
     OVR::Vector3f finalForward = finalRollPitchYaw.Transform(OVR::Vector3f(0, 0, -1));
@@ -857,6 +916,8 @@ static void render_pass(Renderer* renderValues ,ModelCache* models,ShaderManager
 	
 	renderValues->view = viewProj[0];
 	renderValues->projection = viewProj[1];
+	
+	//MATH::translate(&renderValues->view, renderValues->camPos);
 	
 #endif
 	glEnable(GL_DEPTH_TEST);
@@ -921,8 +982,6 @@ static void render_pass(Renderer* renderValues ,ModelCache* models,ShaderManager
         ld.SensorSampleTime = sensorSampleTime;
     }
 
-
-
 	ovrLayerHeader* layers = &ld.Header;
     ovrResult result = ovr_SubmitFrame(session, frameIndex, nullptr, &layers, 1);
 
@@ -933,7 +992,7 @@ static void render_pass(Renderer* renderValues ,ModelCache* models,ShaderManager
 
     frameIndex++;
 	glm::mat4 invCam = glm::inverse(*(glm::mat4*)&renderValues->view);
-	printf("cam RENDER POS  %.3f %.3f %.3f \n", invCam[3][0],invCam[3][1],invCam[3][2]);
+	//printf("cam RENDER POS  %.3f %.3f %.3f \n", invCam[3][0],invCam[3][1],invCam[3][2]);
 	
 #endif
 

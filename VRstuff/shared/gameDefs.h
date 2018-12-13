@@ -64,7 +64,13 @@ struct GameHook
 	MATH::mat4				projectionMatrix;
 	struct GlobalLight		globalLight;
 	AnimationHook*			animations;
-	MATH::vec3 				controllerPos;
+	MATH::vec3 				controllerPosRight;
+	MATH::quaternion 		controllerRotRight;
+	MATH::vec3 				controllerPosLeft;
+	MATH::quaternion 		controllerRotLeft;
+	MATH::vec3 				camPos;
+	MATH::vec2 				stick;
+	bool 					jumpButton;
 };
 
 #endif

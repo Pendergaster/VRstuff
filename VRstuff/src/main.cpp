@@ -307,10 +307,14 @@ int main()
 		renderer.renderData = hook.renderables;
 		renderer.materials = hook.materials;
 		renderer.animations = hook.animations;
-
+		renderer.camPos = hook.camPos;
 		render_pass(&renderer,&models,&shaders,&textures,&workingMemory);
-		
-		hook.controllerPos = renderer.controllerPos;
+		hook.stick = renderer.stick;
+		hook.jumpButton = renderer.jumpButton;
+		hook.controllerPosRight = renderer.controllerPosRight;
+		hook.controllerPosLeft = renderer.controllerPosLeft;
+		hook.controllerRotRight = renderer.controllerRotRight;
+		hook.controllerRotLeft = renderer.controllerRotLeft;
 		hook.viewMatrix = renderer.view;
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		int display_w,display_h;

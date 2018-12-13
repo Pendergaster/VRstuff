@@ -265,7 +265,9 @@ struct Game
 	btDiscreteDynamicsWorld*	dynamicsWorld;
 	uint						numBoxes;
 	PhysicsBox					boxes[MAX_BOXES];
-	RenderDataHandle			controller;
+	RenderDataHandle			controllerRight;
+	RenderDataHandle			controllerLeft;
+	btRigidBody*		playerCharacter;
 };
 
 
@@ -337,13 +339,14 @@ EXPORT void init_game(void* p)
 	cube.scale = MATH::vec3(1.f,1.f,1.f);
 	cube.position = MATH::vec3(3.f,3.f,1.f);
 	insert_renderdata(cube,&game->renderData,hook->renderables);
-	cube.scale = MATH::vec3(0.3f,0.3f,0.3f);
+	cube.scale = MATH::vec3(0.1f,0.1f,0.1f);
 	cube.position = MATH::vec3(0.f,0.f,0.f);
-	game->controller = insert_renderdata(cube,&game->renderData,hook->renderables);
+	game->controllerRight = insert_renderdata(cube,&game->renderData,hook->renderables);
+	game->controllerLeft = insert_renderdata(cube,&game->renderData,hook->renderables);
 	
 	insert_renderdata(man,&game->renderData,hook->renderables);
 
-	hook->numRenderables = 5;
+	hook->numRenderables = 6;
 	set_material_texture(hook->shaders,&planetMat,0,get_texture(*hook->textures,"Lattia"));
 	set_material_texture(hook->shaders,&lattiaMat,0,get_texture(*hook->textures,"Lattia"));
 	set_material_texture(hook->shaders,&ManMaterial,0,get_texture(*hook->textures,"Skin"));
@@ -383,7 +386,7 @@ EXPORT void init_game(void* p)
 	{
 		btTransform groundTransform;
 		groundTransform.setIdentity();
-		groundTransform.setOrigin(btVector3(0,-0.5,0));
+		groundTransform.setOrigin(btVector3(0,-0.0f,0));
 		btBoxShape* groundShape = new btBoxShape(btVector3(btScalar(10.f),btScalar(1.),btScalar(10.)));
 
 		//game->collisionShapes[game->numShapes++] = groundShape; 
@@ -399,8 +402,30 @@ EXPORT void init_game(void* p)
 		btDefaultMotionState* myMotionState = new btDefaultMotionState(groundTransform);
 		btRigidBody::btRigidBodyConstructionInfo rbInfo(mass,myMotionState,groundShape,localInertia);
 		btRigidBody* body = new btRigidBody(rbInfo);
+		body->setFriction(0.1);
 		//add the body to the dynamics world
 		game->dynamicsWorld->addRigidBody(body);
+		
+		//Player
+		{
+			btSphereShape* playerShape = new btSphereShape(2.f);//btVector3(1.f,1.f,1.f));
+			btTransform playerStartTransform;
+			playerStartTransform.setIdentity();
+			btScalar	playerMass(5.f);
+			btVector3 playerLocalInertia(0,0,0);
+			if (isDynamic){
+				playerShape->calculateLocalInertia(playerMass,playerLocalInertia);
+			}
+			playerStartTransform.setOrigin(btVector3(-5.f,7.f,0));
+			btDefaultMotionState* playerMotionState = new btDefaultMotionState(playerStartTransform);
+			btRigidBody::btRigidBodyConstructionInfo plrbInfo(playerMass,playerMotionState,playerShape,playerLocalInertia);
+			game->playerCharacter = new btRigidBody(plrbInfo);
+			game->playerCharacter->setAngularFactor(btVector3(0,1,0));
+			game->playerCharacter->setFriction(0.1);
+			game->playerCharacter->setActivationState(DISABLE_DEACTIVATION);
+			game->dynamicsWorld->addRigidBody(game->playerCharacter);
+		}
+		
 	}
 	{
 		btBoxShape* colShape = new btBoxShape(btVector3(1.f,1.f,1.f));
@@ -442,6 +467,8 @@ EXPORT void init_game(void* p)
 			game->numBoxes++;
 		}
 	}
+	hook->camPos  = MATH::vec3(0,2.f,-3.f);
+	hook->jumpButton = false;
 }
 
 EXPORT void on_game_reload(void* p)
@@ -572,20 +599,24 @@ EXPORT void update_game(void* p)
 	MATH::mat4 invCam;
 	MATH::inverse_mat4(&invCam,&hook->viewMatrix);
 	MATH::vec3 camPos(invCam.mat[3][0],invCam.mat[3][1],invCam.mat[3][2]);
-	printf("camPOS  %.3f %.3f %.3f \n!!",
-	camPos.x,camPos.y,camPos.z);
+	//printf("camPOS  %.3f %.3f %.3f !! \n",
+	//camPos.x,camPos.y,camPos.z);
 	
 	MATH::vec3 camDir(invCam.mat[2][0],invCam.mat[2][1],invCam.mat[2][2]);
 	//printf("camdir  %.3f %.3f %.3f \n!!",
 	//camDir.x,camDir.y,camDir.z);
 	{
-		RenderData* data = get_render_data(game->controller,game->renderData,hook->renderables);
-		MATH::vec3 cntr = MATH::vec3(hook->controllerPos.x,hook->controllerPos.y,hook->controllerPos.z);
-		data->position = hook->controllerPos;
+		RenderData* data = get_render_data(game->controllerRight,game->renderData,hook->renderables);
+		data->position = hook->controllerPosRight;
+		data->orientation = hook->controllerRotRight;
+		
+		data = get_render_data(game->controllerLeft,game->renderData,hook->renderables);
+		data->position = hook->controllerPosLeft;
+		data->orientation = hook->controllerRotLeft;
 		//( cntr - MATH::vec3( camPos.x, camPos.y, camPos.z ) );//+ MATH::vec3(  0 , -0.5f, 0 );
 		//MATH::scale(&data->position , 8.f );
-		printf("cntrlPOS  %.3f %.3f %.3f \n!!",
-			data->position .x,data->position .y,data->position .z);
+		//printf("cntrlPOS  %.3f %.3f %.3f !! \n",
+		//	data->position .x,data->position .y,data->position .z);
 		
 	}
 	if(key_pressed(Key::KEY_M))
@@ -640,7 +671,76 @@ EXPORT void update_game(void* p)
 		game->numBoxes++;
 	}
 
-	update_camera(&game->camera,&hook->viewMatrix);
+	//update_camera(&game->camera,&hook->viewMatrix);
+	
+	{
+		btRigidBody* body = game->playerCharacter;
+		btTransform trans;
+		body->getMotionState()->getWorldTransform(trans);
+		btVector3 origin = trans.getOrigin();
+
+		
+		hook->camPos.x = origin.getX();
+		hook->camPos.y = origin.getY() + 1.f;
+		hook->camPos.z = origin.getZ();
+
+		//btQuaternion q = trans.getRotation();
+		//MATH::vec3 euler();
+		//data->orientation.scalar = q.getW();
+		//data->orientation.i = q.getX();
+		//data->orientation.j = q.getY();
+		//data->orientation.k = q.getZ();
+		camDir.y = 0;
+		MATH::normalize(&camDir);
+		MATH::vec3 camRight;
+		camRight = MATH::cross_product(camDir, worldUp);
+		MATH::normalize(&camRight);
+		//cam->up = MATH::cross_product(cam->up, cam->direction);
+		//MATH::normalize(&cam->up);
+	
+	
+		MATH::scale(&camRight,-hook->stick.x);
+		MATH::scale(&camDir,-hook->stick.y);
+		MATH::vec3 finalMovement = camRight + camDir;
+		if(MATH::lenght(finalMovement) > 0)
+		{
+			printf("FORCE!!!! \n");
+			btVector3 lastVel = body->getLinearVelocity();
+			//if(lastVel.x > 2.f) lastVel.x = 2.f;
+			//if(lastVel.z > 2.f) lastVel.z = 2.f;
+			body->setLinearVelocity(btVector3(
+						finalMovement.x * 5,
+						lastVel.getY(),
+						finalMovement.z * 5) );//+ lastVel);
+		}
+		if(hook->jumpButton){
+			body->applyCentralForce(btVector3(
+						0,
+						1.f,
+						0) * 1000);
+			printf("JUMP!!! \n");
+		}
+		
+	}
+	#if 0
+	
+	camDir.y = 0;
+	MATH::normalize(&camDir);
+	MATH::vec3 camRight;
+	camRight = MATH::cross_product(camDir, worldUp);
+	MATH::normalize(&camRight);
+	//cam->up = MATH::cross_product(cam->up, cam->direction);
+	//MATH::normalize(&cam->up);
+	
+	
+	MATH::scale(&camRight,-hook->stick.x);
+	MATH::scale(&camDir,-hook->stick.y);
+	
+	
+	hook->camPos += camRight;
+	hook->camPos += camDir;
+	#endif
+	
 #if MIKA
 	game->client.Update();
 #endif
